@@ -86,16 +86,6 @@
     border-radius: 6px;
   }
 
-  /* Fixed Sequential Row Numbering */
-  #table-asetkso {
-    counter-reset: rowNumber;
-  }
-  #table-asetkso tbody tr {
-    counter-increment: rowNumber;
-  }
-  #table-asetkso tbody tr td:first-child::before {
-    content: counter(rowNumber) ".";
-  }
 </style>
 
         <!--begin::App Content Header-->
@@ -126,8 +116,8 @@
               <div class="col-12">
                 <div class="card">
                   <div class="card-header d-flex align-items-center justify-content-between">
-                    <h3 class="card-title">Data Aset KSO</h3>
-                    <div class="card-tools ms-auto d-flex gap-2">
+                    <h3 class="card-title mb-0">Data Aset KSO</h3>
+                    <div class="card-tools d-flex gap-2 ms-auto">
                       <a href="/inventori/aset-laptop/bulk-create" class="btn btn-success btn-sm">
                         <i class="bi bi-stack"></i> Sisipan Masal
                       </a>
@@ -138,16 +128,41 @@
                   </div>
                   <!-- /.card-header -->
                   <div class="card-body">
+                    <!-- Filter & Search Section -->
+                    <div class="d-flex align-items-center justify-content-between mb-4 gap-3">
+                      <!-- Filter Section -->
+                      <div class="filter-wrapper p-2 bg-light rounded border shadow-sm" style="max-width: fit-content;">
+                        <form action="/inventori/aset-laptop" method="GET" id="filterForm" class="d-flex align-items-center gap-3 px-2">
+                          <label for="year_filter" class="fw-bold mb-0 small text-muted text-uppercase">Filter Tahun:</label>
+                          <div class="input-group input-group-sm" style="width: 160px;">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-calendar3"></i></span>
+                            <input type="text" name="year" id="year_filter" class="form-control border-start-0 ps-0" placeholder="Semua Tahun" value="{{ .selectedYear }}" readonly>
+                            {{ if .selectedYear }}
+                            <button type="button" class="btn btn-outline-danger btn-sm border-start-0" title="Reset Filter" onclick="window.location.href='/inventori/aset-laptop'">
+                              <i class="bi bi-x-lg"></i>
+                            </button>
+                            {{ end }}
+                          </div>
+                        </form>
+                      </div>
+
+                      <!-- Search Container (Target for JS) -->
+                      <div id="datatable-search-container"></div>
+                    </div>
+
                     <table class="table table-bordered" id="table-asetkso">
                       <thead>
                         <tr>
                           <th style="width: 10px">No</th>
                           <th>No. Inventaris</th>
+                          <th>Serial Number</th>
                           <th>Nama Aset</th>
                           <th>Kategori</th>
-                          <th>Merk</th>
-                          <th>Spesifikasi</th>
+                           <th>Merk</th>
+                           <th>Type/Model</th>
+                           <th>Spesifikasi</th>
                           <th>Lokasi</th>
+                          <th>Tgl. Pembelian</th>
                           <th>Status</th>
                           <th style="width: 100px">Aksi</th>
                         </tr>
@@ -155,13 +170,16 @@
                       <tbody>
                         {{ range $index, $asset := .assets }}
                         <tr>
-                          <td class="text-center"></td>
+                          <td class="text-center row-index">{{ add $index 1 }}.</td>
                           <td><span class="text-dark">{{ $asset.InventoryNumber }}</span></td>
+                          <td>{{ $asset.SerialNumber }}</td>
                           <td>{{ $asset.AssetName }}</td>
                            <td>{{ $asset.Category }}</td>
                           <td>{{ $asset.Brand }}</td>
-                          <td>{{ $asset.Specification }}</td>
+                           <td>{{ $asset.TypeModel }}</td>
+                           <td>{{ $asset.Specification }}</td>
                           <td>{{ $asset.Location }}</td>
+                          <td>{{ $asset.PurchaseDate.Format "02-01-2006" }}</td>
                           <td>
                             {{ if eq $asset.Status "Ready" }}
                               <span class="badge bg-primary">Ready</span>
@@ -212,46 +230,97 @@
                     info: "Menampilkan {start} sampai {end} dari {rows} data",
                 },
                 columns: [
-                    { select: 0, sortable: false }
+                    { select: 0, sortable: false },
+                    { select: 1, sort: "asc" }
                 ]
             });
 
-            // Move the selector to bottom after init
+            const updateRowNumbers = () => {
+                // Wait for the library to finish rendering the DOM
+                setTimeout(() => {
+                    const wrapper = tableElement.closest('.datatable-wrapper');
+                    const infoElement = wrapper ? wrapper.querySelector('.datatable-info') : null;
+                    let startIdx = 0;
+
+                    if (infoElement) {
+                        // Extract the first number from the info text (e.g., "Menampilkan 6 sampai 10...")
+                        const match = infoElement.innerText.match(/\d+/);
+                        if (match) {
+                            startIdx = parseInt(match[0]) - 1;
+                        }
+                    }
+
+                    const rows = tableElement.querySelectorAll('tbody tr');
+                    rows.forEach((row, index) => {
+                        const cell = row.querySelector('.row-index');
+                        if (cell && !row.classList.contains('datatable-empty')) {
+                            cell.innerText = (startIdx + index + 1) + ".";
+                        }
+                    });
+                }, 50);
+            };
+
+            // Bind events for numbering updates
+            dataTable.on("datatable.page", updateRowNumbers);
+            dataTable.on("datatable.sort", updateRowNumbers);
+            dataTable.on("datatable.perpage", updateRowNumbers);
+            dataTable.on("datatable.search", updateRowNumbers);
+
+            // Move elements after init for premium layout
             dataTable.on("datatable.init", () => {
-                const topDropdown = document.querySelector(".datatable-top .datatable-dropdown");
+                updateRowNumbers();
+                const topBar = document.querySelector(".datatable-top");
+                const searchDiv = topBar.querySelector(".datatable-search");
+                const searchContainer = document.getElementById("datatable-search-container");
+                
+                // Move Search Input to align with Year Filter
+                if (searchDiv && searchContainer) {
+                    searchContainer.appendChild(searchDiv);
+                    const searchInput = searchDiv.querySelector(".datatable-input");
+                    if (searchInput) {
+                        searchInput.style.margin = "0";
+                    }
+                }
+
+                // Hide original top bar since we moved/hidden its contents
+                if (topBar) topBar.style.display = "none";
+
+                // Move the original "per page" selector to bottom instead of cloning
+                const topDropdown = topBar.querySelector(".datatable-dropdown");
                 const bottomContainer = document.querySelector(".datatable-bottom");
                 
                 if (topDropdown && bottomContainer) {
                     const bottomLeft = document.createElement("div");
                     bottomLeft.className = "datatable-bottom-left";
                     
-                    const newDropdown = topDropdown.cloneNode(true);
-                    newDropdown.style.display = "block";
-                    
-                    const label = newDropdown.querySelector("label");
+                    // Clear text nodes from label but keep select
+                    const label = topDropdown.querySelector("label");
                     if (label) {
                         const selector = label.querySelector(".datatable-selector");
                         label.innerHTML = "";
                         if (selector) label.appendChild(selector);
                     }
                     
-                    bottomLeft.appendChild(newDropdown);
+                    bottomLeft.appendChild(topDropdown);
                     
                     const info = bottomContainer.querySelector(".datatable-info");
                     if (info) bottomLeft.appendChild(info);
                     
                     bottomContainer.insertBefore(bottomLeft, bottomContainer.firstChild);
-                    topDropdown.remove();
-
-                    const newSelector = newDropdown.querySelector(".datatable-selector");
-                    if (newSelector) {
-                        newSelector.addEventListener("change", (e) => {
-                            dataTable.page.len(parseInt(e.target.value));
-                        });
-                    }
                 }
             });
         }
+
+        // Initialize Year Filter with Flatpickr
+        flatpickr("#year_filter", {
+            dateFormat: "Y",
+            altFormat: "Y",
+            onChange: function(selectedDates, dateStr, instance) {
+                if (dateStr) {
+                    document.getElementById('filterForm').submit();
+                }
+            }
+        });
     });
 </script>
 {{ end }}

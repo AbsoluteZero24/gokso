@@ -10,11 +10,12 @@ func SeedPermissions(db *gorm.DB) error {
 		"dashboard",
 		"inventori",
 		"asset_management",
+		"maintenance",
 		"administration",
 		"setting",
 	}
 
-	roles := []string{"super_admin", "asset_manager"}
+	roles := []string{"super_admin", "asset_manager", "staf_it", "support"}
 
 	for _, role := range roles {
 		for _, res := range resources {
@@ -26,7 +27,15 @@ func SeedPermissions(db *gorm.DB) error {
 					canAccess = true
 				} else if role == "asset_manager" {
 					// Default for asset_manager
-					if res == "dashboard" || res == "inventori" || res == "asset_management" {
+					if res == "dashboard" || res == "inventori" || res == "asset_management" || res == "maintenance" {
+						canAccess = true
+					}
+				} else if role == "staf_it" {
+					if res == "dashboard" || res == "asset_management" || res == "maintenance" {
+						canAccess = true
+					}
+				} else if role == "support" {
+					if res == "dashboard" {
 						canAccess = true
 					}
 				}

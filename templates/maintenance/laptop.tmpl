@@ -1,0 +1,747 @@
+{{ define "maintenance/laptop" }}
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* WEB VIEW STYLES */
+  .table-maintenance {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+    margin-bottom: 2rem;
+  }
+  .table-maintenance thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #0d6efd !important;
+    font-weight: 600;
+    color: #333;
+    padding: 12px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  .table-maintenance tbody td {
+    border: 1px solid #dee2e6 !important;
+    padding: 10px;
+    vertical-align: middle;
+  }
+  .sub-dept-header {
+    background-color: #e9ecef;
+    font-weight: bold;
+    padding: 10px 15px;
+    border-left: 5px solid #0d6efd;
+    margin-bottom: 10px;
+    margin-top: 20px;
+    border-radius: 4px;
+  }
+
+  /* MODERN PDF REPORT STYLES */
+  .report-container { 
+    background: white !important; 
+    padding: 30px !important; 
+    margin: 0 !important;
+    width: 100% !important;
+    font-family: 'Montserrat', sans-serif !important;
+    font-size: 10pt !important;
+    font-weight: 400 !important;
+    color: #212529 !important;
+    box-sizing: border-box;
+  }
+
+  .table-report-modern {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 8.5pt !important;
+    font-weight: 400 !important;
+  }
+  
+  .table-report-modern th {
+    background-color: #8EA9DB !important;
+    color: #000 !important;
+    border: 1px solid #7a94c6 !important;
+    padding: 6px 4px !important;
+    text-align: center;
+    vertical-align: middle;
+    font-weight: 400 !important;
+    text-transform: uppercase;
+    font-size: 8.5pt !important;
+  }
+  
+  .table-report-modern td {
+    border: 1px solid #eee !important;
+    padding: 0 8px !important;
+    vertical-align: middle;
+    height: 28px !important; /* Compact Row Height */
+  }
+  
+  .table-report-modern tr:nth-child(even) {
+    background-color: #f9f9f9 !important;
+  }
+
+  /* Modern Checklist - Rounded Toggles style */
+  /* Bootstrap 5 style square checkbox - Black Style */
+  .bs-checkbox {
+    width: 13px;
+    height: 13px;
+    border: 1px solid #000; /* Thin black border */
+    border-radius: 1px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    background: #fff !important; /* White fill */
+    transition: all 0.2s;
+  }
+  
+  .bs-checkbox.active::after {
+    content: '\2713';
+    font-size: 8pt;
+    font-weight: 800;
+    color: #000; /* Black checklist */
+  }
+
+  .status-indicator.danger-active {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: white !important;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+  }
+  
+  .status-indicator.danger-active::after {
+    content: '\2715';
+    font-size: 11pt;
+    font-weight: bold;
+  }
+
+  .signature-block {
+    margin-top: 50px;
+    display: flex;
+    justify-content: space-between;
+    page-break-inside: avoid;
+  }
+
+  .sig-col {
+    width: 280px;
+    text-align: center;
+  }
+
+  .sig-line {
+    margin-top: 70px;
+    border-top: 2pt solid #212529;
+    font-weight: 800;
+    padding-top: 8px;
+    text-transform: uppercase;
+    font-size: 10pt;
+  }
+
+  @media print {
+    @page { 
+      size: landscape; 
+      margin: 0 !important; 
+    }
+    
+    /* 1. NUCLEAR WHITE BACKGROUND - Kill all theme overlays */
+    html, body, 
+    .app-wrapper, .app-main, .app-content, .container-fluid, 
+    .content-wrapper, main, .main-content {
+      background: #ffffff !important;
+      background-color: #ffffff !important;
+      opacity: 1 !important;
+      filter: none !important;
+      -webkit-filter: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      visibility: visible !important;
+    }
+
+    /* 2. FORCE REPORT BRIGHTNESS */
+    .report-container {
+      display: block !important;
+      visibility: visible !important;
+      background-color: #ffffff !important;
+      background: #ffffff !important;
+      box-shadow: none !important;
+      position: relative !important;
+      z-index: 9999 !important;
+    }
+
+    .meta-grid {
+      background-color: #ffffff !important;
+      background: #ffffff !important;
+      border: 1.5px solid #000 !important; /* Make it pop against white */
+    }
+
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      text-shadow: none !important;
+      box-shadow: none !important;
+    }
+
+    /* 3. ENSURE UI IS GONE */
+    .no-print, .d-print-none, .app-header, .app-sidebar, 
+    .card.d-print-none, .breadcrumb, footer, .btn, .main-footer,
+    .modal-backdrop {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+    }
+  }
+</style>
+
+<div class="app-content-header d-print-none">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-sm-6"><h3 class="mb-0">{{ .title }}</h3></div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-end">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">{{ .title }}</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app-content">
+  <div class="container-fluid">
+    
+    <!-- FILTERS (WEB ONLY) -->
+    <div class="card shadow-sm mb-4 d-print-none">
+      <div class="card-body">
+        <form action="/maintenance/laptop" method="GET" id="filterForm">
+           <!-- First Row: Period & Actions -->
+           <div class="row g-3 mb-3 align-items-end">
+              <div class="col-md-2">
+                 <label class="form-label small fw-bold">Tahun</label>
+                 <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="2025" {{ if eq .currentYear "2025" }}selected{{ end }}>2025</option>
+                    <option value="2026" {{ if eq .currentYear "2026" }}selected{{ end }}>2026</option>
+                    <option value="2027" {{ if eq .currentYear "2027" }}selected{{ end }}>2027</option>
+                 </select>
+              </div>
+              <div class="col-md-2">
+                 <label class="form-label small fw-bold">Semester</label>
+                 <select name="semester" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="S1" {{ if eq .currentSemester "S1" }}selected{{ end }}>Semester 1</option>
+                    <option value="S2" {{ if eq .currentSemester "S2" }}selected{{ end }}>Semester 2</option>
+                 </select>
+              </div>
+              <div class="col text-end">
+                 <button type="button" class="btn btn-primary btn-sm" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Cetak Laporan
+                 </button>
+              </div>
+           </div>
+           
+           <!-- Second Row: Location -->
+           <div class="row g-3">
+              <div class="col-md-4">
+                 <label class="form-label small fw-bold">Cabang</label>
+                 <select id="branch_select" class="form-select form-select-sm" onchange="updateDepartments()">
+                    <option value="">-- Semua Cabang --</option>
+                    {{ range .branches }}
+                    <option value="{{ .Name }}" {{ if eq $.currentBranch .Name }}selected{{ end }}>{{ .Name }}</option>
+                    {{ end }}
+                 </select>
+                 <input type="hidden" name="branch" id="input_branch" value="{{ .currentBranch }}">
+              </div>
+              <div class="col-md-4">
+                 <label class="form-label small fw-bold">Bagian</label>
+                 <select name="department" id="department" class="form-select form-select-sm" onchange="updateSubDepartments()">
+                    <option value="">-- Semua Bagian --</option>
+                 </select>
+              </div>
+              <div class="col-md-4">
+                 <label class="form-label small fw-bold">Sub Bagian</label>
+                 <select name="sub_department" id="sub_department" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">-- Semua Sub Bagian --</option>
+                 </select>
+              </div>
+           </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 1. WEB VIEW CONTENT (Shown in Browser, Hidden during print) -->
+    <div class="web-only d-print-none">
+      <div class="text-center mb-4">
+         <h4>PENGECEKAN KONDISI LAPTOP</h4>
+         <h5 class="text-muted small">Periode: {{ if eq .currentSemester "S1" }}Semester 1{{ else }}Semester 2{{ end }} - {{ .currentYear }}</h5>
+      </div>
+
+      {{ range $subDept, $assets := .groupedAssets }}
+         <div class="sub-dept-header">Sub Bagian: {{ $subDept }}</div>
+         <div class="table-responsive">
+            <table class="table table-bordered table-maintenance bg-white">
+               <thead>
+                  <tr>
+                     <th style="width: 40px">No</th>
+                     <th>Nama User</th>
+                     <th>Jabatan</th>
+                     <th>Label Aset</th>
+                     <th>Antivirus Update</th>
+                     <th>Clear Temp</th>
+                     <th>Kondisi</th>
+                     <th>Tanggal Periksa</th>
+                     <th>Keterangan</th>
+                     <th style="width: 50px">Aksi</th>
+                  </tr>
+               </thead>
+               <tbody>
+                  {{ range $idx, $item := $assets }}
+                  <tr>
+                     <td class="text-center">{{ add $idx 1 }}</td>
+                     <td>{{ if $item.HasReport }}{{ $item.Report.UserName }}{{ else }}{{ $item.Asset.User.Name }}{{ end }}</td>
+                     <td>{{ if $item.HasReport }}{{ $item.Report.UserPosition }}{{ else }}{{ $item.Asset.User.Position }}{{ end }}</td>
+                     <td>
+                        <small class="text-muted d-block">{{ $item.Asset.InventoryNumber }}</small>
+                        <strong>{{ $item.Asset.DeviceName }}</strong>
+                     </td>
+                     <td class="text-center">
+                        {{ if $item.HasReport }}
+                           {{ if $item.Report.AntivirusUpdated }}<i class="bi bi-check-circle-fill text-success"></i>{{ else }}<i class="bi bi-x-circle-fill text-danger"></i>{{ end }}
+                        {{ else }}-{{ end }}
+                     </td>
+                     <td class="text-center">
+                        {{ if $item.HasReport }}
+                           {{ if $item.Report.ClearTemporary }}<i class="bi bi-check-circle-fill text-success"></i>{{ else }}<i class="bi bi-x-circle-fill text-danger"></i>{{ end }}
+                        {{ else }}-{{ end }}
+                     </td>
+                     <td class="text-center">
+                        {{ if $item.HasReport }}
+                           {{ if eq $item.Report.OverallCondition "Normal" }}
+                              <span class="badge bg-success">Normal</span>
+                           {{ else }}
+                              <span class="badge bg-danger">Tidak Normal</span>
+                           {{ end }}
+                        {{ else }}
+                           <span class="badge bg-secondary">Belum Cek</span>
+                        {{ end }}
+                     </td>
+                     <td class="text-center">{{ if $item.HasReport }}{{ $item.Report.InspectionDate.Format "02/01/2006" }}{{ else }}-{{ end }}</td>
+                     <td>{{ if $item.HasReport }}{{ $item.Report.Remarks }}{{ else }}-{{ end }}</td>
+                     <td class="text-center">
+                        <button class="btn btn-primary btn-sm" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#modalMaintenance" 
+                                data-bs-asset-id="{{ $item.Asset.ID }}"
+                                data-bs-asset-name="{{ $item.Asset.DeviceName }} ({{ $item.Asset.InventoryNumber }})"
+                                data-bs-antivirus="{{ if $item.HasReport }}{{ $item.Report.AntivirusUpdated }}{{ else }}false{{ end }}"
+                                data-bs-cleartemp="{{ if $item.HasReport }}{{ $item.Report.ClearTemporary }}{{ else }}false{{ end }}"
+                                data-bs-condition="{{ if $item.HasReport }}{{ $item.Report.OverallCondition }}{{ else }}Normal{{ end }}"
+                                data-bs-date="{{ if $item.HasReport }}{{ $item.Report.InspectionDate.Format "2006-01-02" }}{{ end }}"
+                                data-bs-remarks="{{ if $item.HasReport }}{{ $item.Report.Remarks }}{{ end }}">
+                           <i class="bi bi-pencil-square"></i>
+                        </button>
+                     </td>
+                  </tr>
+                  {{ end }}
+               </tbody>
+            </table>
+         </div>
+      {{ else }}
+         <div class="alert alert-info py-4 text-center">Data aset tidak ditemukan.</div>
+      {{ end }}
+    </div>
+
+    <!-- 2. PRINT ONLY CONTENT (Modern Premium PDF) -->
+    <div class="report-container d-none d-print-block">
+      
+      <!-- Logo Row based on Sample -->
+      <div class="report-header-logos" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;">
+         <div class="logo-box" style="flex: 1;">
+            <img src="/public/assets/img/logo-danantara.png" alt="Danantara Indonesia" style="height: 55px; display: block; border: 0;">
+         </div>
+         <div class="logo-box text-center" style="flex: 1; display: flex; justify-content: center;">
+            <img src="/public/assets/img/logo-idsurvey.png" alt="ID Survey" style="height: 50px; display: block; border: 0;">
+         </div>
+         <div class="logo-box" style="flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+            <div style="font-size: 12pt; text-align: right; line-height: 1.2; color: #212529;">
+               KERJASAMA<br>OPERASI
+            </div>
+            <div style="width: 1.2pt; height: 40px; background: #212529;"></div>
+            <div style="display: flex; gap: 8px;">
+               <img src="/public/assets/img/logo-ksoscisi.png" alt="KSO SCISI" style="height: 45px; border: 0;">
+            </div>
+         </div>
+      </div>
+
+      <!-- Centered Title -->
+      <div class="report-main-title" style="text-align: center; margin-bottom: 30px;">
+         <h2 style="font-size: 12pt; margin: 0; text-transform: uppercase;">LAPORAN PEMELIHARAAN KOMPUTER DAN LAPTOP</h2>
+      </div>
+
+      <!-- Aligned Metadata -->
+      <div class="meta-info-classic" style="margin-bottom: 25px; font-size: 9pt;">
+         <table style="border: none; width: auto;">
+            <tr>
+               <td style="width: 100px; padding: 1px 0;">Periode</td>
+               <td style="width: 15px; padding: 1px 0;">:</td>
+               <td style="padding: 1px 0;">{{ if eq .currentSemester "S1" }}Semester 1{{ else }}Semester 2{{ end }} - {{ .currentYear }}</td>
+            </tr>
+            <tr>
+               <td style="padding: 1px 0;">Bagian</td>
+               <td style="padding: 1px 0;">:</td>
+               <td style="padding: 1px 0;">{{ if .currentDept }}{{ .currentDept }}{{ else }}Seluruh Bagian{{ end }}</td>
+            </tr>
+            <tr>
+               <td style="padding: 1px 0;">Sub Bagian</td>
+               <td style="padding: 1px 0;">:</td>
+               <td style="padding: 1px 0;">{{ if .currentSubDept }}{{ .currentSubDept }}{{ else }}Seluruh Sub Bagian{{ end }}</td>
+            </tr>
+         </table>
+      </div>
+
+      <!-- Professional Data Table -->
+      <div class="table-responsive">
+         <table class="table-report-modern">
+            <thead>
+               <tr>
+                  <th style="width: 30px;">No.</th>
+                  <th style="width: 180px;">Nama</th>
+                  <th style="width: 70px;">Kategori</th>
+                  <th style="width: 140px;">Model / Type</th>
+                  <th style="width: 200px;">Spesifikasi</th>
+                  <th style="width: 70px;">Antivirus</th>
+                  <th style="width: 70px;">Jaringan</th>
+                  <th style="width: 80px;">Kondisi</th>
+                  <th style="width: 100px;">Tanggal Periksa</th>
+                  <th>Keterangan</th>
+               </tr>
+            </thead>
+            <tbody>
+               {{ $pCounter := 0 }}
+               {{ range $subDept, $assets := .groupedAssets }}
+                  {{ range $idx, $item := $assets }}
+                  {{ $pCounter = add $pCounter 1 }}
+                   <tr>
+                      <td style="text-align: center; color: #212529; height: 28px;">{{ printf "%02d" $pCounter }}</td>
+                      <td style="text-align: center; height: 28px; white-space: nowrap;">
+                         <div style="display: inline-block;">{{ if $item.HasReport }}{{ $item.Report.UserName }}{{ else }}{{ $item.Asset.User.Name }}{{ end }}</div>
+                      </td>
+                      <td style="text-align: center; height: 28px;">
+                         <span>{{ $item.Asset.Category }}</span>
+                      </td>
+                      <td style="text-align: center; height: 28px;">
+                         <span style="color: #000;">{{ if $item.Asset.Brand }}{{ $item.Asset.Brand }}{{ end }} {{ if $item.Asset.TypeModel }}{{ $item.Asset.TypeModel }}{{ end }}</span>
+                      </td>
+                      <td style="font-size: 7.5pt; line-height: 1.3; height: 28px;">
+                         {{ if $item.Asset.Specification }}
+                            {{ $item.Asset.Specification }}
+                         {{ else }}
+                            <span style="color: #adb5bd;">Tidak ada data</span>
+                         {{ end }}
+                      </td>
+                     <td style="text-align: center; height: 28px;">
+                        <div class="bs-checkbox {{ if $item.HasReport }}{{ if $item.Report.AntivirusUpdated }}active{{ end }}{{ end }}"></div>
+                     </td>
+                     <td style="text-align: center; height: 28px;">
+                        <div class="bs-checkbox active"></div>
+                     </td>
+                     <td style="text-align: center; height: 28px;">
+                        {{ if $item.HasReport }}
+                           {{ $item.Report.OverallCondition }}
+                        {{ else }}
+                           -
+                        {{ end }}
+                     </td>
+                      <td style="text-align: center; height: 28px;">
+                         {{ if $item.HasReport }}{{ $item.Report.InspectionDate.Format "02 Jan 2006" }}{{ else }}-{{ end }}
+                      </td>
+                      <td style="font-size: 8pt; color: #495057; height: 28px;">
+                         {{ if $item.HasReport }}{{ $item.Report.Remarks }}{{ else }}-{{ end }}
+                      </td>
+                   </tr>
+                  {{ end }}
+               {{ end }}
+            </tbody>
+         </table>
+      </div>
+
+       <!-- Footer Section: Parameters & Signatures -->
+       <div class="report-footer-section" style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-start; page-break-inside: avoid;">
+           
+           <!-- Left: Condition Parameters -->
+           <div class="condition-params" style="font-size: 8.5pt; color: #212529; line-height: 1.4; max-width: 480px;">
+              <div style="margin-bottom: 6px; text-decoration: underline;">Parameter kondisi Normal :</div>
+              <ul style="list-style-type: none; padding: 0; margin: 0;">
+                 <li>- Komputer dalam keadan menyala</li>
+                 <li>- Kapasitas hardisk &lt; 90%</li>
+                 <li>- Antivirus telah update dan tidak ada virus</li>
+                 <li>- Tidak ada blank spot pada layar</li>
+                 <li>- Keyboard dan mouse/mousepad dapat digunakan dengan baik</li>
+              </ul>
+           </div>
+ 
+           <!-- Right: Formal Signatures Wrapper -->
+           <div class="signatures-wrapper" style="width: 450px; font-size: 8.5pt;">
+              <div style="text-align: right; margin-bottom: 15px;">Jakarta, ..............................</div>
+              
+              <div style="display: flex; justify-content: space-between;">
+                 <!-- Prepared by -->
+                 <div class="sig-col" style="width: 200px; text-align: center;">
+                    <div style="margin-bottom: 60px;">Disusun oleh,</div>
+                    <div style="border-top: 1.2px solid #000; padding-top: 4px; text-transform: uppercase;">Staf IT</div>
+                 </div>
+    
+                 <!-- Approved by -->
+                 <div class="sig-col" style="width: 200px; text-align: center;">
+                    <div style="margin-bottom: 60px;">Disetujui oleh,</div>
+                    <div style="border-top: 1.2px solid #000; padding-top: 4px; text-transform: uppercase;">Koordinator Infrastruktur</div>
+                 </div>
+              </div>
+           </div>
+       </div>
+
+      <!-- Document Tracking Footer -->
+      <div class="doc-tracking-footer" style="margin-top: 60px; display: flex; justify-content: space-between; font-size: 7.5pt; color: #6c757d; border-top: 0.5px solid #eee; padding-top: 10px;">
+         <div>FM.SI.0102</div>
+         <div>Revisi : 05</div>
+         <div>Hal. 1 dari 1</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+  </div>
+</div>
+
+<!-- Modal Entry Maintenance -->
+<div class="modal fade" id="modalMaintenance" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Isi Data Pemeliharaan</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/maintenance/laptop/store" method="POST">
+        <div class="modal-body">
+          <input type="hidden" name="asset_id" id="m_asset_id">
+          <input type="hidden" name="period" value="{{ .period }}">
+          <input type="hidden" name="branch" value="{{ .currentBranch }}">
+          <input type="hidden" name="year" value="{{ .currentYear }}">
+          <input type="hidden" name="semester" value="{{ .currentSemester }}">
+          <input type="hidden" name="department" value="{{ .currentDept }}">
+          <input type="hidden" name="sub_department" value="{{ .currentSubDept }}">
+          
+          <div class="mb-3">
+            <label class="form-label fw-bold">Aset</label>
+            <input type="text" class="form-control-plaintext" id="m_asset_name" readonly>
+          </div>
+
+          <div class="row">
+             <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Antivirus Terupdate?</label>
+                <div class="form-check">
+                   <input class="form-check-input" type="radio" name="antivirus_updated" id="anti_true" value="true">
+                   <label class="form-check-label" for="anti_true">Ya</label>
+                </div>
+                <div class="form-check">
+                   <input class="form-check-input" type="radio" name="antivirus_updated" id="anti_false" value="false" checked>
+                   <label class="form-check-label" for="anti_false">Tidak</label>
+                </div>
+             </div>
+             <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold">Clear Temporary?</label>
+                <div class="form-check">
+                   <input class="form-check-input" type="radio" name="clear_temporary" id="temp_true" value="true">
+                   <label class="form-check-label" for="temp_true">Ya</label>
+                </div>
+                <div class="form-check">
+                   <input class="form-check-input" type="radio" name="clear_temporary" id="temp_false" value="false" checked>
+                   <label class="form-check-label" for="temp_false">Tidak</label>
+                </div>
+             </div>
+          </div>
+
+          <div class="mb-3">
+             <label for="m_condition" class="form-label fw-bold">Kondisi Keseluruhan</label>
+             <select name="overall_condition" id="m_condition" class="form-select">
+                <option value="Normal">Normal</option>
+                <option value="Tidak Normal">Tidak Normal</option>
+             </select>
+          </div>
+
+          <div class="mb-3">
+             <label for="m_date" class="form-label fw-bold">Tanggal Periksa</label>
+             <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
+                <input type="text" name="inspection_date" id="m_date" class="form-control bg-white" placeholder="Pilih Tanggal" required>
+             </div>
+          </div>
+
+          <div class="mb-3">
+             <label for="m_remarks" class="form-label fw-bold">Keterangan</label>
+             <textarea name="remarks" id="m_remarks" class="form-control" rows="3" placeholder="Opsional..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Data</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  const masterData = [
+    {{ range $branch := .branches }}
+    {
+      id: {{ $branch.ID }},
+      name: "{{ $branch.Name }}",
+      departments: [
+        {{ range $dept := $branch.Departments }}
+        {
+          id: {{ $dept.ID }},
+          name: "{{ $dept.Name }}",
+          subDepartments: [
+            {{ range $sub := $dept.SubDepartments }}
+            { id: {{ $sub.ID }}, name: "{{ $sub.Name }}" },
+            {{ end }}
+          ]
+        },
+        {{ end }}
+      ]
+    },
+    {{ end }}
+  ];
+
+  function updateDepartments() {
+    const branchSelect = document.getElementById('branch_select');
+    const deptSelect = document.getElementById('department');
+    const subDeptSelect = document.getElementById('sub_department');
+    const inputBranch = document.getElementById('input_branch');
+    
+    const branchName = branchSelect.value;
+    inputBranch.value = branchName; // Update hidden input
+    
+    const branch = masterData.find(b => b.name === branchName);
+    
+    deptSelect.innerHTML = '<option value="">-- Semua --</option>';
+    subDeptSelect.innerHTML = '<option value="">-- Semua --</option>';
+    
+    if (branch && branch.departments) {
+      branch.departments.forEach(dept => {
+        const option = document.createElement('option');
+        option.value = dept.name;
+        option.text = dept.name;
+        deptSelect.appendChild(option);
+      });
+    }
+    
+    // Auto submit to refresh list if only branch changed (or wait for dept selection?)
+    // Usually better to let user choose dept too, but let's submit to apply filter
+    document.getElementById('filterForm').submit();
+  }
+
+  function updateSubDepartments() {
+    const branchSelect = document.getElementById('branch_select');
+    const deptSelect = document.getElementById('department');
+    const subDeptSelect = document.getElementById('sub_department');
+    
+    const branchName = branchSelect.value;
+    const deptName = deptSelect.value;
+    
+    const branch = masterData.find(b => b.name === branchName);
+    const dept = branch ? branch.departments.find(d => d.name === deptName) : null;
+    
+    subDeptSelect.innerHTML = '<option value="">-- Semua --</option>';
+    
+    if (dept && dept.subDepartments) {
+      dept.subDepartments.forEach(sub => {
+        const option = document.createElement('option');
+        option.value = sub.name;
+        option.text = sub.name;
+        subDeptSelect.appendChild(option);
+      });
+    }
+    
+    document.getElementById('filterForm').submit();
+  }
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize filters if values exist
+    const initialBranch = "{{ .currentBranch }}";
+    const initialDept = "{{ .currentDept }}";
+    const initialSub = "{{ .currentSubDept }}";
+    
+    if (initialBranch) {
+        const branch = masterData.find(b => b.name === initialBranch);
+        if (branch) {
+            const deptSelect = document.getElementById('department');
+            deptSelect.innerHTML = '<option value="">-- Semua --</option>';
+            branch.departments.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept.name;
+                option.text = dept.name;
+                if (dept.name === initialDept) option.selected = true;
+                deptSelect.appendChild(option);
+            });
+            
+            const dept = branch.departments.find(d => d.name === initialDept);
+            if (dept) {
+                const subDeptSelect = document.getElementById('sub_department');
+                subDeptSelect.innerHTML = '<option value="">-- Semua --</option>';
+                dept.subDepartments.forEach(sub => {
+                    const option = document.createElement('option');
+                    option.value = sub.name;
+                    option.text = sub.name;
+                    if (sub.name === initialSub) option.selected = true;
+                    subDeptSelect.appendChild(option);
+                });
+            }
+        }
+    }
+
+    // Initialize Flatpickr for Inspection Date
+    const fp = flatpickr("#m_date", {
+        dateFormat: "Y-m-d",
+        allowInput: true,
+        static: true // Helps with modal positioning
+    });
+
+    const modalMaintenance = document.getElementById('modalMaintenance');
+    if (modalMaintenance) {
+        modalMaintenance.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            
+            // Extract info from data-bs-* attributes
+            const assetId = button.getAttribute('data-bs-asset-id');
+            const assetName = button.getAttribute('data-bs-asset-name');
+            const antivirus = button.getAttribute('data-bs-antivirus');
+            const clearTemp = button.getAttribute('data-bs-cleartemp');
+            const condition = button.getAttribute('data-bs-condition');
+            const date = button.getAttribute('data-bs-date');
+            const remarks = button.getAttribute('data-bs-remarks');
+
+            // Update modal's content
+            modalMaintenance.querySelector('#m_asset_id').value = assetId;
+            modalMaintenance.querySelector('#m_asset_name').value = assetName;
+            modalMaintenance.querySelector('#m_condition').value = condition;
+            modalMaintenance.querySelector('#m_remarks').value = remarks;
+            
+            // Set date using flatpickr instance
+            if (date) {
+               fp.setDate(date);
+            } else {
+               fp.setDate(new Date());
+            }
+
+            // Set radio buttons
+            if (antivirus === "true") {
+               modalMaintenance.querySelector('#anti_true').checked = true;
+            } else {
+               modalMaintenance.querySelector('#anti_false').checked = true;
+            }
+
+            if (clearTemp === "true") {
+               modalMaintenance.querySelector('#temp_true').checked = true;
+            } else {
+               modalMaintenance.querySelector('#temp_false').checked = true;
+            }
+        });
+    }
+});
+</script>
+{{ end }}

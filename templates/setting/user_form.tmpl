@@ -43,7 +43,9 @@
                                     <span class="input-group-text bg-light text-muted"><i class="bi bi-shield-check"></i></span>
                                     <select class="form-select" id="role" name="role" required>
                                         <option value="super_admin" {{ if .admin }}{{ if eq .admin.Role "super_admin" }}selected{{ end }}{{ end }}>Super Admin (Akses Penuh)</option>
-                                        <option value="asset_manager" {{ if .admin }}{{ if eq .admin.Role "asset_manager" }}selected{{ end }}{{ end }}>Asset Manager (Terbatas)</option>
+                                        <option value="asset_manager" {{ if .admin }}{{ if eq .admin.Role "asset_manager" }}selected{{ end }}{{ end }}>Asset Manager</option>
+                                        <option value="staf_it" {{ if .admin }}{{ if eq .admin.Role "staf_it" }}selected{{ end }}{{ end }}>Staf IT (Asset & Maintenance)</option>
+                                        <option value="support" {{ if .admin }}{{ if eq .admin.Role "support" }}selected{{ end }}{{ end }}>Support (Dashboard Only)</option>
                                     </select>
                                 </div>
                                 <div class="form-text mt-2"><i class="bi bi-info-circle me-1"></i> Tentukan level izin untuk akun ini.</div>

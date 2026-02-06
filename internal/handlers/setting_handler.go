@@ -91,7 +91,7 @@ func (server *Server) DeleteSettingUser(w http.ResponseWriter, r *http.Request) 
 
 // Role Permission Management
 func (server *Server) ListSettingRole(w http.ResponseWriter, r *http.Request) {
-	roles := []string{"super_admin", "asset_manager"}
+	roles := []string{"super_admin", "asset_manager", "staf_it", "support"}
 
 	type RoleWithPerms struct {
 		Role        string
@@ -113,7 +113,9 @@ func (server *Server) ListSettingRole(w http.ResponseWriter, r *http.Request) {
 			"dashboard",
 			"inventori",
 			"asset_management",
+			"maintenance",
 			"administration",
+			"setting",
 		},
 	})
 }
@@ -125,7 +127,9 @@ func (server *Server) UpdateSettingRole(w http.ResponseWriter, r *http.Request) 
 		"dashboard",
 		"inventori",
 		"asset_management",
+		"maintenance",
 		"administration",
+		"setting",
 	}
 
 	for _, res := range resources {

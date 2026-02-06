@@ -107,6 +107,16 @@ func (server *Server) InitCommands(appConfig config.AppConfig, dbConfig config.D
 				return nil
 			},
 		},
+		{
+			Name: "db:seed_masterdata_asset",
+			Action: func(c *cli.Context) error {
+				err := seeders.SeedMasterDataAsset(server.DB)
+				if err != nil {
+					log.Fatal(err)
+				}
+				return nil
+			},
+		},
 	}
 
 	err = cmdApp.Run(os.Args)

@@ -42,6 +42,13 @@
                     </div>
                   </div>
                   <div class="mb-3">
+                    <label for="serial_number" class="form-label fw-semibold">Serial Number</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-hash"></i></span>
+                      <input type="text" name="serial_number" class="form-control" id="serial_number" placeholder="Masukkan Serial Number" value="{{ if .asset }}{{ .asset.SerialNumber }}{{ end }}">
+                    </div>
+                  </div>
+                  <div class="mb-3">
                     <label for="asset_name" class="form-label fw-semibold">Nama Aset</label>
                     <div class="input-group">
                       <span class="input-group-text bg-light text-muted"><i class="bi bi-cpu"></i></span>
@@ -68,6 +75,13 @@
                     </div>
                   </div>
                   <div class="mb-3">
+                    <label for="type_model" class="form-label fw-semibold">Type / Model</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-box-seam"></i></span>
+                      <input type="text" name="type_model" class="form-control" id="type_model" placeholder="Masukkan Type / Model" value="{{ if .asset }}{{ .asset.TypeModel }}{{ end }}">
+                    </div>
+                  </div>
+                  <div class="mb-3">
                     <label for="color" class="form-label fw-semibold">Warna</label>
                     <div class="input-group">
                       <span class="input-group-text bg-light text-muted"><i class="bi bi-palette"></i></span>
@@ -79,10 +93,72 @@
                 <!-- Spesifikasi & Lokasi -->
                 <div class="col-md-6 ps-md-4">
                   <h6 class="text-uppercase text-muted fw-bold small mb-4">Detail & Lokasi</h6>
-                  <div class="mb-3">
-                    <label for="specification" class="form-label fw-semibold">Spesifikasi</label>
-                    <textarea name="specification" class="form-control" id="specification" rows="3" placeholder="Masukkan Spesifikasi">{{ if .asset }}{{ .asset.Specification }}{{ end }}</textarea>
+                  
+                  <!-- Dynamic Specification Fields -->
+                  <div id="spec-generic">
+                    <div class="mb-3">
+                      <label for="specification" class="form-label fw-semibold">Spesifikasi</label>
+                      <textarea name="specification" class="form-control" id="specification" rows="4" placeholder="Masukkan Spesifikasi">{{ if .asset }}{{ .asset.Specification }}{{ end }}</textarea>
+                    </div>
                   </div>
+
+                  <div id="spec-computer" style="display: none;">
+                    <div class="row">
+                       <div class="col-md-6 mb-3">
+                         <label class="form-label fw-semibold">Sistem Operasi (OS)</label>
+                         <input type="text" name="spec_os" id="spec_os" class="form-control" placeholder="Contoh: Windows 11">
+                       </div>
+                       <div class="col-md-6 mb-3">
+                         <label class="form-label fw-semibold">Processor</label>
+                         <input type="text" name="spec_processor" id="spec_processor" class="form-control" placeholder="Contoh: Intel i5-1335U">
+                       </div>
+                       <div class="col-md-12 mb-3">
+                          <label class="form-label fw-semibold">Memory (RAM)</label>
+                          <div class="row g-2">
+                             <div class="col-4">
+                                <input type="number" name="spec_ram_size" id="spec_ram_size" class="form-control" placeholder="Size">
+                             </div>
+                             <div class="col-3">
+                                <select name="spec_ram_unit" id="spec_ram_unit" class="form-select">
+                                   <option value="GB">GB</option>
+                                   <option value="TB">TB</option>
+                                </select>
+                             </div>
+                             <div class="col-5">
+                                <select name="spec_ram_type" id="spec_ram_type" class="form-select">
+                                   <option value="">-- Type RAM --</option>
+                                   {{ range .ramTypes }}
+                                   <option value="{{ .Name }}">{{ .Name }}</option>
+                                   {{ end }}
+                                </select>
+                             </div>
+                          </div>
+                       </div>
+                       <div class="col-md-12 mb-3">
+                          <label class="form-label fw-semibold">Penyimpanan (HDD/SSD)</label>
+                          <div class="row g-2">
+                             <div class="col-4">
+                                <input type="number" name="spec_storage_size" id="spec_storage_size" class="form-control" placeholder="Size">
+                             </div>
+                             <div class="col-3">
+                                <select name="spec_storage_unit" id="spec_storage_unit" class="form-select">
+                                   <option value="GB">GB</option>
+                                   <option value="TB">TB</option>
+                                </select>
+                             </div>
+                             <div class="col-5">
+                                <select name="spec_storage_type" id="spec_storage_type" class="form-select">
+                                   <option value="">-- Type Disk --</option>
+                                   {{ range .storageTypes }}
+                                   <option value="{{ .Name }}">{{ .Name }}</option>
+                                   {{ end }}
+                                </select>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+
                   <div class="mb-3">
                     <label for="location" class="form-label fw-semibold">Lokasi</label>
                     <div class="input-group">
@@ -138,6 +214,64 @@
       defaultDate: isEdit ? dateInput.value : "today",
       allowInput: true
     });
+
+    // Handle Dynamic Specification
+    const categorySelect = document.getElementById('category');
+    const specGeneric = document.getElementById('spec-generic');
+    const specComputer = document.getElementById('spec-computer');
+    const specTextarea = document.getElementById('specification');
+
+    function toggleSpecFields() {
+      const category = categorySelect.value;
+      if (category === 'Laptop' || category === 'Komputer') {
+        specGeneric.style.display = 'none';
+        specComputer.style.display = 'block';
+        // Disable generic spec textarea so it's not sent if empty, 
+        // actually we want to handle it in backend, but keep UI clean
+      } else {
+        specGeneric.style.display = 'block';
+        specComputer.style.display = 'none';
+      }
+    }
+
+    categorySelect.addEventListener('change', toggleSpecFields);
+    
+    // Initial check (for edit mode)
+    if (categorySelect.value) {
+       toggleSpecFields();
+       // If edit mode and computer category, try to populate fields from current spec
+       if (isEdit && (categorySelect.value === 'Laptop' || categorySelect.value === 'Komputer')) {
+          const currentSpec = specTextarea.value;
+          if (currentSpec) {
+             const parts = currentSpec.split(',').map(s => s.trim());
+             if (parts.length >= 1) document.getElementById('spec_processor').value = parts[0];
+             
+             // Parse RAM: "RAM 16 GB DDR4"
+             if (parts.length >= 2) {
+                let ramPart = parts[1].replace(/^RAM\s+/i, ''); // "16 GB DDR4"
+                let ramMatch = ramPart.match(/^(\d+)\s+(GB|TB)\s+(.*)$/i);
+                if (ramMatch) {
+                   document.getElementById('spec_ram_size').value = ramMatch[1];
+                   document.getElementById('spec_ram_unit').value = ramMatch[2].toUpperCase();
+                   document.getElementById('spec_ram_type').value = ramMatch[3];
+                }
+             }
+             
+             // Parse Storage: "512 GB NVMe SSD"
+             if (parts.length >= 3) {
+                let storagePart = parts[2]; // "512 GB NVMe SSD"
+                let storageMatch = storagePart.match(/^(\d+)\s+(GB|TB)\s+(.*)$/i);
+                if (storageMatch) {
+                   document.getElementById('spec_storage_size').value = storageMatch[1];
+                   document.getElementById('spec_storage_unit').value = storageMatch[2].toUpperCase();
+                   document.getElementById('spec_storage_type').value = storageMatch[3];
+                }
+             }
+
+             if (parts.length >= 4) document.getElementById('spec_os').value = parts[3];
+          }
+       }
+    }
   });
 </script>
 {{ end }}

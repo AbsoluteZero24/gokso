@@ -14,6 +14,9 @@ func RegisterModels() []Model {
 		{Model: MasterSubDepartment{}},
 		{Model: MasterPosition{}},
 		{Model: MasterAssetCategory{}},
+		{Model: MasterRamType{}},
+		{Model: MasterStorageType{}},
 		{Model: RolePermission{}},
+		{Model: MaintenanceReport{}},
 	}
 }

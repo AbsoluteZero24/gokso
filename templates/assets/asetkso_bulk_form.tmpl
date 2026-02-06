@@ -87,15 +87,81 @@
                     </div>
                   </div>
                   <div class="mb-3">
+                    <label for="type_model" class="form-label fw-semibold">Type / Model</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-box-seam"></i></span>
+                      <input type="text" name="type_model" class="form-control" id="type_model" placeholder="Masukkan Type / Model">
+                    </div>
+                  </div>
+                  <div class="mb-3">
                     <label for="color" class="form-label fw-semibold">Warna</label>
                     <div class="input-group">
                       <span class="input-group-text bg-light text-muted"><i class="bi bi-palette"></i></span>
                       <input type="text" name="color" class="form-control" id="color" placeholder="Masukkan Warna">
                     </div>
                   </div>
-                  <div class="mb-3">
-                    <label for="specification" class="form-label fw-semibold">Keterangan Spesifikasi</label>
-                    <textarea name="specification" class="form-control" id="specification" rows="3" placeholder="Masukkan Detail Spesifikasi"></textarea>
+                  <div id="spec-generic">
+                    <div class="mb-3">
+                      <label for="specification" class="form-label fw-semibold">Keterangan Spesifikasi</label>
+                      <textarea name="specification" class="form-control" id="specification" rows="3" placeholder="Masukkan Detail Spesifikasi"></textarea>
+                    </div>
+                  </div>
+
+                  <div id="spec-computer" style="display: none;">
+                    <div class="row">
+                       <div class="col-md-6 mb-3">
+                         <label class="form-label fw-semibold">Sistem Operasi (OS)</label>
+                         <input type="text" name="spec_os" id="spec_os" class="form-control" placeholder="Windows 11">
+                       </div>
+                       <div class="col-md-6 mb-3">
+                         <label class="form-label fw-semibold">Processor</label>
+                         <input type="text" name="spec_processor" id="spec_processor" class="form-control" placeholder="Intel i5">
+                       </div>
+                       <div class="col-md-12 mb-3">
+                          <label class="form-label fw-semibold">Memory (RAM)</label>
+                          <div class="row g-2">
+                             <div class="col-4">
+                                <input type="number" name="spec_ram_size" id="spec_ram_size" class="form-control" placeholder="Size">
+                             </div>
+                             <div class="col-3">
+                                <select name="spec_ram_unit" id="spec_ram_unit" class="form-select">
+                                   <option value="GB">GB</option>
+                                   <option value="TB">TB</option>
+                                </select>
+                             </div>
+                             <div class="col-5">
+                                <select name="spec_ram_type" id="spec_ram_type" class="form-select">
+                                   <option value="">-- Type RAM --</option>
+                                   {{ range .ramTypes }}
+                                   <option value="{{ .Name }}">{{ .Name }}</option>
+                                   {{ end }}
+                                </select>
+                             </div>
+                          </div>
+                       </div>
+                       <div class="col-md-12 mb-3">
+                          <label class="form-label fw-semibold">Penyimpanan (HDD/SSD)</label>
+                          <div class="row g-2">
+                             <div class="col-4">
+                                <input type="number" name="spec_storage_size" id="spec_storage_size" class="form-control" placeholder="Size">
+                             </div>
+                             <div class="col-3">
+                                <select name="spec_storage_unit" id="spec_storage_unit" class="form-select">
+                                   <option value="GB">GB</option>
+                                   <option value="TB">TB</option>
+                                </select>
+                             </div>
+                             <div class="col-5">
+                                <select name="spec_storage_type" id="spec_storage_type" class="form-select">
+                                   <option value="">-- Type Disk --</option>
+                                   {{ range .storageTypes }}
+                                   <option value="{{ .Name }}">{{ .Name }}</option>
+                                   {{ end }}
+                                </select>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
                   </div>
                 </div>
 
@@ -151,6 +217,24 @@
       defaultDate: "today",
       allowInput: true
     });
+
+    // Handle Dynamic Specification
+    const categorySelect = document.getElementById('category');
+    const specGeneric = document.getElementById('spec-generic');
+    const specComputer = document.getElementById('spec-computer');
+
+    function toggleSpecFields() {
+      const category = categorySelect.value;
+      if (category === 'Laptop' || category === 'Komputer') {
+        specGeneric.style.display = 'none';
+        specComputer.style.display = 'block';
+      } else {
+        specGeneric.style.display = 'block';
+        specComputer.style.display = 'none';
+      }
+    }
+
+    categorySelect.addEventListener('change', toggleSpecFields);
   });
 </script>
 {{ end }}

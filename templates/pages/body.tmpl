@@ -99,6 +99,31 @@
                 </ul>
               </li>
               {{ end }}
+              {{ if .Permissions.maintenance }}
+              <li class="nav-item">
+                <a href="#" class="nav-link">
+                  <i class="nav-icon bi bi-tools"></i>
+                  <p>
+                    Maintenance
+                    <i class="nav-arrow bi bi-chevron-right"></i>
+                  </p>
+                </a>
+                <ul class="nav nav-treeview">
+                  <li class="nav-item">
+                    <a href="/maintenance/laptop" class="nav-link">
+                      <i class="nav-icon bi bi-laptop"></i>
+                      <p>Maintenance Laptop</p>
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="/maintenance/komputer" class="nav-link">
+                      <i class="nav-icon bi bi-pc-display"></i>
+                      <p>Maintenance Komputer</p>
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              {{ end }}
               {{ if .Permissions.administration }}
               <li class="nav-item">
                 <a href="#" class="nav-link">

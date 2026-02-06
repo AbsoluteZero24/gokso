@@ -73,12 +73,18 @@ func (server *Server) initializeRoutes() {
 	server.Router.HandleFunc("/asset-management/laptop/delete/{id}", server.PermissionRequired("asset_management", server.DeleteAssetLaptop)).Methods("GET")
 	server.Router.HandleFunc("/asset-management/laptop/assign", server.PermissionRequired("asset_management", server.AssignAssetLaptop)).Methods("POST")
 	server.Router.HandleFunc("/asset-management/update-label", server.PermissionRequired("asset_management", server.UpdateAssetLabel)).Methods("POST")
+	server.Router.HandleFunc("/asset-management/bulk-update-label", server.PermissionRequired("asset_management", server.BulkUpdateAssetLabel)).Methods("POST")
 
 	server.Router.HandleFunc("/asset-management/komputer", server.PermissionRequired("asset_management", server.ListAssetKomputer)).Methods("GET")
 	server.Router.HandleFunc("/asset-management/komputer/create", server.PermissionRequired("asset_management", server.CreateAssetKomputerForm)).Methods("GET")
 	server.Router.HandleFunc("/asset-management/komputer/edit/{id}", server.PermissionRequired("asset_management", server.EditAssetKomputerForm)).Methods("GET")
 	server.Router.HandleFunc("/asset-management/komputer/delete/{id}", server.PermissionRequired("asset_management", server.DeleteAssetKomputer)).Methods("GET")
 	server.Router.HandleFunc("/asset-management/komputer/assign", server.PermissionRequired("asset_management", server.AssignAssetKomputer)).Methods("POST")
+
+	// Maintenance
+	server.Router.HandleFunc("/maintenance/laptop", server.PermissionRequired("maintenance", server.MaintenanceLaptop)).Methods("GET")
+	server.Router.HandleFunc("/maintenance/laptop/store", server.PermissionRequired("maintenance", server.StoreMaintenanceLaptop)).Methods("POST")
+	server.Router.HandleFunc("/maintenance/komputer", server.PermissionRequired("maintenance", server.MaintenanceKomputer)).Methods("GET")
 
 	// Administration - Super Admin only
 	server.Router.HandleFunc("/setting/user", server.RoleRequired([]string{"super_admin"}, server.ListSettingUser)).Methods("GET")

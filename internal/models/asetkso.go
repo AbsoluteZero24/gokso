@@ -9,10 +9,12 @@ import (
 type AssetKSO struct {
 	ID              string  `gorm:"size:36;not null;uniqueIndex;primaryKey"`
 	InventoryNumber string  `gorm:"size:100;not null;uniqueIndex"`
+	SerialNumber    string  `gorm:"size:100"` // Added for Serial Number
 	AssetName       string  `gorm:"size:100;not null"`
 	DeviceName      string  `gorm:"size:100"`          // Added for "Nama Perangkat"
 	Category        string  `gorm:"size:100;not null"` // Laptop, Komputer, etc.
 	Brand           string  `gorm:"size:100"`          // Added for "Merk"
+	TypeModel       string  `gorm:"size:100"`          // Added for "Type/Model"
 	Specification   string  `gorm:"type:text"`         // Added for "Spesifikasi"
 	Color           string  `gorm:"size:50"`           // Added for "Warna"
 	Location        string  `gorm:"size:100"`          // Added for "Lokasi"
