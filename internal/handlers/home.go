@@ -6,6 +6,7 @@ import (
 	"github.com/AbsoluteZero24/goaset/internal/models"
 )
 
+// Home menampilkan halaman dashboard dengan ringkasan statistik aset dan karyawan
 func (server *Server) Home(w http.ResponseWriter, r *http.Request) {
 	var totalAssets int64
 	var readyAssets int64

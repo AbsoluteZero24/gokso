@@ -116,6 +116,22 @@
 
 <div class="app-content">
     <div class="container-fluid">
+        {{ if .error }}
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            {{ .error }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {{ end }}
+
+        {{ if .msg }}
+        <div class="alert alert-success alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            {{ .msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {{ end }}
+
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h3 class="card-title">Daftar User Admin</h3>
@@ -130,6 +146,7 @@
                     <thead>
                         <tr>
                             <th style="width: 50px">No</th>
+                            <th>Nama Karyawan</th>
                             <th>Username</th>
                             <th>Role</th>
                             <th>Created At</th>
@@ -140,12 +157,20 @@
                         {{ range $index, $admin := .admins }}
                         <tr>
                             <td class="text-center fw-medium"></td>
-                            <td><strong>{{ $admin.Username }}</strong></td>
+                            <td>
+                                <div><strong>{{ $admin.EmployeeName }}</strong></div>
+                                <small class="text-muted">{{ $admin.NIK }}</small>
+                            </td>
+                            <td><code>{{ $admin.Username }}</code></td>
                             <td>
                                 {{ if eq $admin.Role "super_admin" }}
                                 <span class="badge bg-primary">Super Admin</span>
-                                {{ else }}
+                                {{ else if eq $admin.Role "asset_manager" }}
                                 <span class="badge bg-info">Asset Manager</span>
+                                {{ else if eq $admin.Role "staf_it" }}
+                                <span class="badge bg-success">Staf IT</span>
+                                {{ else }}
+                                <span class="badge bg-secondary">Support</span>
                                 {{ end }}
                             </td>
                             <td>{{ $admin.CreatedAt.Format "02/01/2006 15:04" }}</td>

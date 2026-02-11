@@ -23,6 +23,7 @@ type Server struct {
 	Renderer *render.Render
 }
 
+// Initialize mengatur koneksi database, sistem render template, dan inisialisasi rute
 func (server *Server) Initialize(appConfig config.AppConfig, dbConfig config.DBConfig) {
 	fmt.Println("Welcome to " + appConfig.AppName)
 
@@ -46,11 +47,13 @@ func (server *Server) Initialize(appConfig config.AppConfig, dbConfig config.DBC
 	server.initializeRoutes()
 }
 
+// Run menjalankan server HTTP pada alamat (address) yang ditentukan
 func (server *Server) Run(addr string) {
 	fmt.Printf("Listening to port %s\n", addr)
 	log.Fatal(http.ListenAndServe(addr, server.Router))
 }
 
+// InitCommands mendefinisikan dan menjalankan perintah CLI seperti migrasi dan seeding database
 func (server *Server) InitCommands(appConfig config.AppConfig, dbConfig config.DBConfig) {
 	var err error
 	server.DB, err = database.Initialize(dbConfig)
@@ -125,12 +128,14 @@ func (server *Server) InitCommands(appConfig config.AppConfig, dbConfig config.D
 	}
 }
 
+// parseUint melakukan konversi string ke tipe data uint secara aman
 func (server *Server) parseUint(s string) uint {
 	u, _ := strconv.ParseUint(s, 10, 32)
 	return uint(u)
 }
 
 // RenderHTML wraps renderer.HTML to include global data like Admin info
+// RenderHTML membungkus proses rendering template dengan tambahan data global (seperti info Admin)
 func (server *Server) RenderHTML(w http.ResponseWriter, r *http.Request, status int, name string, binding interface{}) {
 	var data map[string]interface{}
 

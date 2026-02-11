@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// SeedMasterDataAsset mengisi data master aset (kategori, RAM, penyimpanan) ke database
 func SeedMasterDataAsset(db *gorm.DB) error {
 	// 1. Asset Categories
 	categories := []string{"Laptop", "Komputer", "Printer", "Scanner", "Proyektor", "Lain-lain"}

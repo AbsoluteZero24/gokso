@@ -65,6 +65,31 @@
                         </ul>
                     </div>
                 </div>
+
+                <!-- Digital Signature -->
+                <div class="card card-primary card-outline shadow-sm mt-4">
+                    <div class="card-header border-0 pb-0">
+                        <h3 class="card-title fw-bold">Tanda Tangan Digital</h3>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="mb-3 border rounded p-3 bg-light" style="min-height: 120px; display: flex; align-items: center; justify-content: center;">
+                            {{ if .admin.Signature }}
+                                <img src="/public/uploads/signatures/{{ .admin.Signature }}" alt="Digital Signature" style="max-width: 100%; max-height: 100px;">
+                            {{ else }}
+                                <span class="text-muted">Belum ada tanda tangan</span>
+                            {{ end }}
+                        </div>
+                        <form action="/profile/signature" method="POST" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <input type="file" name="signature" class="form-control" accept="image/png" required>
+                                <div class="form-text mt-1">Upload gambar tanda tangan (Format PNG).</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 fw-semibold">
+                                <i class="bi bi-upload me-1"></i> Update Tanda Tangan
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
 
             <div class="col-md-8">

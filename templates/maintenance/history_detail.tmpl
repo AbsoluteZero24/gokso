@@ -1,0 +1,180 @@
+{{ define "maintenance/history_detail" }}
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  .report-container { 
+    background: white !important; 
+    padding: 30px !important; 
+    margin: 0 auto !important;
+    max-width: 1200px;
+    font-family: 'Montserrat', sans-serif !important;
+    font-size: 10pt !important;
+    color: #212529 !important;
+  }
+  .table-report-modern {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 8.5pt !important;
+  }
+  .table-report-modern th {
+    background-color: #8EA9DB !important;
+    color: #212529 !important;
+    border: 1px solid #7a94c6 !important;
+    padding: 6px 4px !important;
+    text-align: center;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+  }
+  .table-report-modern td {
+    border: 1px solid #eee !important;
+    padding: 6px 8px !important;
+    vertical-align: middle;
+  }
+  .table-report-modern tr:nth-child(even) {
+    background-color: #f9f9f9 !important;
+  }
+  .bs-checkbox {
+    width: 13px;
+    height: 13px;
+    border: 1px solid #000;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff !important;
+  }
+  .bs-checkbox.active::after {
+    content: '\2713';
+    font-size: 8pt;
+    font-weight: bold;
+    color: #000;
+  }
+  .signature-block {
+    margin-top: 50px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media print {
+    @page { size: landscape; margin: 0; }
+    .no-print { display: none !important; }
+    .report-container { width: 100% !important; max-width: none !important; padding: 1.5cm !important; }
+  }
+</style>
+
+<div class="app-content-header no-print">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-sm-6"><h3 class="mb-0">{{ .title }}</h3></div>
+      <div class="col-sm-6 text-end">
+        <button class="btn btn-secondary btn-sm me-2" onclick="history.back()">Kembali</button>
+        <button class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-printer"></i> Cetak PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <div class="report-container shadow-sm border">
+      <!-- Logo Row -->
+      <div class="report-header-logos" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+         <div class="logo-box"><img src="/public/assets/img/logo-danantara.png" style="height: 50px;"></div>
+         <div class="logo-box"><img src="/public/assets/img/logo-idsurvey.png" style="height: 45px;"></div>
+         <div class="logo-box" style="display: flex; align-items: center; gap: 10px;">
+            <div style="font-size: 11pt; text-align: right;">KERJASAMA OPERASI</div>
+            <div style="width: 1.5px; height: 35px; background: #212529;"></div>
+            <img src="/public/assets/img/logo-ksoscisi.png" style="height: 40px;">
+         </div>
+      </div>
+
+      <!-- Title -->
+      <div style="text-align: center; margin-bottom: 25px;">
+         <h2 style="font-size: 12pt; margin: 0; text-transform: uppercase; font-weight: 700;">LAPORAN PEMELIHARAAN KOMPUTER DAN LAPTOP</h2>
+      </div>
+
+      <!-- Metadata -->
+      <div style="margin-bottom: 20px; font-size: 9pt;">
+         <table style="border: none;">
+            <tr><td style="width: 120px; padding: 2px 0;">Periode</td><td>: {{ .doc.Period }}</td></tr>
+            <tr><td style="padding: 2px 0;">Branch</td><td>: {{ .doc.Branch }}</td></tr>
+            <tr><td style="padding: 2px 0;">Bagian</td><td>: {{ .doc.Department }}</td></tr>
+            <tr><td style="padding: 2px 0;">Sub Bagian</td><td>: {{ .doc.SubDepartment }}</td></tr>
+         </table>
+      </div>
+
+      <!-- Table -->
+      <table class="table-report-modern">
+         <thead>
+            <tr>
+               <th style="width: 30px;">No.</th>
+               <th style="width: 180px;">Nama</th>
+               <th style="width: 80px;">Kategori</th>
+               <th style="width: 140px;">Model / Type</th>
+               <th style="width: 250px;">Spesifikasi</th>
+               <th style="width: 70px;">Antivirus</th>
+               <th style="width: 80px;">Kondisi</th>
+               <th style="width: 100px;">Tgl Periksa</th>
+               <th>Keterangan</th>
+            </tr>
+         </thead>
+         <tbody>
+            {{ $counter := 0 }}
+            {{ range $subDept, $assets := .groupedAssets }}
+               {{ range $assets }}
+               {{ $counter = add $counter 1 }}
+               <tr>
+                  <td style="text-align: center;">{{ $counter }}</td>
+                  <td>{{ .Report.UserName }}</td>
+                  <td style="text-align: center;">{{ .Asset.Category }}</td>
+                  <td>{{ .Asset.Brand }} {{ .Asset.TypeModel }}</td>
+                  <td style="font-size: 7.5pt;">{{ .Asset.Specification }}</td>
+                  <td style="text-align: center;">
+                     <div class="bs-checkbox {{ if .Report.AntivirusUpdated }}active{{ end }}"></div>
+                  </td>
+                  <td style="text-align: center;">{{ .Report.OverallCondition }}</td>
+                  <td style="text-align: center;">{{ .Report.InspectionDate.Format "02/01/2006" }}</td>
+                  <td style="font-size: 8pt;">{{ .Report.Remarks }}</td>
+               </tr>
+               {{ end }}
+            {{ end }}
+         </tbody>
+      </table>
+
+      <!-- Footer & Signatures -->
+      <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-start;">
+         <div style="font-size: 8pt; line-height: 1.4; width: 400px;">
+            <div style="text-decoration: underline; margin-bottom: 5px; font-weight: bold;">Parameter kondisi Normal :</div>
+            <span>- Komputer dalam keadaan menyala</span><br>
+            <span>- Kapasitas hardisk &lt; 90%</span><br>
+            <span>- Antivirus telah update dan tidak ada virus</span><br>
+            <span>- Tidak ada blank spot pada layar</span><br>
+            <span>- Keyboard dan mouse/mousepad dapat digunakan dengan baik</span>
+         </div>
+
+         <div style="width: 450px; font-size: 9pt;">
+            <div style="text-align: right; margin-bottom: 15px;">
+               Jakarta, {{ if .doc.ApprovedAt }}{{ .doc.ApprovedAt.Format "02 January 2006" }}{{ end }}
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+               <div style="text-align: center; width: 200px;">
+                  <div>Disusun oleh,</div>
+                  <div style="height: 60px; margin: 10px 0;">
+                     {{ if .submitter.Signature }}<img src="/public/uploads/signatures/{{ .submitter.Signature }}" style="max-height: 100%;">{{ end }}
+                  </div>
+                  <div style="border-top: 1px solid #000; font-weight: bold;">{{ .submitter.Username }}</div>
+                  <div style="font-size: 8pt;">{{ .submitter.Role }}</div>
+               </div>
+               <div style="text-align: center; width: 200px;">
+                  <div>Disetujui oleh,</div>
+                  <div style="height: 60px; margin: 10px 0;">
+                     {{ if .approver.Signature }}<img src="/public/uploads/signatures/{{ .approver.Signature }}" style="max-height: 100%;">{{ end }}
+                  </div>
+                  <div style="border-top: 1px solid #000; font-weight: bold;">{{ .approver.Username }}</div>
+                  <div style="font-size: 8pt;">{{ .approver.Role }}</div>
+               </div>
+            </div>
+         </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{ end }}

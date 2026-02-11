@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// AssetKSOFaker menghasilkan data aset KSO buatan (dummy) untuk keperluan testing atau seeding
 func AssetKSOFaker() *models.AssetKSO {
 	categories := []string{"Laptop", "Komputer"}
 	statuses := []string{"Ready", "Rusak"}

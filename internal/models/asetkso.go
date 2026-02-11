@@ -8,7 +8,7 @@ import (
 
 type AssetKSO struct {
 	ID              string  `gorm:"size:36;not null;uniqueIndex;primaryKey"`
-	InventoryNumber string  `gorm:"size:100;not null;uniqueIndex"`
+	InventoryNumber string  `gorm:"size:100;not null;uniqueIndex:idx_inv_num_deleted_at"`
 	SerialNumber    string  `gorm:"size:100"` // Added for Serial Number
 	AssetName       string  `gorm:"size:100;not null"`
 	DeviceName      string  `gorm:"size:100"`          // Added for "Nama Perangkat"
@@ -24,7 +24,7 @@ type AssetKSO struct {
 	Status          string `gorm:"size:50;not null"` // Ready, Rusak, etc.
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
-	DeletedAt       gorm.DeletedAt
+	DeletedAt       gorm.DeletedAt `gorm:"index;uniqueIndex:idx_inv_num_deleted_at"`
 }
 
 func (AssetKSO) TableName() string {

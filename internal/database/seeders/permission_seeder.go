@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// SeedPermissions mengatur data izin akses (permission) default untuk setiap peran (role)
 func SeedPermissions(db *gorm.DB) error {
 	resources := []string{
 		"dashboard",

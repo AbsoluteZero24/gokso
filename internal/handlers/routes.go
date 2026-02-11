@@ -9,15 +9,15 @@ import (
 func (server *Server) initializeRoutes() {
 	server.Router = mux.NewRouter()
 
-	// Auth routes
+	// Rute Autentikasi (Login, Logout)
 	server.Router.HandleFunc("/login", server.LoginForm).Methods("GET")
 	server.Router.HandleFunc("/login", server.Login).Methods("POST")
 	server.Router.HandleFunc("/logout", server.Logout).Methods("GET")
 
-	// Protected routes
+	// Rute Dashboard dan Utama (Terproteksi)
 	server.Router.HandleFunc("/", server.PermissionRequired("dashboard", server.Home)).Methods("GET")
 
-	// Administration
+	// Manajemen Administrasi dan Karyawan
 	server.Router.HandleFunc("/administration/employee", server.PermissionRequired("administration", server.ListEmployees)).Methods("GET")
 	server.Router.HandleFunc("/administration/employee/create", server.PermissionRequired("administration", server.CreateEmployeeForm)).Methods("GET")
 	server.Router.HandleFunc("/administration/employee", server.PermissionRequired("administration", server.StoreEmployee)).Methods("POST")
@@ -25,7 +25,7 @@ func (server *Server) initializeRoutes() {
 	server.Router.HandleFunc("/administration/employee/update/{id}", server.PermissionRequired("administration", server.UpdateEmployee)).Methods("POST")
 	server.Router.HandleFunc("/administration/employee/delete/{id}", server.PermissionRequired("administration", server.DeleteEmployee)).Methods("GET")
 
-	// Master Data Employee
+	// Data Master Administrasi (Cabang, Departemen, dll)
 	server.Router.HandleFunc("/administration/master-data/branch", server.PermissionRequired("administration", server.ListMasterBranch)).Methods("GET")
 	server.Router.HandleFunc("/administration/master-data/branch/store", server.PermissionRequired("administration", server.StoreMasterBranch)).Methods("POST")
 	server.Router.HandleFunc("/administration/master-data/branch/delete/{id}", server.PermissionRequired("administration", server.DeleteMasterBranch)).Methods("GET")
@@ -50,7 +50,7 @@ func (server *Server) initializeRoutes() {
 	server.Router.HandleFunc("/administration/master-data/position/edit/{id}", server.PermissionRequired("administration", server.EditMasterPosition)).Methods("GET")
 	server.Router.HandleFunc("/administration/master-data/position/update/{id}", server.PermissionRequired("administration", server.UpdateMasterPosition)).Methods("POST")
 
-	// Inventori Routes
+	// Rute Inventori (Data Dasar Aset)
 	server.Router.HandleFunc("/inventori/master-data/asset-category", server.PermissionRequired("inventori", server.ListMasterAssetCategory)).Methods("GET")
 	server.Router.HandleFunc("/inventori/master-data/asset-category/store", server.PermissionRequired("inventori", server.StoreMasterAssetCategory)).Methods("POST")
 	server.Router.HandleFunc("/inventori/master-data/asset-category/delete/{id}", server.PermissionRequired("inventori", server.DeleteMasterAssetCategory)).Methods("GET")
@@ -65,8 +65,9 @@ func (server *Server) initializeRoutes() {
 	server.Router.HandleFunc("/inventori/aset-laptop/edit/{id}", server.PermissionRequired("inventori", server.EditAssetKSOForm)).Methods("GET")
 	server.Router.HandleFunc("/inventori/aset-laptop/update/{id}", server.PermissionRequired("inventori", server.UpdateAssetKSO)).Methods("POST")
 	server.Router.HandleFunc("/inventori/aset-laptop/delete/{id}", server.PermissionRequired("inventori", server.DeleteAssetKSO)).Methods("GET")
+	server.Router.HandleFunc("/inventori/aset-laptop/bulk-delete", server.PermissionRequired("inventori", server.BulkDeleteAssetKSO)).Methods("POST")
 
-	// Asset Management
+	// Manajemen Aset (Laptop & Komputer)
 	server.Router.HandleFunc("/asset-management/laptop", server.PermissionRequired("asset_management", server.ListAssetLaptop)).Methods("GET")
 	server.Router.HandleFunc("/asset-management/laptop/create", server.PermissionRequired("asset_management", server.CreateAssetLaptopForm)).Methods("GET")
 	server.Router.HandleFunc("/asset-management/laptop/edit/{id}", server.PermissionRequired("asset_management", server.EditAssetLaptopForm)).Methods("GET")
@@ -81,12 +82,16 @@ func (server *Server) initializeRoutes() {
 	server.Router.HandleFunc("/asset-management/komputer/delete/{id}", server.PermissionRequired("asset_management", server.DeleteAssetKomputer)).Methods("GET")
 	server.Router.HandleFunc("/asset-management/komputer/assign", server.PermissionRequired("asset_management", server.AssignAssetKomputer)).Methods("POST")
 
-	// Maintenance
+	// Rute Maintenance (Laporan Rutin)
 	server.Router.HandleFunc("/maintenance/laptop", server.PermissionRequired("maintenance", server.MaintenanceLaptop)).Methods("GET")
 	server.Router.HandleFunc("/maintenance/laptop/store", server.PermissionRequired("maintenance", server.StoreMaintenanceLaptop)).Methods("POST")
+	server.Router.HandleFunc("/maintenance/submit", server.PermissionRequired("maintenance", server.SubmitMaintenance)).Methods("POST")
+	server.Router.HandleFunc("/maintenance/approve", server.PermissionRequired("maintenance", server.ApproveMaintenance)).Methods("POST")
 	server.Router.HandleFunc("/maintenance/komputer", server.PermissionRequired("maintenance", server.MaintenanceKomputer)).Methods("GET")
+	server.Router.HandleFunc("/maintenance/history", server.PermissionRequired("maintenance", server.MaintenanceHistory)).Methods("GET")
+	server.Router.HandleFunc("/maintenance/history/detail/{id}", server.PermissionRequired("maintenance", server.MaintenanceHistoryDetail)).Methods("GET")
 
-	// Administration - Super Admin only
+	// Pengaturan Pengguna (Hanya Super Admin)
 	server.Router.HandleFunc("/setting/user", server.RoleRequired([]string{"super_admin"}, server.ListSettingUser)).Methods("GET")
 	server.Router.HandleFunc("/setting/user/create", server.RoleRequired([]string{"super_admin"}, server.CreateSettingUserForm)).Methods("GET")
 	server.Router.HandleFunc("/setting/user/store", server.RoleRequired([]string{"super_admin"}, server.StoreSettingUser)).Methods("POST")
@@ -101,6 +106,7 @@ func (server *Server) initializeRoutes() {
 	server.Router.HandleFunc("/profile", server.AuthRequired(server.Profile)).Methods("GET")
 	server.Router.HandleFunc("/profile/password", server.AuthRequired(server.UpdatePassword)).Methods("POST")
 	server.Router.HandleFunc("/profile/avatar", server.AuthRequired(server.UpdateAvatar)).Methods("POST")
+	server.Router.HandleFunc("/profile/signature", server.AuthRequired(server.UpdateSignature)).Methods("POST")
 
 	// Static files
 	staticFileDirectory := http.Dir("./public")

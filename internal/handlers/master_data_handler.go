@@ -9,6 +9,7 @@ import (
 )
 
 // Master Branch
+// ListMasterBranch menampilkan daftar semua cabang perusahaan
 func (server *Server) ListMasterBranch(w http.ResponseWriter, r *http.Request) {
 	var branches []models.MasterBranch
 	server.DB.Find(&branches)
@@ -19,6 +20,7 @@ func (server *Server) ListMasterBranch(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// StoreMasterBranch menyimpan data cabang baru ke database
 func (server *Server) StoreMasterBranch(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	branch := models.MasterBranch{
@@ -28,6 +30,7 @@ func (server *Server) StoreMasterBranch(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, "/administration/master-data/branch", http.StatusSeeOther)
 }
 
+// DeleteMasterBranch menghapus data cabang dari database
 func (server *Server) DeleteMasterBranch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -35,6 +38,7 @@ func (server *Server) DeleteMasterBranch(w http.ResponseWriter, r *http.Request)
 	http.Redirect(w, r, "/administration/master-data/branch", http.StatusSeeOther)
 }
 
+// EditMasterBranch menampilkan form edit untuk data cabang tertentu
 func (server *Server) EditMasterBranch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -55,6 +59,7 @@ func (server *Server) EditMasterBranch(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// UpdateMasterBranch memperbarui data nama cabang dan melakukan update cascading pada data karyawan
 func (server *Server) UpdateMasterBranch(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -87,6 +92,7 @@ func (server *Server) UpdateMasterBranch(w http.ResponseWriter, r *http.Request)
 }
 
 // Master Department
+// ListMasterDepartment menampilkan daftar semua bagian (departemen) perusahaan
 func (server *Server) ListMasterDepartment(w http.ResponseWriter, r *http.Request) {
 	var departments []models.MasterDepartment
 	server.DB.Preload("MasterBranch").Find(&departments)
@@ -101,6 +107,7 @@ func (server *Server) ListMasterDepartment(w http.ResponseWriter, r *http.Reques
 	})
 }
 
+// StoreMasterDepartment menyimpan data bagian (departemen) baru ke database
 func (server *Server) StoreMasterDepartment(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	branchID := r.FormValue("master_branch_id")
@@ -112,6 +119,7 @@ func (server *Server) StoreMasterDepartment(w http.ResponseWriter, r *http.Reque
 	http.Redirect(w, r, "/administration/master-data/department", http.StatusSeeOther)
 }
 
+// DeleteMasterDepartment menghapus data bagian (departemen) dari database
 func (server *Server) DeleteMasterDepartment(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -177,6 +185,7 @@ func (server *Server) UpdateMasterDepartment(w http.ResponseWriter, r *http.Requ
 }
 
 // Master Sub-Department
+// ListMasterSubDepartment menampilkan daftar semua sub-bagian perusahaan
 func (server *Server) ListMasterSubDepartment(w http.ResponseWriter, r *http.Request) {
 	var subDepts []models.MasterSubDepartment
 	server.DB.Preload("MasterDepartment").Find(&subDepts)
@@ -267,6 +276,7 @@ func (server *Server) UpdateMasterSubDepartment(w http.ResponseWriter, r *http.R
 }
 
 // Master Position
+// ListMasterPosition menampilkan daftar semua jabatan perusahaan
 func (server *Server) ListMasterPosition(w http.ResponseWriter, r *http.Request) {
 	var positions []models.MasterPosition
 	server.DB.Find(&positions)
@@ -345,6 +355,7 @@ func (server *Server) UpdateMasterPosition(w http.ResponseWriter, r *http.Reques
 }
 
 // Master Asset Category
+// ListMasterAssetCategory menampilkan daftar semua kategori aset
 func (server *Server) ListMasterAssetCategory(w http.ResponseWriter, r *http.Request) {
 	var categories []models.MasterAssetCategory
 	server.DB.Find(&categories)

@@ -10,8 +10,10 @@ import (
 	"github.com/AbsoluteZero24/goaset/internal/models"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"gorm.io/gorm"
 )
 
+// fetchAssetMasterData mengambil data master (kategori, RAM, penyimpanan) untuk form aset
 func (server *Server) fetchAssetMasterData() (map[string]interface{}, error) {
 	var categories []models.MasterAssetCategory
 	var ramTypes []models.MasterRamType
@@ -34,25 +36,47 @@ func (server *Server) fetchAssetMasterData() (map[string]interface{}, error) {
 	}, nil
 }
 
+// ListAssetKSO menampilkan halaman daftar aset KSO dengan dukungan filter tahun
 func (server *Server) ListAssetKSO(w http.ResponseWriter, r *http.Request) {
 	year := r.URL.Query().Get("year")
-
-	var assets []models.AssetKSO
-	query := server.DB.Preload("User").Order("inventory_number asc")
-
-	if year != "" {
-		query = query.Where("EXTRACT(YEAR FROM purchase_date) = ?", year)
+	if _, ok := r.URL.Query()["year"]; !ok {
+		year = fmt.Sprintf("%d", time.Now().Year())
 	}
 
-	query.Find(&assets)
+	var assets []models.AssetKSO
+	// Start a fresh query for AssetKSO
+	db := server.DB.Model(&models.AssetKSO{}).Preload("User")
+
+	if year != "" {
+		fmt.Printf("[ListAssetKSO] Applied filter year: %s\n", year)
+		// Range query is generally more efficient and reliable than extraction functions
+		startOfYear := fmt.Sprintf("%s-01-01 00:00:00", year)
+		endOfYear := fmt.Sprintf("%s-12-31 23:59:59", year)
+		db = db.Where("purchase_date BETWEEN ? AND ?", startOfYear, endOfYear)
+	}
+
+	err := db.Order("inventory_number asc").Find(&assets).Error
+	if err != nil {
+		fmt.Printf("[ListAssetKSO] Query Error: %v\n", err)
+	}
+	fmt.Printf("[ListAssetKSO] Filtered result count: %d\n", len(assets))
+
+	// Provide a list of years for the dropdown (e.g., from 2024 up to current year + 1)
+	currentYear := time.Now().Year()
+	var years []int
+	for y := 2024; y <= currentYear+1; y++ {
+		years = append(years, y)
+	}
 
 	server.RenderHTML(w, r, http.StatusOK, "assets/asetkso", map[string]interface{}{
 		"title":        "Daftar Aset KSO",
 		"assets":       assets,
 		"selectedYear": year,
+		"years":        years,
 	})
 }
 
+// CreateAssetKSOForm menampilkan halaman form untuk membuat aset KSO baru
 func (server *Server) CreateAssetKSOForm(w http.ResponseWriter, r *http.Request) {
 	masterData, _ := server.fetchAssetMasterData()
 	masterData["title"] = "Tambah Aset KSO"
@@ -60,6 +84,7 @@ func (server *Server) CreateAssetKSOForm(w http.ResponseWriter, r *http.Request)
 	server.RenderHTML(w, r, http.StatusOK, "assets/asetkso_form", masterData)
 }
 
+// StoreAssetKSO menangani proses penyimpanan data aset KSO baru ke database
 func (server *Server) StoreAssetKSO(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
@@ -109,7 +134,10 @@ func (server *Server) StoreAssetKSO(w http.ResponseWriter, r *http.Request) {
 	asset.PurchaseDate = purchaseDate
 	asset.Status = r.FormValue("status")
 
-	server.DB.Create(&asset)
+	if err := server.DB.Create(&asset).Error; err != nil {
+		http.Error(w, "Gagal membuat aset: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	redirectPath := r.FormValue("redirect_to")
 	if redirectPath == "" {
@@ -211,7 +239,12 @@ func (server *Server) StoreAssetKSOBulk(w http.ResponseWriter, r *http.Request) 
 		asset.Location = r.FormValue("location")
 		asset.PurchaseDate = purchaseDate
 		asset.Status = r.FormValue("status")
-		server.DB.Create(&asset)
+		if err := server.DB.Create(&asset).Error; err != nil {
+			// In a bulk operation, we might want to continue or stop.
+			// Stopping here for safety, but wrapping in a transaction would be better.
+			http.Error(w, "Gagal membuat aset masal: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	redirectPath := r.FormValue("redirect_to")
@@ -222,6 +255,7 @@ func (server *Server) StoreAssetKSOBulk(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, redirectPath, http.StatusSeeOther)
 }
 
+// EditAssetKSOForm menampilkan halaman form untuk mengubah data aset KSO yang sudah ada
 func (server *Server) EditAssetKSOForm(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -239,6 +273,7 @@ func (server *Server) EditAssetKSOForm(w http.ResponseWriter, r *http.Request) {
 	server.RenderHTML(w, r, http.StatusOK, "assets/asetkso_form", masterData)
 }
 
+// UpdateAssetKSO menangani proses pembaruan data aset KSO di database
 func (server *Server) UpdateAssetKSO(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -294,8 +329,10 @@ func (server *Server) UpdateAssetKSO(w http.ResponseWriter, r *http.Request) {
 	asset.UserID = userIDPtr
 	asset.PurchaseDate = purchaseDate
 	asset.Status = r.FormValue("status")
-
-	server.DB.Save(&asset)
+	if err := server.DB.Save(&asset).Error; err != nil {
+		http.Error(w, "Gagal memperbarui aset: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	redirectPath := r.FormValue("redirect_to")
 	if redirectPath == "" {
@@ -310,14 +347,31 @@ func (server *Server) UpdateAssetKSO(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redirectPath, http.StatusSeeOther)
 }
 
+// DeleteAssetKSO menangani proses penghapusan data aset KSO (soft delete)
 func (server *Server) DeleteAssetKSO(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	server.DB.Unscoped().Where("id = ?", id).Delete(&models.AssetKSO{})
+	server.DB.Where("id = ?", id).Delete(&models.AssetKSO{})
 	http.Redirect(w, r, "/inventori/aset-laptop", http.StatusSeeOther)
 }
 
+// BulkDeleteAssetKSO menangani proses penghapusan banyak data aset KSO sekaligus
+func (server *Server) BulkDeleteAssetKSO(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	ids := r.Form["ids"]
+	if len(ids) > 0 {
+		server.DB.Where("id IN ?", ids).Delete(&models.AssetKSO{})
+	}
+
+	http.Redirect(w, r, "/inventori/aset-laptop", http.StatusSeeOther)
+}
+
+// ListAssetLaptop menampilkan halaman manajemen aset khusus untuk kategori Laptop
 func (server *Server) ListAssetLaptop(w http.ResponseWriter, r *http.Request) {
 	var assets []models.AssetKSO
 	server.DB.Preload("User").Where("category = ?", "Laptop").Order("inventory_number asc").Find(&assets)
@@ -332,6 +386,7 @@ func (server *Server) ListAssetLaptop(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// CreateAssetLaptopForm menampilkan form untuk menambah aset Laptop baru melalui menu Asset Management
 func (server *Server) CreateAssetLaptopForm(w http.ResponseWriter, r *http.Request) {
 	var users []models.User
 	server.DB.Find(&users)
@@ -344,6 +399,7 @@ func (server *Server) CreateAssetLaptopForm(w http.ResponseWriter, r *http.Reque
 	server.RenderHTML(w, r, http.StatusOK, "assets/laptop_mgmt_form", masterData)
 }
 
+// EditAssetLaptopForm menampilkan form untuk mengubah data aset Laptop yang sudah ada
 func (server *Server) EditAssetLaptopForm(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -365,6 +421,7 @@ func (server *Server) EditAssetLaptopForm(w http.ResponseWriter, r *http.Request
 	server.RenderHTML(w, r, http.StatusOK, "assets/laptop_mgmt_form", masterData)
 }
 
+// DeleteAssetLaptop menghapus data aset Laptop secara permanen (unscoped delete)
 func (server *Server) DeleteAssetLaptop(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -373,6 +430,7 @@ func (server *Server) DeleteAssetLaptop(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, "/asset-management/laptop", http.StatusSeeOther)
 }
 
+// AssignAssetLaptop mengatur kaitan antara aset Laptop dengan user/karyawan tertentu
 func (server *Server) AssignAssetLaptop(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	assetID := r.FormValue("asset_id")
@@ -396,6 +454,7 @@ func (server *Server) AssignAssetLaptop(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, "/asset-management/laptop", http.StatusSeeOther)
 }
 
+// ListAssetKomputer menampilkan halaman manajemen aset khusus untuk kategori Komputer
 func (server *Server) ListAssetKomputer(w http.ResponseWriter, r *http.Request) {
 	var assets []models.AssetKSO
 	server.DB.Preload("User").Where("category = ?", "Komputer").Order("inventory_number asc").Find(&assets)
@@ -410,6 +469,7 @@ func (server *Server) ListAssetKomputer(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
+// CreateAssetKomputerForm menampilkan form untuk menambah aset Komputer baru
 func (server *Server) CreateAssetKomputerForm(w http.ResponseWriter, r *http.Request) {
 	var users []models.User
 	server.DB.Find(&users)
@@ -474,6 +534,7 @@ func (server *Server) AssignAssetKomputer(w http.ResponseWriter, r *http.Request
 	http.Redirect(w, r, "/asset-management/komputer", http.StatusSeeOther)
 }
 
+// UpdateAssetLabel mengubah "Nama Perangkat" secara individual pada sebuah aset
 func (server *Server) UpdateAssetLabel(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
@@ -504,6 +565,7 @@ func (server *Server) UpdateAssetLabel(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redirectPath, http.StatusSeeOther)
 }
 
+// BulkUpdateAssetLabel melakukan pembaruan "Nama Perangkat" secara massal untuk rentang nomor inventaris tertentu
 func (server *Server) BulkUpdateAssetLabel(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
@@ -578,6 +640,7 @@ func (server *Server) MaintenanceLaptop(w http.ResponseWriter, r *http.Request) 
 	branchParam := r.URL.Query().Get("branch")
 	dept := r.URL.Query().Get("department")
 	subDeptParam := r.URL.Query().Get("sub_department")
+	_, _, adminRole, _ := GetCurrentAdmin(r)
 
 	now := time.Now()
 	if year == "" {
@@ -592,6 +655,13 @@ func (server *Server) MaintenanceLaptop(w http.ResponseWriter, r *http.Request) 
 	}
 
 	period := fmt.Sprintf("%s-%s", semester, year)
+	selectedYearInt, _ := strconv.Atoi(year)
+
+	// Provide a list of years for the dropdown
+	var years []int
+	for y := 2024; y <= now.Year()+1; y++ {
+		years = append(years, y)
+	}
 
 	// Fetch all Master Data for dropdowns (Hierarchical)
 	var branches []models.MasterBranch
@@ -610,9 +680,9 @@ func (server *Server) MaintenanceLaptop(w http.ResponseWriter, r *http.Request) 
 	var assets []models.AssetKSO
 	server.DB.Preload("User").Where("category = ?", "Laptop").Find(&assets)
 
-	// Fetch maintenance reports for this period
+	// Fetch maintenance reports for this period that are NOT yet archived (document_id is null)
 	var reports []models.MaintenanceReport
-	server.DB.Where("period = ?", period).Find(&reports)
+	server.DB.Where("period = ? AND document_id IS NULL", period).Find(&reports)
 
 	// Map reports by AssetID for easy lookup
 	reportMap := make(map[string]models.MaintenanceReport)
@@ -623,14 +693,23 @@ func (server *Server) MaintenanceLaptop(w http.ResponseWriter, r *http.Request) 
 	// Group assets by SubDepartment with filtering
 	groupedAssets := make(map[string][]map[string]interface{})
 	for _, asset := range assets {
+
 		report, exists := reportMap[asset.ID]
 
+		// Ensure the report snapshot matches the selected year
+		if exists && report.InspectionDate.Year() != selectedYearInt {
+			exists = false
+			report = models.MaintenanceReport{}
+		}
+
 		// Determine effective location for this asset in this period
+		// Snapshot rule: Only use report snapshot if it has been submitted/approved.
+		// If it's still a draft, use the latest data from the User record.
 		effBranch := asset.User.Branch
 		effDept := asset.User.Department
 		effSubDept := asset.User.SubDepartment
 
-		if exists && report.UserBranch != "" {
+		if exists && report.IsSubmitted && report.UserBranch != "" {
 			effBranch = report.UserBranch
 			effDept = report.UserDepartment
 			effSubDept = report.UserSubDepartment
@@ -662,6 +741,47 @@ func (server *Server) MaintenanceLaptop(w http.ResponseWriter, r *http.Request) 
 		groupedAssets[groupKey] = append(groupedAssets[groupKey], assetData)
 	}
 
+	// Fetch signatures for the footer if the report is submitted/approved
+	var submitter models.Admin
+	var approver models.Admin
+	var approvedDate *time.Time
+
+	// We'll take the first report that matches the current filters and is submitted/approved
+	for _, r := range reports {
+		// Filter match check for signature display
+		if branchParam != "" && r.UserBranch != branchParam {
+			continue
+		}
+		if dept != "" && r.UserDepartment != dept {
+			continue
+		}
+		if subDeptParam != "" && r.UserSubDepartment != subDeptParam {
+			continue
+		}
+
+		if r.IsSubmitted && submitter.ID == "" {
+			server.DB.First(&submitter, "id = ?", r.SubmittedByID)
+			// Fetch employee info for submitter
+			if submitter.UserID != "" {
+				var u models.User
+				server.DB.First(&u, "id = ?", submitter.UserID)
+				submitter.Username = u.Name // Use actual name
+				submitter.Role = u.Position // Temporarily reuse Role field or just pass separately
+			}
+		}
+		if r.IsApproved && approver.ID == "" {
+			server.DB.First(&approver, "id = ?", r.ApprovedByID)
+			// Fetch employee info for approver
+			if approver.UserID != "" {
+				var u models.User
+				server.DB.First(&u, "id = ?", approver.UserID)
+				approver.Username = u.Name
+				approver.Role = u.Position
+			}
+			approvedDate = r.ApprovedAt
+		}
+	}
+
 	server.RenderHTML(w, r, http.StatusOK, "maintenance/laptop", map[string]interface{}{
 		"title":           "Laporan Pemeliharaan Laptop",
 		"groupedAssets":   groupedAssets,
@@ -673,6 +793,11 @@ func (server *Server) MaintenanceLaptop(w http.ResponseWriter, r *http.Request) 
 		"currentSubDept":  subDeptParam,
 		"branches":        branches,
 		"now":             now,
+		"submitter":       submitter,
+		"approver":        approver,
+		"approvedDate":    approvedDate,
+		"AdminRole":       adminRole,
+		"years":           years,
 	})
 }
 
@@ -682,6 +807,7 @@ func (server *Server) MaintenanceKomputer(w http.ResponseWriter, r *http.Request
 	branchParam := r.URL.Query().Get("branch")
 	dept := r.URL.Query().Get("department")
 	subDeptParam := r.URL.Query().Get("sub_department")
+	_, _, adminRole, _ := GetCurrentAdmin(r)
 
 	now := time.Now()
 	if year == "" {
@@ -696,6 +822,13 @@ func (server *Server) MaintenanceKomputer(w http.ResponseWriter, r *http.Request
 	}
 
 	period := fmt.Sprintf("%s-%s", semester, year)
+	selectedYearInt, _ := strconv.Atoi(year)
+
+	// Provide a list of years for the dropdown
+	var years []int
+	for y := 2024; y <= now.Year()+1; y++ {
+		years = append(years, y)
+	}
 
 	// Fetch hierarchy for dropdowns
 	var branches []models.MasterBranch
@@ -705,9 +838,9 @@ func (server *Server) MaintenanceKomputer(w http.ResponseWriter, r *http.Request
 	var assets []models.AssetKSO
 	server.DB.Preload("User").Where("category = ?", "Komputer").Find(&assets)
 
-	// Fetch maintenance reports for this period
+	// Fetch maintenance reports for this period that are NOT yet archived (document_id is null)
 	var reports []models.MaintenanceReport
-	server.DB.Where("period = ?", period).Find(&reports)
+	server.DB.Where("period = ? AND document_id IS NULL", period).Find(&reports)
 
 	// Map reports by AssetID for easy lookup
 	reportMap := make(map[string]models.MaintenanceReport)
@@ -718,14 +851,21 @@ func (server *Server) MaintenanceKomputer(w http.ResponseWriter, r *http.Request
 	// Group assets by SubDepartment with filtering
 	groupedAssets := make(map[string][]map[string]interface{})
 	for _, asset := range assets {
+
 		report, exists := reportMap[asset.ID]
 
-		// Determine effective location for this asset in this period
+		// Ensure the report snapshot matches the selected year
+		if exists && report.InspectionDate.Year() != selectedYearInt {
+			exists = false
+			report = models.MaintenanceReport{}
+		}
+
+		// Snapshot rule: Only use report snapshot if it has been submitted/approved.
 		effBranch := asset.User.Branch
 		effDept := asset.User.Department
 		effSubDept := asset.User.SubDepartment
 
-		if exists && report.UserBranch != "" {
+		if exists && report.IsSubmitted && report.UserBranch != "" {
 			effBranch = report.UserBranch
 			effDept = report.UserDepartment
 			effSubDept = report.UserSubDepartment
@@ -757,6 +897,44 @@ func (server *Server) MaintenanceKomputer(w http.ResponseWriter, r *http.Request
 		groupedAssets[groupKey] = append(groupedAssets[groupKey], assetData)
 	}
 
+	// Fetch signatures for the footer if the report is submitted/approved
+	var submitter models.Admin
+	var approver models.Admin
+	var approvedDate *time.Time
+
+	for _, r := range reports {
+		// Filter match check for signature display
+		if branchParam != "" && r.UserBranch != branchParam {
+			continue
+		}
+		if dept != "" && r.UserDepartment != dept {
+			continue
+		}
+		if subDeptParam != "" && r.UserSubDepartment != subDeptParam {
+			continue
+		}
+
+		if r.IsSubmitted && submitter.ID == "" {
+			server.DB.First(&submitter, "id = ?", r.SubmittedByID)
+			if submitter.UserID != "" {
+				var u models.User
+				server.DB.First(&u, "id = ?", submitter.UserID)
+				submitter.Username = u.Name
+				submitter.Role = u.Position
+			}
+		}
+		if r.IsApproved && approver.ID == "" {
+			server.DB.First(&approver, "id = ?", r.ApprovedByID)
+			if approver.UserID != "" {
+				var u models.User
+				server.DB.First(&u, "id = ?", approver.UserID)
+				approver.Username = u.Name
+				approver.Role = u.Position
+			}
+			approvedDate = r.ApprovedAt
+		}
+	}
+
 	server.RenderHTML(w, r, http.StatusOK, "maintenance/komputer", map[string]interface{}{
 		"title":           "Laporan Pemeliharaan Komputer",
 		"groupedAssets":   groupedAssets,
@@ -768,6 +946,11 @@ func (server *Server) MaintenanceKomputer(w http.ResponseWriter, r *http.Request
 		"currentSubDept":  subDeptParam,
 		"branches":        branches,
 		"now":             now,
+		"submitter":       submitter,
+		"approver":        approver,
+		"approvedDate":    approvedDate,
+		"AdminRole":       adminRole,
+		"years":           years,
 	})
 }
 
@@ -808,9 +991,9 @@ func (server *Server) StoreMaintenanceLaptop(w http.ResponseWriter, r *http.Requ
 
 	// Check if a report already exists for this asset and period
 	var existingReport models.MaintenanceReport
-	result := server.DB.Where("asset_id = ? AND period = ?", assetID, period).First(&existingReport)
+	server.DB.Where("asset_id = ? AND period = ?", assetID, period).Limit(1).Find(&existingReport)
 
-	if result.Error == nil {
+	if existingReport.ID != "" {
 		// Update existing
 		existingReport.AntivirusUpdated = antivirus
 		existingReport.ClearTemporary = clearTemp
@@ -861,4 +1044,197 @@ func (server *Server) StoreMaintenanceLaptop(w http.ResponseWriter, r *http.Requ
 
 	redirectURL := fmt.Sprintf("/maintenance/laptop?year=%s&semester=%s&branch=%s&department=%s&sub_department=%s", year, semester, branch, dept, subDept)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+func (server *Server) SubmitMaintenance(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	period := r.FormValue("period")
+	branch := r.FormValue("branch")
+	dept := r.FormValue("department")
+	subDept := r.FormValue("sub_department")
+	category := r.FormValue("category")
+
+	adminID, _, _, _ := GetCurrentAdmin(r)
+	now := time.Now()
+
+	// 1. Create a MaintenanceDocument
+	doc := models.MaintenanceDocument{
+		ID:            uuid.New().String(),
+		Branch:        branch,
+		Department:    dept,
+		SubDepartment: subDept,
+		Period:        period,
+		Status:        "Submitted",
+		SubmittedByID: adminID,
+		SubmittedAt:   &now,
+	}
+
+	if err := server.DB.Create(&doc).Error; err != nil {
+		http.Error(w, "Gagal membuat dokumen: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 2. Link all unbatched reports for this period/filter to this document
+	query := server.DB.Model(&models.MaintenanceReport{}).
+		Where("period = ? AND document_id IS NULL", period)
+
+	if branch != "" {
+		query = query.Where("user_branch = ?", branch)
+	}
+	if dept != "" {
+		query = query.Where("user_department = ?", dept)
+	}
+	if subDept != "" {
+		query = query.Where("user_sub_department = ?", subDept)
+	}
+
+	// We also need to filter by asset category if possible, but reports only have AssetID.
+	// We'll trust the UI filter for now, or we could join with assets.
+
+	err = query.Updates(map[string]interface{}{
+		"document_id":     doc.ID,
+		"is_submitted":    true,
+		"submitted_by_id": adminID,
+		"submitted_at":    &now,
+	}).Error
+
+	if err != nil {
+		http.Error(w, "Gagal memperbarui laporan: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	redirectPath := "/maintenance/laptop"
+	if category == "Komputer" {
+		redirectPath = "/maintenance/komputer"
+	}
+
+	redirectURL := fmt.Sprintf("%s?year=%s&semester=%s&branch=%s&department=%s&sub_department=%s&msg=Berhasil disubmit ke history",
+		redirectPath, r.FormValue("year"), r.FormValue("semester"), branch, dept, subDept)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+func (server *Server) ApproveMaintenance(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	period := r.FormValue("period")
+	branch := r.FormValue("branch")
+	dept := r.FormValue("department")
+	subDept := r.FormValue("sub_department")
+	category := r.FormValue("category")
+
+	adminID, _, _, _ := GetCurrentAdmin(r)
+	now := time.Now()
+
+	// 1. Find the current Submitted document for this filter
+	var doc models.MaintenanceDocument
+	err = server.DB.Where("branch = ? AND department = ? AND sub_department = ? AND period = ? AND status = ?",
+		branch, dept, subDept, period, "Submitted").First(&doc).Error
+
+	if err != nil {
+		http.Error(w, "Dokumen pengajuan tidak ditemukan", http.StatusNotFound)
+		return
+	}
+
+	// 2. Update Document
+	doc.Status = "Approved"
+	doc.ApprovedByID = adminID
+	doc.ApprovedAt = &now
+	server.DB.Save(&doc)
+
+	// 3. Update all linked reports
+	server.DB.Model(&models.MaintenanceReport{}).Where("document_id = ?", doc.ID).Updates(map[string]interface{}{
+		"is_approved":    true,
+		"approved_by_id": adminID,
+		"approved_at":    &now,
+	})
+
+	redirectPath := "/maintenance/laptop"
+	if category == "Komputer" {
+		redirectPath = "/maintenance/komputer"
+	}
+
+	redirectURL := fmt.Sprintf("%s?year=%s&semester=%s&branch=%s&department=%s&sub_department=%s&msg=Berhasil disetujui",
+		redirectPath, r.FormValue("year"), r.FormValue("semester"), branch, dept, subDept)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+func (server *Server) MaintenanceHistory(w http.ResponseWriter, r *http.Request) {
+	var documents []models.MaintenanceDocument
+	server.DB.Order("created_at desc").Find(&documents)
+
+	server.RenderHTML(w, r, http.StatusOK, "maintenance/history", map[string]interface{}{
+		"title":     "Riwayat Pemeliharaan",
+		"documents": documents,
+	})
+}
+
+func (server *Server) MaintenanceHistoryDetail(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var doc models.MaintenanceDocument
+	if err := server.DB.Where("id = ?", id).First(&doc).Error; err != nil {
+		http.Redirect(w, r, "/maintenance/history", http.StatusSeeOther)
+		return
+	}
+
+	var reports []models.MaintenanceReport
+	server.DB.Preload("Asset", func(db *gorm.DB) *gorm.DB {
+		return db.Unscoped()
+	}).Where("document_id = ?", id).Find(&reports)
+
+	// Group reports for display (using snapshot and asset info)
+	groupedAssets := make(map[string][]map[string]interface{})
+	for _, report := range reports {
+		groupKey := report.UserSubDepartment
+		if groupKey == "" {
+			groupKey = "Lainnya"
+		}
+
+		assetData := map[string]interface{}{
+			"Asset":     report.Asset,
+			"Report":    report,
+			"HasReport": true,
+		}
+		groupedAssets[groupKey] = append(groupedAssets[groupKey], assetData)
+	}
+
+	// Fetch signatures
+	var submitter models.Admin
+	var approver models.Admin
+	if doc.SubmittedByID != "" {
+		server.DB.First(&submitter, "id = ?", doc.SubmittedByID)
+	}
+	if doc.ApprovedByID != "" {
+		server.DB.First(&approver, "id = ?", doc.ApprovedByID)
+	}
+
+	// Enhance submitter/approver info if they are also employees
+	enhanceAdmin := func(a *models.Admin) {
+		if a.ID != "" && a.UserID != "" {
+			var u models.User
+			server.DB.First(&u, "id = ?", a.UserID)
+			a.Username = u.Name
+			a.Role = u.Position
+		}
+	}
+	enhanceAdmin(&submitter)
+	enhanceAdmin(&approver)
+
+	server.RenderHTML(w, r, http.StatusOK, "maintenance/history_detail", map[string]interface{}{
+		"title":         "Detail Laporan Historis",
+		"doc":           doc,
+		"groupedAssets": groupedAssets,
+		"submitter":     submitter,
+		"approver":      approver,
+	})
 }

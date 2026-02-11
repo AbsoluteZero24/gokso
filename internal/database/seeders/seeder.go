@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// DBSeed menjalankan semua seeder utama untuk mengisi data awal database
 func DBSeed(db *gorm.DB) error {
 	// Seed Users
 	var userIDs []string

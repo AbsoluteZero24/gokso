@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// UserFaker menghasilkan data karyawan buatan (dummy) untuk keperluan testing atau seeding
 func UserFaker(db *gorm.DB) *models.User {
 
 	return &models.User{

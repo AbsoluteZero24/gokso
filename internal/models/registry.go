@@ -4,6 +4,7 @@ type Model struct {
 	Model interface{}
 }
 
+// RegisterModels mengembalikan daftar semua model database untuk keperluan migrasi
 func RegisterModels() []Model {
 	return []Model{
 		{Model: User{}},
@@ -17,6 +18,7 @@ func RegisterModels() []Model {
 		{Model: MasterRamType{}},
 		{Model: MasterStorageType{}},
 		{Model: RolePermission{}},
+		{Model: MaintenanceDocument{}},
 		{Model: MaintenanceReport{}},
 	}
 }

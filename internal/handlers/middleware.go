@@ -5,6 +5,7 @@ import (
 )
 
 // AuthRequired middleware checks if user is logged in
+// AuthRequired adalah middleware untuk memastikan pengguna sudah login sebelum mengakses rute
 func (server *Server) AuthRequired(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, _, _, isLoggedIn := GetCurrentAdmin(r)
@@ -17,6 +18,7 @@ func (server *Server) AuthRequired(next http.HandlerFunc) http.HandlerFunc {
 }
 
 // RoleRequired middleware checks if user has one of the required roles
+// RoleRequired adalah middleware untuk membatasi akses berdasarkan peran (role) tertentu
 func (server *Server) RoleRequired(roles []string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, _, userRole, isLoggedIn := GetCurrentAdmin(r)
@@ -43,6 +45,7 @@ func (server *Server) RoleRequired(roles []string, next http.HandlerFunc) http.H
 }
 
 // PermissionRequired middleware checks if user's role has access to a specific resource
+// PermissionRequired adalah middleware untuk memeriksa izin akses terhadap sumber daya (resource) tertentu
 func (server *Server) PermissionRequired(resource string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, _, userRole, isLoggedIn := GetCurrentAdmin(r)

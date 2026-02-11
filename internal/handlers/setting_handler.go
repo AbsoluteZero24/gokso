@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/AbsoluteZero24/goaset/internal/models"
@@ -10,38 +11,86 @@ import (
 )
 
 // User Management
+// ListSettingUser menampilkan halaman manajemen pengguna admin
 func (server *Server) ListSettingUser(w http.ResponseWriter, r *http.Request) {
+	type AdminWithUser struct {
+		models.Admin
+		EmployeeName string
+		NIK          string
+	}
+
 	var admins []models.Admin
 	server.DB.Find(&admins)
 
+	var data []AdminWithUser
+	for _, admin := range admins {
+		var user models.User
+		if admin.UserID != "" {
+			server.DB.Select("name", "nik").Where("id = ?", admin.UserID).First(&user)
+		}
+		data = append(data, AdminWithUser{
+			Admin:        admin,
+			EmployeeName: user.Name,
+			NIK:          user.NIK,
+		})
+	}
+
 	server.RenderHTML(w, r, http.StatusOK, "setting/user", map[string]interface{}{
 		"title":  "User Management",
-		"admins": admins,
+		"admins": data,
+		"error":  r.URL.Query().Get("error"),
+		"msg":    r.URL.Query().Get("msg"),
 	})
 }
 
+// CreateSettingUserForm menampilkan form untuk menambah user admin baru
 func (server *Server) CreateSettingUserForm(w http.ResponseWriter, r *http.Request) {
+	var employees []models.User
+	server.DB.Select("id", "name", "nik").Find(&employees)
+
 	server.RenderHTML(w, r, http.StatusOK, "setting/user_form", map[string]interface{}{
-		"title": "Tambah User Admin",
+		"title":     "Tambah User Admin",
+		"employees": employees,
 	})
 }
 
+// StoreSettingUser menyimpan data user admin baru ke database
 func (server *Server) StoreSettingUser(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
+	username := r.FormValue("username")
 	password := r.FormValue("password")
+	role := r.FormValue("role")
+	userID := r.FormValue("user_id")
+
+	// Check if username already exists
+	var count int64
+	server.DB.Model(&models.Admin{}).Where("username = ?", username).Count(&count)
+	if count > 0 {
+		http.Redirect(w, r, "/setting/user?error=Username sudah digunakan", http.StatusSeeOther)
+		return
+	}
+
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 
 	admin := models.Admin{
 		ID:       uuid.New().String(),
-		Username: r.FormValue("username"),
+		UserID:   userID,
+		Username: username,
 		Password: string(hashedPassword),
-		Role:     r.FormValue("role"),
+		Role:     role,
 	}
 
-	server.DB.Create(&admin)
-	http.Redirect(w, r, "/setting/user", http.StatusSeeOther)
+	fmt.Printf("Creating admin: %+v\n", admin)
+
+	if err := server.DB.Create(&admin).Error; err != nil {
+		http.Redirect(w, r, "/setting/user?error=Gagal menyimpan user: "+err.Error(), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/setting/user?msg=User berhasil dibuat", http.StatusSeeOther)
 }
 
+// EditSettingUserForm menampilkan form untuk mengubah data user admin yang sudah ada
 func (server *Server) EditSettingUserForm(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -52,12 +101,17 @@ func (server *Server) EditSettingUserForm(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	var employees []models.User
+	server.DB.Select("id", "name", "nik").Find(&employees)
+
 	server.RenderHTML(w, r, http.StatusOK, "setting/user_form", map[string]interface{}{
-		"title": "Edit User Admin",
-		"admin": admin,
+		"title":     "Edit User Admin",
+		"admin":     admin,
+		"employees": employees,
 	})
 }
 
+// UpdateSettingUser menangani proses pembaruan data user admin di database
 func (server *Server) UpdateSettingUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -65,12 +119,25 @@ func (server *Server) UpdateSettingUser(w http.ResponseWriter, r *http.Request) 
 	_ = r.ParseForm()
 	var admin models.Admin
 	if err := server.DB.First(&admin, "id = ?", id).Error; err != nil {
-		http.Redirect(w, r, "/setting/user", http.StatusSeeOther)
+		http.Redirect(w, r, "/setting/user?error=User tidak ditemukan", http.StatusSeeOther)
 		return
 	}
 
-	admin.Username = r.FormValue("username")
-	admin.Role = r.FormValue("role")
+	username := r.FormValue("username")
+	role := r.FormValue("role")
+	userID := r.FormValue("user_id")
+
+	// Check if username already exists for OTHER users
+	var count int64
+	server.DB.Model(&models.Admin{}).Where("username = ? AND id != ?", username, id).Count(&count)
+	if count > 0 {
+		http.Redirect(w, r, "/setting/user?error=Username sudah digunakan oleh akun lain", http.StatusSeeOther)
+		return
+	}
+
+	admin.UserID = userID
+	admin.Username = username
+	admin.Role = role
 
 	password := r.FormValue("password")
 	if password != "" {
@@ -78,10 +145,15 @@ func (server *Server) UpdateSettingUser(w http.ResponseWriter, r *http.Request) 
 		admin.Password = string(hashedPassword)
 	}
 
-	server.DB.Save(&admin)
-	http.Redirect(w, r, "/setting/user", http.StatusSeeOther)
+	if err := server.DB.Save(&admin).Error; err != nil {
+		http.Redirect(w, r, "/setting/user?error=Gagal memperbarui user: "+err.Error(), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/setting/user?msg=User berhasil diperbarui", http.StatusSeeOther)
 }
 
+// DeleteSettingUser menghapus data user admin dari database
 func (server *Server) DeleteSettingUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -90,6 +162,7 @@ func (server *Server) DeleteSettingUser(w http.ResponseWriter, r *http.Request) 
 }
 
 // Role Permission Management
+// ListSettingRole menampilkan halaman pengaturan izin akses (permission) untuk setiap peran
 func (server *Server) ListSettingRole(w http.ResponseWriter, r *http.Request) {
 	roles := []string{"super_admin", "asset_manager", "staf_it", "support"}
 

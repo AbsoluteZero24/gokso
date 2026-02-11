@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// hashPassword melakukan enkripsi password menggunakan algoritma bcrypt
 func hashPassword(password string) string {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -17,6 +18,7 @@ func hashPassword(password string) string {
 	return string(bytes)
 }
 
+// SeedAdmin memasukkan data admin default (Super Admin & Asset Manager) ke database
 func SeedAdmin(db *gorm.DB) error {
 	admins := []models.Admin{
 		{

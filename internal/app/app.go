@@ -10,6 +10,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Getenv mengambil nilai environment variable atau mengembalikan fallback jika tidak ditemukan
 func Getenv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
@@ -18,6 +19,7 @@ func Getenv(key, fallback string) string {
 	return fallback
 }
 
+// Run mengatur konfigurasi awal dan menjalankan aplikasi
 func Run() {
 	var server = handlers.Server{}
 	var appConfig = config.AppConfig{}

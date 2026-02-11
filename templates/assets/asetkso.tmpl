@@ -86,6 +86,83 @@
     border-radius: 6px;
   }
 
+  /* Modern Filter Styling */
+  .filter-pill {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border-radius: 50px;
+    padding: 4px 12px;
+    transition: all 0.2s ease;
+    min-height: 42px;
+  }
+
+  .filter-pill:hover {
+    border-color: #0d6efd !important;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.08) !important;
+  }
+
+  .filter-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(13, 110, 253, 0.05);
+    border-radius: 50%;
+    margin-right: 10px;
+  }
+
+  .filter-select-wrapper {
+    min-width: 140px;
+  }
+
+  .filter-select-wrapper select {
+    font-size: 0.9rem;
+    color: #444;
+    cursor: pointer;
+    box-shadow: none !important;
+  }
+
+  .filter-reset {
+    color: #dc3545;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    margin-left: 8px;
+    transition: transform 0.2s ease;
+    text-decoration: none;
+  }
+
+  .filter-reset:hover {
+    color: #b02a37;
+    transform: scale(1.1);
+  }
+
+  /* Modern Search Styling */
+  .search-pill {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border-radius: 50px;
+    padding: 4px 15px;
+    transition: all 0.2s ease;
+    min-height: 42px;
+    min-width: 250px;
+  }
+
+  .search-pill:focus-within {
+    border-color: #0d6efd !important;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.1) !important;
+  }
+
+  .search-icon-wrapper {
+    color: #0d6efd;
+    margin-right: 10px;
+    display: flex;
+    align-items: center;
+  }
+
 </style>
 
         <!--begin::App Content Header-->
@@ -118,6 +195,9 @@
                   <div class="card-header d-flex align-items-center justify-content-between">
                     <h3 class="card-title mb-0">Data Aset KSO</h3>
                     <div class="card-tools d-flex gap-2 ms-auto">
+                      <button type="button" id="btn-bulk-delete" class="btn btn-danger btn-sm d-none" onclick="confirmBulkDelete()">
+                        <i class="bi bi-trash-fill"></i> Hapus Terpilih (<span id="selected-count">0</span>)
+                      </button>
                       <a href="/inventori/aset-laptop/bulk-create" class="btn btn-success btn-sm">
                         <i class="bi bi-stack"></i> Sisipan Masal
                       </a>
@@ -131,28 +211,47 @@
                     <!-- Filter & Search Section -->
                     <div class="d-flex align-items-center justify-content-between mb-4 gap-3">
                       <!-- Filter Section -->
-                      <div class="filter-wrapper p-2 bg-light rounded border shadow-sm" style="max-width: fit-content;">
-                        <form action="/inventori/aset-laptop" method="GET" id="filterForm" class="d-flex align-items-center gap-3 px-2">
-                          <label for="year_filter" class="fw-bold mb-0 small text-muted text-uppercase">Filter Tahun:</label>
-                          <div class="input-group input-group-sm" style="width: 160px;">
-                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-calendar3"></i></span>
-                            <input type="text" name="year" id="year_filter" class="form-control border-start-0 ps-0" placeholder="Semua Tahun" value="{{ .selectedYear }}" readonly>
+                      <div class="filter-container">
+                        <form action="/inventori/aset-laptop" method="GET" id="filterForm" class="d-flex align-items-center">
+                          <div class="filter-pill shadow-sm border">
+                            <div class="filter-icon">
+                              <i class="bi bi-calendar-event-fill text-primary"></i>
+                            </div>
+                            <div class="filter-select-wrapper">
+                              <select name="year" id="year_filter" class="form-select border-0 bg-transparent py-0 fw-semibold" onchange="document.getElementById('filterForm').submit()">
+                                <option value="">Semua Tahun</option>
+                                {{ range $y := .years }}
+                                  <option value="{{ $y }}" {{ if eq $.selectedYear (printf "%d" $y) }}selected{{ end }}>Tahun {{ $y }}</option>
+                                {{ end }}
+                              </select>
+                            </div>
                             {{ if .selectedYear }}
-                            <button type="button" class="btn btn-outline-danger btn-sm border-start-0" title="Reset Filter" onclick="window.location.href='/inventori/aset-laptop'">
-                              <i class="bi bi-x-lg"></i>
-                            </button>
+                            <a href="/inventori/aset-laptop?year=" class="filter-reset" title="Hapus Filter">
+                              <i class="bi bi-x-circle-fill"></i>
+                            </a>
                             {{ end }}
                           </div>
                         </form>
                       </div>
 
-                      <!-- Search Container (Target for JS) -->
-                      <div id="datatable-search-container"></div>
+                      <!-- Custom Search Section -->
+                      <div class="search-container">
+                        <div class="search-pill shadow-sm border">
+                          <div class="search-icon-wrapper">
+                            <i class="bi bi-search"></i>
+                          </div>
+                          <input type="text" id="custom-search-input" class="form-control border-0 bg-transparent p-0 shadow-none" 
+                                 placeholder="Cari aset..." style="font-size: 0.9rem; font-weight: 500;">
+                        </div>
+                      </div>
                     </div>
 
+                    <form id="bulk-delete-form" action="/inventori/aset-laptop/bulk-delete" method="POST">
                     <table class="table table-bordered" id="table-asetkso">
                       <thead>
-                        <tr>
+                          <th style="width: 10px">
+                            <input type="checkbox" id="check-all" class="form-check-input">
+                          </th>
                           <th style="width: 10px">No</th>
                           <th>No. Inventaris</th>
                           <th>Serial Number</th>
@@ -170,6 +269,9 @@
                       <tbody>
                         {{ range $index, $asset := .assets }}
                         <tr>
+                          <td>
+                            <input type="checkbox" name="ids" value="{{ $asset.ID }}" class="form-check-input row-checkbox">
+                          </td>
                           <td class="text-center row-index">{{ add $index 1 }}.</td>
                           <td><span class="text-dark">{{ $asset.InventoryNumber }}</span></td>
                           <td>{{ $asset.SerialNumber }}</td>
@@ -203,6 +305,7 @@
                         {{ end }}
                       </tbody>
                     </table>
+                    </form>
                   </div>
                   <!-- /.card-body -->
                 </div>
@@ -218,107 +321,162 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const tableElement = document.getElementById('table-asetkso');
-        if (tableElement) {
-            const dataTable = new simpleDatatables.DataTable(tableElement, {
-                searchable: true,
-                fixedHeight: false,
-                perPage: 10,
-                labels: {
-                    placeholder: "Cari aset...",
-                    perPage: "{select}",
-                    noRows: "Data tidak ditemukan",
-                    info: "Menampilkan {start} sampai {end} dari {rows} data",
-                },
-                columns: [
-                    { select: 0, sortable: false },
-                    { select: 1, sort: "asc" }
-                ]
-            });
+        if (!tableElement) return;
 
-            const updateRowNumbers = () => {
-                // Wait for the library to finish rendering the DOM
-                setTimeout(() => {
-                    const wrapper = tableElement.closest('.datatable-wrapper');
-                    const infoElement = wrapper ? wrapper.querySelector('.datatable-info') : null;
-                    let startIdx = 0;
+        /* 
+         * ==========================================================
+         * 1. KONFIGURASI DATATABLE
+         * ==========================================================
+         * Menggunakan library simple-datatables dengan ekstensi kustom
+         * untuk pencarian dan logika penomoran baris.
+         */
+        const dataTable = new simpleDatatables.DataTable(tableElement, {
+            searchable: false, // Nonaktifkan pencarian bawaan agar bisa pakai search pill buatan sendiri
+            fixedHeight: false,
+            perPage: 10,
+            labels: {
+                perPage: "{select}",
+                noRows: "Data tidak ditemukan",
+                info: "Menampilkan {start} sampai {end} dari {rows} data",
+            },
+            columns: [
+                { select: 0, sortable: false }, // Kolom Checkbox
+                { select: 1, sortable: false }, // Kolom Nomor
+                { select: 2, sort: "asc" }     // Urutan default (No. Inventaris)
+            ]
+        });
 
-                    if (infoElement) {
-                        // Extract the first number from the info text (e.g., "Menampilkan 6 sampai 10...")
-                        const match = infoElement.innerText.match(/\d+/);
-                        if (match) {
-                            startIdx = parseInt(match[0]) - 1;
-                        }
-                    }
-
-                    const rows = tableElement.querySelectorAll('tbody tr');
-                    rows.forEach((row, index) => {
-                        const cell = row.querySelector('.row-index');
-                        if (cell && !row.classList.contains('datatable-empty')) {
-                            cell.innerText = (startIdx + index + 1) + ".";
-                        }
-                    });
-                }, 50);
-            };
-
-            // Bind events for numbering updates
-            dataTable.on("datatable.page", updateRowNumbers);
-            dataTable.on("datatable.sort", updateRowNumbers);
-            dataTable.on("datatable.perpage", updateRowNumbers);
-            dataTable.on("datatable.search", updateRowNumbers);
-
-            // Move elements after init for premium layout
-            dataTable.on("datatable.init", () => {
-                updateRowNumbers();
-                const topBar = document.querySelector(".datatable-top");
-                const searchDiv = topBar.querySelector(".datatable-search");
-                const searchContainer = document.getElementById("datatable-search-container");
-                
-                // Move Search Input to align with Year Filter
-                if (searchDiv && searchContainer) {
-                    searchContainer.appendChild(searchDiv);
-                    const searchInput = searchDiv.querySelector(".datatable-input");
-                    if (searchInput) {
-                        searchInput.style.margin = "0";
-                    }
-                }
-
-                // Hide original top bar since we moved/hidden its contents
-                if (topBar) topBar.style.display = "none";
-
-                // Move the original "per page" selector to bottom instead of cloning
-                const topDropdown = topBar.querySelector(".datatable-dropdown");
-                const bottomContainer = document.querySelector(".datatable-bottom");
-                
-                if (topDropdown && bottomContainer) {
-                    const bottomLeft = document.createElement("div");
-                    bottomLeft.className = "datatable-bottom-left";
-                    
-                    // Clear text nodes from label but keep select
-                    const label = topDropdown.querySelector("label");
-                    if (label) {
-                        const selector = label.querySelector(".datatable-selector");
-                        label.innerHTML = "";
-                        if (selector) label.appendChild(selector);
-                    }
-                    
-                    bottomLeft.appendChild(topDropdown);
-                    
-                    const info = bottomContainer.querySelector(".datatable-info");
-                    if (info) bottomLeft.appendChild(info);
-                    
-                    bottomContainer.insertBefore(bottomLeft, bottomContainer.firstChild);
-                }
+        /* 
+         * ==========================================================
+         * 2. LOGIKA PENCARIAN KUSTOM
+         * ==========================================================
+         * Menghubungkan input pencarian kustom ke API DataTable.
+         */
+        const customSearchInput = document.getElementById('custom-search-input');
+        if (customSearchInput) {
+            customSearchInput.addEventListener('input', (e) => {
+                dataTable.search(e.target.value);
             });
         }
 
-        // Initialize Year Filter with Flatpickr
-        flatpickr("#year_filter", {
-            dateFormat: "Y",
-            altFormat: "Y",
-            onChange: function(selectedDates, dateStr, instance) {
-                if (dateStr) {
-                    document.getElementById('filterForm').submit();
+        /* 
+         * ==========================================================
+         * 3. PENOMORAN BARIS DINAMIS
+         * ==========================================================
+         * Memperbaiki indeks nomor baris (1, 2, 3...) saat sorting 
+         * atau pagination berubah sesuai dengan offset saat ini.
+         */
+        const updateRowNumbers = () => {
+            setTimeout(() => {
+                const wrapper = tableElement.closest('.datatable-wrapper');
+                const infoElement = wrapper ? wrapper.querySelector('.datatable-info') : null;
+                let startIdx = 0;
+
+                if (infoElement) {
+                    // Ambil angka awal dari teks "Menampilkan X sampai Y..."
+                    const match = infoElement.innerText.match(/\d+/);
+                    if (match) startIdx = parseInt(match[0]) - 1;
                 }
+
+                tableElement.querySelectorAll('tbody tr').forEach((row, index) => {
+                    const cell = row.querySelector('.row-index');
+                    if (cell && !row.classList.contains('datatable-empty')) {
+                        cell.innerText = (startIdx + index + 1) + ".";
+                    }
+                });
+            }, 50);
+        };
+
+        /* 
+         * ==========================================================
+         * 4. HANDLER HAPUS MASSAL (BULK DELETE)
+         * ==========================================================
+         * Mengelola status pemilihan checkbox dan menampilkan/menyembunyikan
+         * tombol "Hapus Terpilih" berdasarkan pilihan user.
+         */
+        const checkAll = document.getElementById('check-all');
+        const btnBulkDelete = document.getElementById('btn-bulk-delete');
+        const selectedCountSpan = document.getElementById('selected-count');
+        
+        const updateBulkDeleteState = () => {
+            const checkedCount = tableElement.querySelectorAll('.row-checkbox:checked').length;
+            if (selectedCountSpan) selectedCountSpan.innerText = checkedCount;
+            
+            if (checkedCount > 0) {
+                btnBulkDelete?.classList.remove('d-none');
+            } else {
+                btnBulkDelete?.classList.add('d-none');
+            }
+        };
+
+        if (checkAll) {
+            checkAll.addEventListener('change', function() {
+                tableElement.querySelectorAll('.row-checkbox').forEach(cb => {
+                    cb.checked = this.checked;
+                });
+                updateBulkDeleteState();
+            });
+        }
+
+        tableElement.addEventListener('change', function(e) {
+            if (e.target.classList.contains('row-checkbox')) {
+                const allSelected = tableElement.querySelectorAll('.row-checkbox').length === 
+                                  tableElement.querySelectorAll('.row-checkbox:checked').length;
+                if (checkAll) checkAll.checked = allSelected;
+                updateBulkDeleteState();
+            }
+        });
+
+        window.confirmBulkDelete = () => {
+            const count = tableElement.querySelectorAll('.row-checkbox:checked').length;
+            if (confirm(`Apakah Anda yakin ingin menghapus ${count} data terpilih?`)) {
+                document.getElementById('bulk-delete-form').submit();
+            }
+        };
+
+        /* 
+         * ==========================================================
+         * 5. PENGIKATAN EVENT TABEL
+         * ==========================================================
+         */
+        const handleTableUpdate = () => {
+            updateRowNumbers();
+            if (checkAll) checkAll.checked = false;
+            updateBulkDeleteState();
+        };
+
+        dataTable.on("datatable.page", handleTableUpdate);
+        dataTable.on("datatable.sort", handleTableUpdate);
+        dataTable.on("datatable.perpage", handleTableUpdate);
+        dataTable.on("datatable.search", handleTableUpdate);
+
+        dataTable.on("datatable.init", () => {
+            handleTableUpdate();
+            
+            // Penyesuaian Layout Premium
+            const topBar = document.querySelector(".datatable-top");
+            if (topBar) topBar.style.display = "none"; // Sembunyikan baris atas bawaan
+            
+            // Pindahkan pilihan "entries per page" ke footer
+            const topDropdown = topBar?.querySelector(".datatable-dropdown");
+            const bottomContainer = document.querySelector(".datatable-bottom");
+            
+            if (topDropdown && bottomContainer) {
+                const bottomLeft = document.createElement("div");
+                bottomLeft.className = "datatable-bottom-left d-flex align-items-center";
+                
+                const label = topDropdown.querySelector("label");
+                if (label) {
+                    const selector = label.querySelector(".datatable-selector");
+                    label.innerHTML = ""; 
+                    if (selector) label.appendChild(selector);
+                }
+                
+                bottomLeft.appendChild(topDropdown);
+                const info = bottomContainer.querySelector(".datatable-info");
+                if (info) bottomLeft.appendChild(info);
+                
+                bottomContainer.insertBefore(bottomLeft, bottomContainer.firstChild);
             }
         });
     });

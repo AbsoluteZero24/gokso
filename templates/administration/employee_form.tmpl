@@ -139,16 +139,16 @@
   const masterData = [
     {{ range $branch := .branches }}
     {
-      id: {{ $branch.ID }},
+      id: "{{ $branch.ID }}",
       name: "{{ $branch.Name }}",
       departments: [
         {{ range $dept := $branch.Departments }}
         {
-          id: {{ $dept.ID }},
+          id: "{{ $dept.ID }}",
           name: "{{ $dept.Name }}",
           subDepartments: [
             {{ range $sub := $dept.SubDepartments }}
-            { id: {{ $sub.ID }}, name: "{{ $sub.Name }}" },
+            { id: "{{ $sub.ID }}", name: "{{ $sub.Name }}" },
             {{ end }}
           ]
         },
