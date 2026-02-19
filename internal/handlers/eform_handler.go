@@ -48,6 +48,14 @@ func (server *Server) ListEForm(w http.ResponseWriter, r *http.Request) {
 			"color":       "#8b5cf6",
 			"category":    "Asset Control",
 		},
+		{
+			"id":          "form-bast-laptop",
+			"name":        "BA Serah Terima Laptop/Komputer",
+			"description": "Berita acara bukti penyerahan khusus aset IT (Laptop/Komputer).",
+			"icon":        "bi-laptop",
+			"color":       "#ec4899",
+			"category":    "Asset Control",
+		},
 	}
 
 	server.RenderHTML(w, r, http.StatusOK, "eform/index", map[string]interface{}{
@@ -70,7 +78,11 @@ func (server *Server) FillEForm(w http.ResponseWriter, r *http.Request) {
 	server.DB.Order("name asc").Find(&employees)
 
 	var assets []models.AssetKSO
-	server.DB.Order("inventory_number asc").Find(&assets)
+	query := server.DB.Order("inventory_number asc")
+	if id == "form-bast-laptop" {
+		query = query.Where("LOWER(category) = ? OR LOWER(category) = ?", "laptop", "komputer")
+	}
+	query.Find(&assets)
 
 	switch id {
 	case "form-maintenance":
@@ -82,6 +94,9 @@ func (server *Server) FillEForm(w http.ResponseWriter, r *http.Request) {
 	case "form-bast":
 		formName = "BA Serah Terima Aset"
 		templateName = "eform/form_bast"
+	case "form-bast-laptop":
+		formName = "BA Serah Terima Laptop/Komputer"
+		templateName = "eform/form_bast_laptop"
 	default:
 		http.Redirect(w, r, "/godms/dms", http.StatusSeeOther)
 		return
@@ -129,7 +144,7 @@ func (server *Server) SubmitEForm(w http.ResponseWriter, r *http.Request) {
 	}
 	physicalPath := filepath.Join(uploadDir, fileID+".pdf")
 
-	if id == "form-bast" {
+	if id == "form-bast" || id == "form-bast-laptop" {
 		// Collect BAST Data
 		var data BASTData
 
@@ -158,14 +173,37 @@ func (server *Server) SubmitEForm(w http.ResponseWriter, r *http.Request) {
 		data.SigP1Data = r.FormValue("sig_p1_data")
 		data.SigP2Data = r.FormValue("sig_p2_data")
 
+		pdfTitle := "BERITA ACARA SERAH TERIMA"
+		if id == "form-bast-laptop" {
+			pdfTitle = "BERITA ACARA SERAH TERIMA\nLAPTOP/KOMPUTER"
+
+			// Create/Find Subfolder "BAST Laptop/Komputer"
+			var subFolder models.DMSFolder
+			subFolderName := "BAST Laptop/Komputer"
+			if err := server.DB.Where("name = ? AND parent_id = ?", subFolderName, folder.ID).First(&subFolder).Error; err != nil {
+				subFolder = models.DMSFolder{
+					ID:       uuid.New().String(),
+					Name:     subFolderName,
+					ParentID: &folder.ID,
+					Color:    "#ec4899", // Pink matching the icon
+				}
+				server.DB.Create(&subFolder)
+			}
+			folder = subFolder // Re-assign folder so the file is saved here
+		}
+
 		// Generate PDF
-		err := server.GenerateBASTPDF(data, physicalPath)
+		err := server.GenerateBASTPDF(data, pdfTitle, physicalPath)
 		if err != nil {
 			http.Error(w, "Failed to generate PDF: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		fileName = fmt.Sprintf("BAST_%s_%s.pdf", data.P2.Name, time.Now().Format("20060102_150405"))
+		prefix := "BAST"
+		if id == "form-bast-laptop" {
+			prefix = "BAST_IT"
+		}
+		fileName = fmt.Sprintf("%s_%s_%s.pdf", prefix, data.P2.Name, time.Now().Format("20060102_150405"))
 		msg = "Berita Acara Serah Terima (BAST) berhasil dibuat dan disimpan ke eDoc."
 	} else {
 		fileName = fmt.Sprintf("Form_%s_%s.pdf", id, time.Now().Format("20060102_150405"))

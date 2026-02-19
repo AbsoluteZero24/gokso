@@ -29,7 +29,7 @@ type BASTData struct {
 	SigP2Data    string // Base64
 }
 
-func (server *Server) GenerateBASTPDF(data BASTData, outputPath string) error {
+func (server *Server) GenerateBASTPDF(data BASTData, title string, outputPath string) error {
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.SetMargins(20, 20, 20)
 	pdf.AddPage()
@@ -62,8 +62,11 @@ func (server *Server) GenerateBASTPDF(data BASTData, outputPath string) error {
 
 	// Title
 	pdf.SetFont("Arial", "B", 14)
-	pdf.CellFormat(0, 7, "BERITA ACARA SERAH TERIMA", "", 1, "C", false, 0, "")
-	pdf.Ln(8)
+	if title == "" {
+		title = "BERITA ACARA SERAH TERIMA"
+	}
+	pdf.MultiCell(0, 7, title, "", "C", false)
+	pdf.Ln(4)
 
 	// Opening text
 	pdf.SetFont("Arial", "", 11)
@@ -109,7 +112,13 @@ func (server *Server) GenerateBASTPDF(data BASTData, outputPath string) error {
 		pdf.CellFormat(10, 8, fmt.Sprintf("%d", i+1), "1", 0, "C", false, 0, "")
 		pdf.CellFormat(90, 8, fmt.Sprintf("%s - %s", item.AssetName, item.SerialNumber), "1", 0, "L", false, 0, "")
 		pdf.CellFormat(20, 8, "1 Unit", "1", 0, "C", false, 0, "")
-		pdf.CellFormat(50, 8, item.Category, "1", 1, "L", false, 0, "")
+
+		// Use Label (DeviceName) if available, otherwise Category
+		keterangan := item.DeviceName
+		if keterangan == "" {
+			keterangan = item.Category
+		}
+		pdf.CellFormat(50, 8, keterangan, "1", 1, "L", false, 0, "")
 	}
 	pdf.Ln(6)
 

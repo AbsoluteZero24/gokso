@@ -1,0 +1,345 @@
+{{ define "eform/form_bast_laptop" }}
+<style>
+    /* Custom TomSelect Improvements */
+    .ts-wrapper.form-select {
+        border: none !important;
+        padding: 0 !important;
+        height: auto !important;
+    }
+    .ts-control {
+        border: 1px solid #dee2e6 !important;
+        border-radius: 0.375rem !important;
+        padding: 0.5rem 0.75rem !important;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 0.75rem center !important;
+        background-size: 16px 12px !important;
+        cursor: pointer !important;
+    }
+    .ts-wrapper.focus .ts-control {
+        border-color: #86b7fe !important;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+    }
+    .ts-dropdown {
+        border-radius: 0.375rem !important;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        margin-top: 5px !important;
+        z-index: 9999 !important;
+    }
+    .input-group-text {
+        background-color: #f8fafc;
+        color: #64748b;
+    }
+</style>
+
+<div class="app-content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-6">
+                <h3 class="mb-0">{{ .formName }}</h3>
+            </div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-end">
+                    <li class="breadcrumb-item"><a href="/">Home</a></li>
+                    <li class="breadcrumb-item"><a href="/godms/dms">eForm</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ .formName }}</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="app-content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white border-bottom-0 pt-4 px-4">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-primary bg-opacity-10 p-2 rounded-3 me-3">
+                                <i class="bi bi-file-earmark-check text-primary fs-4"></i>
+                            </div>
+                            <div class="d-flex flex-column">
+                                <h5 class="card-title fw-bold mb-0">BA Serah Terima Laptop/Komputer</h5>
+                                <p class="text-muted small mb-0">Lengkapi data di bawah ini dengan benar untuk membuat dokumen BAST digital secara otomatis.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form action="/godms/dms/submit/form-bast-laptop" method="POST">
+                        <div class="card-body p-4">
+                            <!-- Informasi Dokumen -->
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Nomor Dokumen</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                                        <input type="text" name="doc_number" class="form-control bg-light" placeholder="Otomatis" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Tanggal Serah Terima</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-calendar-check"></i></span>
+                                        <input type="text" name="handover_date" id="handover_date" class="form-control bg-white" placeholder="Pilih Tanggal" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <!-- Pihak Pertama (Pemberi) -->
+                                <div class="col-md-6 pe-md-4 border-end">
+                                    <h6 class="fw-bold mb-3 border-bottom pb-2">PIHAK PERTAMA (PEMBERI)</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label">Nama Pemberi</label>
+                                        <select name="p1_employee_id" id="p1_employee_id" class="form-select" required>
+                                            <option value="">-- Pilih Pemberi --</option>
+                                            {{ range .employees }}
+                                            <option value="{{ .ID }}">{{ .Name }} - {{ .Department }}</option>
+                                            {{ end }}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Pihak Kedua (Penerima) -->
+                                <div class="col-md-6 ps-md-4">
+                                    <h6 class="fw-bold mb-3 border-bottom pb-2">PIHAK KEDUA (PENERIMA)</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label">Nama Penerima</label>
+                                        <select name="p2_employee_id" id="p2_employee_id" class="form-select" required>
+                                            <option value="">-- Pilih Penerima --</option>
+                                            {{ range .employees }}
+                                            <option value="{{ .ID }}">{{ .Name }} - {{ .Department }}</option>
+                                            {{ end }}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Detail Aset -->
+                            <div class="mt-4">
+                                <h6 class="fw-bold mb-3 border-bottom pb-2">DETAIL ASET</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered align-middle" id="assetTable">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th style="width: 45%;">Pilih / Cari Aset (No. Inventaris - Nama)</th>
+                                                <th style="width: 25%;">SerialNumber / SN</th>
+                                                <th style="width: 20%;">Label</th>
+                                                <th style="width: 10%;">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="assetTableBody">
+                                            <!-- Row will be added here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="addRow">
+                                    <i class="bi bi-plus-circle me-1"></i> Tambah Baris Aset
+                                </button>
+                            </div>
+
+                            <!-- Hidden inputs for selected asset details to be submitted if needed -->
+                            <div id="hiddenAssetFields"></div>
+
+
+
+                            <!-- Tanda Tangan Digital -->
+                            <div class="row mt-5">
+                                <div class="col-md-6 text-center">
+                                    <label class="form-label fw-bold small text-muted text-uppercase d-block mb-3">Tanda Tangan PIHAK PERTAMA</label>
+                                    <div class="signature-container border rounded bg-light mb-2" style="height: 150px; position: relative;">
+                                        <canvas id="sig-p1" class="w-100 h-100" style="touch-action: none; cursor: crosshair;"></canvas>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-link text-danger p-0" id="clear-p1">Hapus TTD</button>
+                                    <input type="hidden" name="sig_p1_data" id="sig_p1_data">
+                                </div>
+                                <div class="col-md-6 text-center">
+                                    <label class="form-label fw-bold small text-muted text-uppercase d-block mb-3">Tanda Tangan PIHAK KEDUA</label>
+                                    <div class="signature-container border rounded bg-light mb-2" style="height: 150px; position: relative;">
+                                        <canvas id="sig-p2" class="w-100 h-100" style="touch-action: none; cursor: crosshair;"></canvas>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-link text-danger p-0" id="clear-p2">Hapus TTD</button>
+                                    <input type="hidden" name="sig_p2_data" id="sig_p2_data">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-footer bg-white border-top-0 p-4">
+                            <div class="d-flex justify-content-end gap-2">
+                                <a href="/godms/dms" class="btn btn-light px-4">Batal</a>
+                                <button type="submit" class="btn btn-primary px-4" id="submitBtn">
+                                    <i class="bi bi-send me-1"></i> Submit & Simpan ke eDoc
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Data Aset dari Server
+const systemAssets = [
+    {{ range .assets }}
+    {
+        id: "{{ .ID }}",
+        inventory_number: "{{ .InventoryNumber }}",
+        asset_name: "{{ .AssetName }}",
+        category: "{{ .Category }}",
+        label: "{{ .DeviceName }}",
+        serial_number: "{{ .SerialNumber }}"
+    },
+    {{ end }}
+];
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Flatpickr for Handover Date
+    if (typeof flatpickr !== 'undefined') {
+        flatpickr("#handover_date", {
+            dateFormat: "Y-m-d",
+            defaultDate: "today",
+            allowInput: true
+        });
+    }
+
+    // Initialize TomSelect for Employee Dropdowns
+    const tsConfig = {
+        create: false,
+        allowEmptyOption: false,
+        dropdownParent: 'body',
+        onDropdownOpen: function() { this.wrapper.classList.add('focus'); },
+        onDropdownClose: function() { this.wrapper.classList.remove('focus'); }
+    };
+
+    if (typeof TomSelect !== 'undefined') {
+        new TomSelect('#p1_employee_id', { ...tsConfig, placeholder: "-- Pilih Pemberi --" });
+        new TomSelect('#p2_employee_id', { ...tsConfig, placeholder: "-- Pilih Penerima --" });
+    }
+
+    const addRowBtn = document.getElementById('addRow');
+    const assetTableBody = document.getElementById('assetTableBody');
+    let rowCount = 0;
+
+    function createAssetRow() {
+        rowCount++;
+        const rowId = `row-${rowCount}`;
+        const tr = document.createElement('tr');
+        tr.id = rowId;
+        tr.innerHTML = `
+            <td>
+                <select name="selected_asset_ids[]" class="asset-selector" required>
+                    <option value="">-- Cari No. Inventaris atau Nama Aset --</option>
+                    ${systemAssets.filter(a => a.category.toLowerCase() === 'laptop' || a.category.toLowerCase() === 'komputer').map(a => {
+                        const labelText = a.label ? ` (${a.label})` : '';
+                        return `<option value="${a.id}">${a.inventory_number} - ${a.asset_name}${labelText}</option>`;
+                    }).join('')}
+                </select>
+                <input type="hidden" name="asset_name[]" id="name-${rowId}">
+            </td>
+            <td>
+                <input type="text" name="asset_sn[]" id="sn-${rowId}" class="form-control bg-light" placeholder="SN Otomatis" readonly>
+            </td>
+            <td>
+                <input type="text" name="asset_category[]" id="cat-${rowId}" class="form-control bg-light" placeholder="Label Otomatis" readonly>
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-outline-danger btn-sm remove-row">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        assetTableBody.appendChild(tr);
+
+        // Initialize TomSelect for the new row
+        const selector = new TomSelect(tr.querySelector('.asset-selector'), {
+            create: false,
+            placeholder: "-- Cari Aset --",
+            dropdownParent: 'body',
+            onChange: function(val) {
+                const asset = systemAssets.find(a => a.id === val);
+                if (asset) {
+                    document.getElementById(`name-${rowId}`).value = asset.asset_name;
+                    document.getElementById(`sn-${rowId}`).value = asset.serial_number || '-';
+                    document.getElementById(`cat-${rowId}`).value = asset.label || asset.category;
+                } else {
+                    document.getElementById(`name-${rowId}`).value = '';
+                    document.getElementById(`sn-${rowId}`).value = '';
+                    document.getElementById(`cat-${rowId}`).value = '';
+                }
+            }
+        });
+
+        tr.querySelector('.remove-row').addEventListener('click', function() {
+            if (assetTableBody.rows.length > 1) {
+                selector.destroy();
+                tr.remove();
+            } else {
+                alert('Minimal harus ada satu aset dalam daftar.');
+            }
+        });
+    }
+
+    // Add initial row
+    createAssetRow();
+
+    // Initialize Signature Pads
+    const canvasP1 = document.getElementById('sig-p1');
+    const canvasP2 = document.getElementById('sig-p2');
+    
+    let signaturePadP1, signaturePadP2;
+
+    function resizeCanvas(canvas) {
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext("2d").scale(ratio, ratio);
+    }
+
+    if (typeof SignaturePad !== 'undefined') {
+        resizeCanvas(canvasP1);
+        resizeCanvas(canvasP2);
+        
+        signaturePadP1 = new SignaturePad(canvasP1, {
+            backgroundColor: 'rgba(255, 255, 255, 0)',
+            penColor: 'rgb(0, 0, 0)'
+        });
+        
+        signaturePadP2 = new SignaturePad(canvasP2, {
+            backgroundColor: 'rgba(255, 255, 255, 0)',
+            penColor: 'rgb(0, 0, 0)'
+        });
+    }
+
+    document.getElementById('clear-p1').addEventListener('click', () => signaturePadP1.clear());
+    document.getElementById('clear-p2').addEventListener('click', () => signaturePadP2.clear());
+
+    // Handle Form Submission
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        if (signaturePadP1.isEmpty() || signaturePadP2.isEmpty()) {
+            e.preventDefault();
+            alert('Harap lengkapi tanda tangan PIHAK PERTAMA dan PIHAK KEDUA.');
+            return;
+        }
+
+        // Add selected asset names to hidden inputs for submission if needed, 
+        // but they are already in the row inputs.
+        
+        // Export signatures
+        document.getElementById('sig_p1_data').value = signaturePadP1.toDataURL();
+        document.getElementById('sig_p2_data').value = signaturePadP2.toDataURL();
+    });
+
+    window.addEventListener("resize", () => {
+        // Redrawing signatures after resize is complex, so we just resize
+        resizeCanvas(canvasP1);
+        resizeCanvas(canvasP2);
+    });
+
+    addRowBtn.addEventListener('click', createAssetRow);
+});
+</script>
+{{ end }}
