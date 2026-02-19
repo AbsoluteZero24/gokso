@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/AbsoluteZero24/goaset/internal/config"
-	"github.com/AbsoluteZero24/goaset/internal/models"
+	"github.com/AbsoluteZero24/gokso/internal/config"
+	"github.com/AbsoluteZero24/gokso/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -32,6 +32,10 @@ func Migrate(db *gorm.DB) {
 	db.Exec("ALTER TABLE asset_kso DROP CONSTRAINT IF EXISTS asset_kso_inventory_number_key")
 	db.Exec("ALTER TABLE asset_kso DROP CONSTRAINT IF EXISTS inventory_number_key")
 	db.Exec("ALTER TABLE asset_kso DROP CONSTRAINT IF EXISTS uni_asset_kso_inventory_number")
+	db.Exec("ALTER TABLE dms_files ALTER COLUMN folder_id DROP NOT NULL")
+	db.Exec("UPDATE dms_files SET folder_id = NULL WHERE folder_id = ''")
+	db.Exec("ALTER TABLE dms_folders ALTER COLUMN parent_id DROP NOT NULL")
+	db.Exec("UPDATE dms_folders SET parent_id = NULL WHERE parent_id = ''")
 
 	for _, model := range models.RegisterModels() {
 		err := db.Debug().AutoMigrate(model.Model)

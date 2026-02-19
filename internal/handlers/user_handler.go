@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/AbsoluteZero24/goaset/internal/models"
+	"github.com/AbsoluteZero24/gokso/internal/models"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
@@ -58,8 +58,11 @@ func (server *Server) StoreEmployee(w http.ResponseWriter, r *http.Request) {
 		Password:       "password123", // Default password
 	}
 
-	server.DB.Create(&user)
-	http.Redirect(w, r, "/administration/employee", http.StatusSeeOther)
+	if err := server.DB.Create(&user).Error; err != nil {
+		http.Redirect(w, r, "/administration/employee?error=Gagal menambah karyawan: "+err.Error(), http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/administration/employee?msg=Karyawan berhasil ditambahkan", http.StatusSeeOther)
 }
 
 // EditEmployeeForm menampilkan form untuk mengubah data karyawan yang sudah ada

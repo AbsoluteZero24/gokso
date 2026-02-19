@@ -8,7 +8,7 @@
             <!--begin::Brand Image-->
             <img
               src="/public/assets/img/logo.png"
-              alt="GoAset Logo"
+              alt="gokso Logo"
               class="brand-image rounded-circle shadow"
               style="width: 33px; height: 33px; object-fit: cover;"
             />
@@ -38,98 +38,145 @@
                   <p>Dashboard</p>
                 </a>
               </li>
-              {{ if .Permissions.inventori }}
+
               <li class="nav-item">
                 <a href="#" class="nav-link">
-                  <i class="nav-icon bi bi-archive"></i>
+                  <i class="nav-icon bi bi-box"></i>
                   <p>
-                    Inventori
+                    GoAsset
                     <i class="nav-arrow bi bi-chevron-right"></i>
                   </p>
                 </a>
                 <ul class="nav nav-treeview">
-                  <li class="nav-item">
-                    <a href="/inventori/aset-laptop" class="nav-link">
-                      <i class="nav-icon bi bi-laptop"></i>
-                      <p>Aset</p>
-                    </a>
-                  </li>
+                  {{ if .Permissions.inventori }}
                   <li class="nav-item">
                     <a href="#" class="nav-link">
-                      <i class="nav-icon bi bi-database"></i>
+                      <i class="nav-icon bi bi-archive"></i>
                       <p>
-                        Master Data
+                        Inventori
                         <i class="nav-arrow bi bi-chevron-right"></i>
                       </p>
                     </a>
                     <ul class="nav nav-treeview">
                       <li class="nav-item">
-                        <a href="/inventori/master-data/asset-category" class="nav-link">
-                          <i class="nav-icon bi bi-circle"></i>
-                          <p>Kategori Aset</p>
+                        <a href="/inventori/aset-laptop" class="nav-link">
+                          <i class="nav-icon bi bi-laptop"></i>
+                          <p>Aset</p>
+                        </a>
+                      </li>
+                      <li class="nav-item">
+                        <a href="#" class="nav-link">
+                          <i class="nav-icon bi bi-database"></i>
+                          <p>
+                            Master Data
+                            <i class="nav-arrow bi bi-chevron-right"></i>
+                          </p>
+                        </a>
+                        <ul class="nav nav-treeview">
+                          <li class="nav-item">
+                            <a href="/inventori/master-data/asset-category" class="nav-link">
+                              <i class="nav-icon bi bi-circle"></i>
+                              <p>Kategori Aset</p>
+                            </a>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                  {{ end }}
+                  {{ if .Permissions.asset_management }}
+                  <li class="nav-item">
+                    <a href="#" class="nav-link">
+                      <i class="nav-icon bi bi-file-earmark-text"></i>
+                      <p>
+                        Asset Management
+                        <i class="nav-arrow bi bi-chevron-right"></i>
+                      </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                      <li class="nav-item">
+                        <a href="/asset-management/laptop" class="nav-link">
+                          <i class="nav-icon bi bi-laptop"></i>
+                          <p>Laptop</p>
+                        </a>
+                      </li>
+                      <li class="nav-item">
+                        <a href="/asset-management/komputer" class="nav-link">
+                          <i class="nav-icon bi bi-pc-display"></i>
+                          <p>Komputer</p>
+                        </a>
+                      </li>
+                    </ul>
+                  </li>
+                  {{ end }}
+                  {{ if .Permissions.maintenance }}
+                  <li class="nav-item">
+                    <a href="#" class="nav-link">
+                      <i class="nav-icon bi bi-tools"></i>
+                      <p>
+                        Maintenance
+                        <i class="nav-arrow bi bi-chevron-right"></i>
+                      </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                      <li class="nav-item">
+                        <a href="/maintenance/laptop" class="nav-link">
+                          <i class="nav-icon bi bi-laptop"></i>
+                          <p>Maintenance Laptop</p>
+                        </a>
+                      </li>
+                      <li class="nav-item">
+                        <a href="/maintenance/komputer" class="nav-link">
+                          <i class="nav-icon bi bi-pc-display"></i>
+                          <p>Maintenance Komputer</p>
+                        </a>
+                      </li>
+                      <li class="nav-item">
+                        <a href="/maintenance/history" class="nav-link">
+                          <i class="nav-icon bi bi-clock-history"></i>
+                          <p>Riwayat Laporan</p>
+                        </a>
+                      </li>
+                    </ul>
+                  </li>
+                  {{ end }}
+                </ul>
+              </li>
+
+              <li class="nav-item">
+                <a href="#" class="nav-link">
+                  <i class="nav-icon bi bi-journal-text"></i>
+                  <p>
+                    GoDMS
+                    <i class="nav-arrow bi bi-chevron-right"></i>
+                  </p>
+                </a>
+                <ul class="nav nav-treeview">
+                  <li class="nav-item">
+                    <a href="#" class="nav-link">
+                      <i class="nav-icon bi bi-info-circle"></i>
+                      <p>
+                        Sistem Informasi
+                        <i class="nav-arrow bi bi-chevron-right"></i>
+                      </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                      <li class="nav-item">
+                        <a href="/godms/doc" class="nav-link">
+                          <i class="nav-icon bi bi-file-earmark-ruled"></i>
+                          <p>eDoc</p>
+                        </a>
+                      </li>
+                      <li class="nav-item">
+                        <a href="/godms/dms" class="nav-link">
+                          <i class="nav-icon bi bi-file-earmark-text"></i>
+                          <p>eForm</p>
                         </a>
                       </li>
                     </ul>
                   </li>
                 </ul>
               </li>
-              {{ end }}
-              {{ if .Permissions.asset_management }}
-              <li class="nav-item">
-                <a href="#" class="nav-link">
-                  <i class="nav-icon bi bi-file-earmark-text"></i>
-                  <p>
-                    Asset Management
-                    <i class="nav-arrow bi bi-chevron-right"></i>
-                  </p>
-                </a>
-                <ul class="nav nav-treeview">
-                  <li class="nav-item">
-                    <a href="/asset-management/laptop" class="nav-link">
-                      <i class="nav-icon bi bi-laptop"></i>
-                      <p>Laptop</p>
-                    </a>
-                  </li>
-                  <li class="nav-item">
-                    <a href="/asset-management/komputer" class="nav-link">
-                      <i class="nav-icon bi bi-pc-display"></i>
-                      <p>Komputer</p>
-                    </a>
-                  </li>
-                </ul>
-              </li>
-              {{ end }}
-              {{ if .Permissions.maintenance }}
-              <li class="nav-item">
-                <a href="#" class="nav-link">
-                  <i class="nav-icon bi bi-tools"></i>
-                  <p>
-                    Maintenance
-                    <i class="nav-arrow bi bi-chevron-right"></i>
-                  </p>
-                </a>
-                <ul class="nav nav-treeview">
-                  <li class="nav-item">
-                    <a href="/maintenance/laptop" class="nav-link">
-                      <i class="nav-icon bi bi-laptop"></i>
-                      <p>Maintenance Laptop</p>
-                    </a>
-                  </li>
-                  <li class="nav-item">
-                    <a href="/maintenance/komputer" class="nav-link">
-                      <i class="nav-icon bi bi-pc-display"></i>
-                      <p>Maintenance Komputer</p>
-                    </a>
-                  </li>
-                  <li class="nav-item">
-                    <a href="/maintenance/history" class="nav-link">
-                      <i class="nav-icon bi bi-clock-history"></i>
-                      <p>Riwayat Laporan</p>
-                    </a>
-                  </li>
-                </ul>
-              </li>
-              {{ end }}
               {{ if .Permissions.administration }}
               <li class="nav-item">
                 <a href="#" class="nav-link">

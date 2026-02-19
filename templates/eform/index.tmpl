@@ -1,0 +1,242 @@
+{{ define "eform/index" }}
+<style>
+    :root {
+        --ef-bg: #f8fafc;
+        --ef-primary: #3b82f6;
+        --ef-secondary: #64748b;
+        --ef-card-bg: #ffffff;
+        --ef-border: #e2e8f0;
+        --ef-text-main: #1e293b;
+    }
+
+    .eform-container {
+        padding: 2rem;
+        background: var(--ef-bg);
+        min-height: 100vh;
+    }
+
+    .eform-header {
+        margin-bottom: 2.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+
+    .eform-title h1 {
+        font-size: 1.875rem;
+        font-weight: 800;
+        color: var(--ef-text-main);
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.025em;
+    }
+
+    .eform-title p {
+        color: var(--ef-secondary);
+        margin-bottom: 0;
+    }
+
+    .search-box {
+        position: relative;
+        width: 300px;
+    }
+
+    .search-box input {
+        padding-left: 2.5rem;
+        border-radius: 0.75rem;
+        border: 1px solid var(--ef-border);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .search-box i {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--ef-secondary);
+    }
+
+    /* Category Tabs */
+    .category-tabs {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+    }
+
+    .cat-tab {
+        padding: 0.5rem 1.25rem;
+        border-radius: 50rem;
+        background: white;
+        border: 1px solid var(--ef-border);
+        color: var(--ef-secondary);
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .cat-tab.active {
+        background: var(--ef-text-main);
+        color: white;
+        border-color: var(--ef-text-main);
+    }
+
+    .cat-tab:hover:not(.active) {
+        border-color: var(--ef-primary);
+        color: var(--ef-primary);
+    }
+
+    /* Grid Layout */
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .form-card {
+        background: var(--ef-card-bg);
+        border-radius: 1.25rem;
+        border: 1px solid var(--ef-border);
+        padding: 1.5rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .form-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border-color: rgba(59, 130, 246, 0.5);
+    }
+
+    .form-icon-wrapper {
+        width: 48px;
+        height: 48px;
+        border-radius: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .form-tag {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 0.25rem 0.75rem;
+        border-radius: 50rem;
+        background: #f1f5f9;
+        color: #475569;
+        display: inline-block;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-name {
+        font-weight: 700;
+        color: var(--ef-text-main);
+        margin-bottom: 0.5rem;
+        font-size: 1.125rem;
+    }
+
+    .form-desc {
+        font-size: 0.875rem;
+        color: var(--ef-secondary);
+        line-height: 1.5;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 1rem;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .btn-fill {
+        padding: 0.5rem 1rem;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        color: var(--ef-text-main);
+        font-size: 0.813rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .form-card:hover .btn-fill {
+        background: var(--ef-primary);
+        color: white;
+        border-color: var(--ef-primary);
+    }
+
+    .stat-badge {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+</style>
+
+<div class="eform-container">
+    <div class="eform-header">
+        <div class="eform-title">
+            <h1>Digital Forms</h1>
+            <p>Pilih formulir untuk diisi dan akan otomatis tersimpan dalam sistem eDoc.</p>
+        </div>
+        <div class="search-box">
+            <i class="bi bi-search"></i>
+            <input type="text" class="form-control border-0 bg-white" placeholder="Cari formulir...">
+        </div>
+    </div>
+
+    {{ if .msg }}
+    <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-3 mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        {{ .msg }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {{ end }}
+
+    <div class="category-tabs">
+        <div class="cat-tab active">Semua Form</div>
+        <div class="cat-tab">IT Support</div>
+        <div class="cat-tab">Logistik</div>
+        <div class="cat-tab">Asset Control</div>
+        <div class="cat-tab">Sumber Daya Manusia</div>
+    </div>
+
+    <div class="form-grid">
+        {{ range .forms }}
+        <div class="form-card">
+            <div>
+                <span class="form-tag">{{ .category }}</span>
+                <div class="form-icon-wrapper" style="background-color: {{ .color }}20; color: {{ .color }};">
+                    <i class="bi {{ .icon }}"></i>
+                </div>
+                <h3 class="form-name">{{ .name }}</h3>
+                <p class="form-desc">{{ .description }}</p>
+            </div>
+            
+            <div class="form-footer">
+                <div class="stat-badge">
+                    <i class="bi bi-file-earmark-text"></i> PDF Format
+                </div>
+                <a href="/godms/dms/fill/{{ .id }}" class="btn-fill">
+                    Isi Formulir <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+        {{ end }}
+    </div>
+</div>
+{{ end }}

@@ -1,0 +1,385 @@
+{{ define "edoc/trashbin" }}
+<style>
+    :root {
+        --dms-bg: #f8fafc;
+        --dms-card: #ffffff;
+        --dms-text: #1e293b;
+        --dms-text-muted: #64748b;
+        --dms-border: #e2e8f0;
+        --dms-accent: #ef4444; /* Red accent for Trash */
+    }
+
+    .dms-container {
+        padding: 2rem;
+        background: var(--dms-bg);
+        min-height: calc(100vh - 60px);
+        color: var(--dms-text);
+    }
+
+    /* Table Style for Files */
+    .file-list-card {
+        background: white;
+        border: 1px solid var(--dms-border);
+        border-radius: 1rem;
+    }
+    .table-responsive {
+        overflow: visible !important;
+    }
+    .file-table th {
+        background: #f8fafc;
+        padding: 1rem;
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 600;
+        border-bottom: 1px solid var(--dms-border);
+    }
+    .file-row td { padding: 1.25rem 1rem; vertical-align: middle; border-bottom: 1px solid #f1f5f9; }
+    .file-row:hover { background: #f8fafc; cursor: pointer; }
+    .file-row.selected { background: #fee2e2 !important; }
+    .file-icon { font-size: 1.25rem; color: #ef4444; }
+
+    /* Selection Styles */
+    .selection-indicator {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #cbd5e1;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        background: white;
+    }
+    .selected .selection-indicator {
+        background: var(--dms-accent);
+        border-color: var(--dms-accent);
+    }
+    .selected .selection-indicator::after {
+        content: "\F26E";
+        font-family: "bootstrap-icons";
+        color: white;
+        font-size: 12px;
+    }
+
+    /* Folder Grid */
+    .folder-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+        margin-bottom: 3rem;
+    }
+    .folder-card {
+        background: var(--dms-card);
+        padding: 0.85rem 1.25rem;
+        border-radius: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid var(--dms-border);
+        position: relative;
+    }
+    .folder-card:hover { border-color: var(--dms-accent); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .folder-card.selected { background: #fee2e2; border-color: var(--dms-accent); }
+    
+    .folder-icon-img {
+        font-size: 1.5rem;
+        color: #64748b;
+    }
+    .folder-name-text {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #334155;
+        flex-grow: 1;
+    }
+
+    .action-bar-fixed {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background: #1e293b;
+        color: white;
+        padding: 0.75rem 2rem;
+        border-radius: 50rem;
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+        z-index: 2000;
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .action-bar-fixed.active {
+        transform: translateX(-50%) translateY(0);
+    }
+    .action-btn-bulk {
+        color: white;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        border: none;
+        background: none;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.5rem;
+        transition: background 0.2s;
+    }
+    .action-btn-bulk:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+</style>
+
+<div class="dms-container">
+    <div class="dms-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <a href="/godms/doc" class="btn btn-outline-secondary rounded-pill px-3">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h1 class="h3 fw-bold mb-0">Trash Bin</h1>
+            </div>
+            <div class="d-flex align-items-center gap-4">
+                <div class="text-end">
+                    <div class="small text-muted mb-0">Total Trashed Items</div>
+                    <div class="fw-bold">{{ len .folders | add (len .files) }} items</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-info border-0 shadow-sm rounded-3 d-flex align-items-center gap-3">
+        <i class="bi bi-info-circle-fill fs-4 text-info"></i>
+        <div>
+            Items in the trash will be kept until deleted permanently. Restoring an item will move it back to its original folder.
+        </div>
+    </div>
+
+    <!-- Folder Grid -->
+    {{ if .folders }}
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <div class="selection-indicator" onclick="toggleSelectAll(this, event, 'folder')"></div>
+        <h4 class="fw-bold mb-0" style="font-size: 1.1rem; color: #1e293b;">Folders</h4>
+    </div>
+    <div class="folder-grid">
+        {{ range .folders }}
+        <div class="folder-card item-card" data-type="folder" data-id="{{ .ID }}" data-name="{{ .Name }}" onclick="toggleSelect(this, event)">
+            <div class="selection-indicator"></div>
+            <i class="bi bi-folder-fill folder-icon-img"></i>
+            <span class="folder-name-text">{{ .Name }}</span>
+            <div class="dropdown" onclick="event.stopPropagation()">
+                <button class="btn btn-link text-secondary p-0" data-bs-toggle="dropdown">
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                    <li><button class="dropdown-item text-success" onclick="restoreItem('folder', '{{ .ID }}')"><i class="bi bi-arrow-counterclockwise me-2"></i> Restore</button></li>
+                    <li><button class="dropdown-item text-danger" onclick="deletePermanently('folder', '{{ .ID }}')"><i class="bi bi-trash-fill me-2"></i> Delete Permanently</button></li>
+                </ul>
+            </div>
+        </div>
+        {{ end }}
+    </div>
+    {{ end }}
+
+    <h4 class="fw-bold mb-3" style="font-size: 1.1rem; color: #1e293b;">Files</h4>
+    <div class="file-list-card">
+        <div class="table-responsive">
+            <table class="table file-table mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"><div class="selection-indicator" onclick="toggleSelectAll(this, event, 'file')"></div></th>
+                        <th style="width: 50%;">Name</th>
+                        <th>Size</th>
+                        <th>Deleted Date</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range .files }}
+                    <tr class="file-row item-card" data-type="file" data-id="{{ .ID }}" data-name="{{ .Name }}" onclick="toggleSelect(this, event)">
+                        <td><div class="selection-indicator"></div></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <i class="bi bi-file-earmark-text file-icon"></i>
+                                <span class="fw-semibold">{{ .Name }}</span>
+                            </div>
+                        </td>
+                        <td class="text-muted">{{ .Size }} bytes</td>
+                        <td class="text-muted">{{ if .TrashedAt }}{{ .TrashedAt.Format "02 Jan 2006" }}{{ else }}-{{ end }}</td>
+                        <td class="text-end">
+                            <div class="dropdown" onclick="event.stopPropagation()">
+                                <button class="btn btn-link text-secondary p-0" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                    <li><button class="dropdown-item text-success" onclick="restoreItem('file', '{{ .ID }}')"><i class="bi bi-arrow-counterclockwise me-2"></i> Restore</button></li>
+                                    <li><button class="dropdown-item text-danger" onclick="deletePermanently('file', '{{ .ID }}')"><i class="bi bi-trash-fill me-2"></i> Delete Permanently</button></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    {{ else }}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">Trash bin is empty</td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Action Bar for Trash -->
+<div id="bulkActionBar" class="action-bar-fixed">
+    <div class="d-flex align-items-center gap-3 me-2">
+        <button class="btn btn-link text-white p-0" onclick="deselectAll()"><i class="bi bi-x-lg"></i></button>
+        <span id="bulkSelectedCount" class="fw-semibold text-white">1 selected</span>
+    </div>
+    <div class="vr opacity-25 text-white"></div>
+    <div class="d-flex align-items-center gap-3">
+        <button class="action-btn-bulk text-success" onclick="handleBulkAction('restore')">
+            <i class="bi bi-arrow-counterclockwise"></i> Restore All
+        </button>
+        <button class="action-btn-bulk text-danger" onclick="handleBulkAction('delete')">
+            <i class="bi bi-trash-fill"></i> Delete Permanently
+        </button>
+    </div>
+</div>
+
+<script>
+    let selectedItems = [];
+
+    function toggleSelect(element, event) {
+        event.stopPropagation();
+        element.classList.toggle('selected');
+        const id = element.dataset.id;
+        const type = element.dataset.type;
+        const name = element.dataset.name;
+
+        if (element.classList.contains('selected')) {
+            if (!selectedItems.find(item => item.id === id)) {
+                selectedItems.push({ id, type, name });
+            }
+        } else {
+            selectedItems = selectedItems.filter(item => item.id !== id);
+        }
+        updateActionBar();
+    }
+
+    function deselectAll() {
+        document.querySelectorAll('.item-card').forEach(el => el.classList.remove('selected'));
+        selectedItems = [];
+        updateActionBar();
+    }
+
+    function updateActionBar() {
+        const bar = document.getElementById('bulkActionBar');
+        const countText = document.getElementById('bulkSelectedCount');
+        if (selectedItems.length > 0) {
+            bar.classList.add('active');
+            countText.innerText = `${selectedItems.length} selected`;
+        } else {
+            bar.classList.remove('active');
+        }
+    }
+
+    function toggleSelectAll(checkbox, event, type) {
+        event.stopPropagation();
+        checkbox.classList.toggle('selected');
+        const isAllSelected = checkbox.classList.contains('selected');
+        
+        let selector = '.item-card';
+        if (type === 'folder') selector = '.folder-card.item-card';
+        else if (type === 'file') selector = '.file-row.item-card';
+        
+        const targetItems = document.querySelectorAll(selector);
+        targetItems.forEach(el => {
+            const id = el.dataset.id;
+            if (isAllSelected) {
+                if (!el.classList.contains('selected')) {
+                    el.classList.add('selected');
+                    selectedItems.push({ id: id, type: el.dataset.type, name: el.dataset.name });
+                }
+            } else {
+                if (el.classList.contains('selected')) {
+                    el.classList.remove('selected');
+                    selectedItems = selectedItems.filter(item => item.id !== id);
+                }
+            }
+        });
+        updateActionBar();
+    }
+
+    function deletePermanently(type, id) {
+        if (confirm('Are you sure you want to delete this permanently? This action cannot be undone.')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/godms/${type}/delete-permanent`;
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'id';
+            input.value = id;
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    function restoreItem(type, id) {
+        if (confirm('Restore this item?')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/godms/${type}/restore`;
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'id';
+            input.value = id;
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    function handleBulkAction(action) {
+        if (selectedItems.length === 0) return;
+        
+        if (action === 'delete') {
+            if (confirm(`Permanently delete ${selectedItems.length} items? This cannot be undone.`)) {
+                const formData = new URLSearchParams();
+                selectedItems.forEach(item => {
+                    if (item.type === 'folder') formData.append('folder_ids[]', item.id);
+                    else formData.append('file_ids[]', item.id);
+                });
+
+                fetch('/godms/bulk-delete-permanent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData.toString()
+                }).then(res => {
+                    if (res.ok) window.location.reload();
+                    else alert('Failed to delete items');
+                });
+            }
+        } else if (action === 'restore') {
+            if (confirm(`Restore ${selectedItems.length} items?`)) {
+                const formData = new URLSearchParams();
+                selectedItems.forEach(item => {
+                    if (item.type === 'folder') formData.append('folder_ids[]', item.id);
+                    else formData.append('file_ids[]', item.id);
+                });
+
+                fetch('/godms/bulk-restore', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData.toString()
+                }).then(res => {
+                    if (res.ok) window.location.reload();
+                    else alert('Failed to restore items');
+                });
+            }
+        }
+    }
+</script>
+{{ end }}

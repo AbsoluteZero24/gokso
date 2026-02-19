@@ -1,4 +1,4 @@
-module github.com/AbsoluteZero24/goaset
+module github.com/AbsoluteZero24/gokso
 
 go 1.25.5
 
@@ -25,6 +25,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/jung-kurt/gofpdf v1.16.2
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.40.0 // indirect

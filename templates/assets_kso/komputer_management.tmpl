@@ -1,0 +1,524 @@
+{{ define "assets_kso/komputer_management" }}
+<style>
+  /* Custom DataTables Styling */
+  .datatable-wrapper .datatable-top {
+    padding: 15px 0;
+    display: flex;
+    justify-content: flex-end;
+  }
+  
+  .datatable-wrapper .datatable-bottom {
+    padding: 15px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #dee2e6;
+    margin-top: 10px;
+  }
+
+  /* Move selector to bottom next to info */
+  .datatable-wrapper .datatable-top .datatable-dropdown {
+    display: none;
+  }
+
+  .datatable-bottom-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .datatable-input {
+    border: 1px solid #0d6efd;
+    border-radius: 8px;
+    padding: 8px 15px;
+    background-color: #fff;
+    color: #000;
+    transition: all 0.3s ease;
+    min-width: 250px;
+  }
+
+  .datatable-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    outline: none;
+    border-color: #0b5ed7;
+  }
+
+  .datatable-selector {
+    border: 1px solid #0d6efd;
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    background-color: #fff;
+    color: #000;
+  }
+
+  /* Premium Table Styling (Matched to Aset KSO) */
+  #table-komputer {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+  }
+
+  #table-komputer thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #0d6efd !important;
+    font-weight: 400;
+    color: #333;
+    padding: 12px;
+    text-align: center;
+  }
+
+  #table-komputer tbody td {
+    border: 1px solid #dee2e6 !important;
+    padding: 12px;
+    vertical-align: middle;
+  }
+
+  #table-komputer tbody tr:hover {
+    background-color: #f1f7ff;
+    transition: background-color 0.2s;
+  }
+
+  /* Badge Styling */
+  .badge {
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+
+  /* Modal Zoom Effect */
+  .modal.fade .modal-dialog {
+    transform: scale(0.9);
+    transition: transform 0.3s ease-out;
+  }
+  .modal.show .modal-dialog {
+    transform: scale(1);
+  }
+  
+  /* TomSelect Premium Styling */
+  .ts-wrapper.single .ts-control {
+    border: 1px solid #0d6efd !important;
+    border-radius: 8px !important;
+    padding: 10px 15px !important;
+    font-size: 14px !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+  
+  .ts-wrapper.single .ts-control::after {
+    border-color: #0d6efd transparent transparent transparent !important;
+    right: 15px !important;
+  }
+
+  .ts-dropdown {
+    border-radius: 8px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+    border: 1px solid #dee2e6 !important;
+    margin-top: 5px !important;
+    padding: 5px !important;
+  }
+
+  .ts-dropdown .optgroup-header {
+    font-weight: bold;
+    color: #0d6efd;
+    padding: 8px 12px;
+  }
+
+  .ts-dropdown .option {
+    padding: 10px 12px !important;
+    border-radius: 6px !important;
+    cursor: pointer;
+    color: #333;
+  }
+
+  .ts-dropdown .active {
+    background-color: #0d6efd !important;
+    color: #fff !important;
+  }
+
+  /* Action Buttons styling */
+  .btn-group-sm > .btn, .btn-sm {
+      padding: .25rem .5rem;
+      font-size: .875rem;
+      border-radius: .25rem;
+  }
+</style>
+        <!--begin::App Content Header-->
+        <div class="app-content-header">
+          <!--begin::Container-->
+          <div class="container-fluid">
+            <!--begin::Row-->
+            <div class="row">
+              <div class="col-sm-6"><h3 class="mb-0">{{ .title }}</h3></div>
+              <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-end">
+                  <li class="breadcrumb-item"><a href="/">Home</a></li>
+                  <li class="breadcrumb-item active" aria-current="page">Komputer Management</li>
+                </ol>
+              </div>
+            </div>
+            <!--end::Row-->
+          </div>
+          <!--end::Container-->
+        </div>
+        <!--end::App Content Header-->
+        <!--begin::App Content-->
+        <div class="app-content">
+          <!--begin::Container-->
+          <div class="container-fluid">
+            <!--begin::Row-->
+            <div class="row">
+              <div class="col-12">
+                <div class="card">
+                   <div class="card-header d-flex align-items-center justify-content-between">
+                     <h3 class="card-title mb-0">Data Pemegang Aset Komputer</h3>
+                     <div class="card-tools d-flex gap-2 ms-auto">
+                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalBulkLabel">
+                           <i class="bi bi-pencil-square me-1"></i> Update Label Masal
+                        </button>
+                     </div>
+                   </div>
+                  <!-- /.card-header -->
+                  <div class="card-body">
+                    <table class="table table-bordered" id="table-komputer">
+                      <thead>
+                        <tr>
+                          <th style="width: 10px">No</th>
+                          <th>No. Inventaris</th>
+                          <th>Serial Number</th>
+                          <th>Nama Aset</th>
+                          <th>Label</th>
+                          <th>Nama</th>
+                          <th>Cabang</th>
+                          <th>Jabatan</th>
+                          <th>Status Karyawan</th>
+                          <th style="width: 80px">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {{ range $index, $asset := .assets }}
+                        <tr>
+                           <td class="text-center row-index">{{ add $index 1 }}.</td>
+                          <td><span class="text-dark">{{ $asset.InventoryNumber }}</span></td>
+                          <td>{{ $asset.SerialNumber }}</td>
+                          <td>{{ $asset.AssetName }}</td>
+                          <td>{{ $asset.DeviceName }}</td>
+                          <td>{{ if $asset.User.Name }}{{ $asset.User.Name }}{{ else }}<span class="text-muted">Not Assigned</span>{{ end }}</td>
+                          <td>{{ if $asset.User.Branch }}{{ $asset.User.Branch }}{{ else }}-{{ end }}</td>
+                          <td>{{ if $asset.User.Position }}{{ $asset.User.Position }}{{ else }}-{{ end }}</td>
+                          <td>
+                            {{ if $asset.User.StatusKaryawan }}
+                              {{ if eq $asset.User.StatusKaryawan "Tetap" }}
+                                <span class="badge bg-primary">Tetap</span>
+                              {{ else }}
+                                <span class="badge bg-info">{{ $asset.User.StatusKaryawan }}</span>
+                              {{ end }}
+                            {{ else }}
+                              -
+                            {{ end }}
+                          </td>
+                          <td>
+                            <div class="btn-group">
+                              <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#modalAssign" data-bs-id="{{ $asset.ID }}" data-bs-user="{{ if $asset.UserID }}{{ $asset.UserID }}{{ end }}" data-bs-assetname="{{ $asset.AssetName }} ({{ $asset.InventoryNumber }})" title="Assign Member">
+                                <i class="bi bi-person-plus"></i>
+                              </button>
+                              <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalEditLabel" data-bs-id="{{ $asset.ID }}" data-bs-label="{{ $asset.DeviceName }}" title="Edit Label">
+                                <i class="bi bi-pencil-square"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {{ end }}
+                      </tbody>
+                    </table>
+                  </div>
+                  <!-- /.card-body -->
+                </div>
+                <!-- /.card -->
+              </div>
+            </div>
+            <!-- /.row -->
+          </div>
+          <!--end::Container-->
+        </div>
+        <!--end::App Content-->
+
+<!-- Modal Assign Employee -->
+<div class="modal fade" id="modalAssign" tabindex="-1" aria-labelledby="modalAssignLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalAssignLabel">Assign Employee to Asset</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/asset-management/komputer/assign" method="POST">
+        <div class="modal-body">
+          <input type="hidden" name="asset_id" id="modal_asset_id">
+          <div class="mb-3">
+            <label class="form-label">Asset</label>
+            <input type="text" class="form-control" id="modal_asset_info" readonly>
+          </div>
+          <div class="mb-3">
+            <label for="user_id" class="form-label">Employee List</label>
+            <select name="user_id" id="modal_user_id" class="form-control select2" style="width: 100%;">
+              <option value="">-- Unassign / Kosongkan --</option>
+              {{ range .users }}
+                <option value="{{ .ID }}">{{ .Name }} - {{ .NIK }} ({{ .Branch }})</option>
+              {{ end }}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Save Assignment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Edit Label -->
+<div class="modal fade" id="modalEditLabel" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Edit Label / Nama Perangkat</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/asset-management/update-label" method="POST">
+        <div class="modal-body p-4">
+            <input type="hidden" name="redirect_to" value="/asset-management/komputer">
+            <input type="hidden" name="asset_id" id="edit_label_asset_id">
+            <div class="mb-3">
+                <label for="device_name" class="form-label fw-semibold">Label / Nama Perangkat</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light text-muted"><i class="bi bi-type"></i></span>
+                  <input type="text" class="form-control border-start-0" name="device_name" id="edit_label_input" required placeholder="Masukkan Nama Label">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer bg-light border-0">
+          <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Bulk Update Label -->
+<div class="modal fade" id="modalBulkLabel" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i>Update Label Masal</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/asset-management/bulk-update-label" method="POST">
+        <div class="modal-body p-4">
+          <input type="hidden" name="redirect_to" value="/asset-management/komputer">
+          <input type="hidden" name="category" value="Komputer">
+          
+          <div class="alert alert-info small mb-4">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            Pilih rentang nomer inventaris dan tentukan label awal. Sistem akan mengupdate secara berurutan.
+          </div>
+
+          <div class="row g-3">
+             <div class="col-12 mb-3">
+                <label for="inv_start" class="form-label fw-semibold">No. Inventaris (Awal)</label>
+                <select name="inv_start" class="form-select border-primary" required>
+                   <option value="">-- Pilih Awal --</option>
+                   {{ range .assets }}
+                   <option value="{{ .InventoryNumber }}">{{ .InventoryNumber }}</option>
+                   {{ end }}
+                </select>
+             </div>
+             <div class="col-12 mb-3">
+                <label for="inv_end" class="form-label fw-semibold">No. Inventaris (Akhir)</label>
+                <select name="inv_end" class="form-select border-primary" required>
+                   <option value="">-- Pilih Akhir --</option>
+                   {{ range .assets }}
+                   <option value="{{ .InventoryNumber }}">{{ .InventoryNumber }}</option>
+                   {{ end }}
+                </select>
+             </div>
+             <div class="col-12 mb-3">
+                <label for="label_start" class="form-label fw-semibold">Label Baru (Awal)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-light text-muted"><i class="bi bi-type"></i></span>
+                  <input type="text" name="label_start" class="form-control border-start-0" placeholder="Contoh: NB-KSO001" required>
+                </div>
+                <div class="form-text mt-2 text-muted small">
+                   <i class="bi bi-lightbulb me-1"></i> Angka di bagian akhir akan ditambahkan otomatis.
+                </div>
+             </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light border-0">
+          <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-info text-white fw-bold px-4 shadow-sm">
+             <i class="bi bi-check2-circle me-1"></i> Proses Update
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Initialize DataTables (Simple-DataTables)
+    const tableElement = document.getElementById('table-komputer');
+    if (tableElement) {
+        const dataTable = new simpleDatatables.DataTable(tableElement, {
+            searchable: true,
+            fixedHeight: false,
+            perPage: 10,
+            labels: {
+                placeholder: "Cari data komputer...",
+                perPage: "{select}",
+                noRows: "Data tidak ditemukan",
+                info: "Menampilkan {start} sampai {end} dari {rows} data",
+            },
+            columns: [
+                { select: 0, sortable: false }
+            ]
+        });
+
+        const updateRowNumbers = () => {
+            // Wait for the library to finish rendering the DOM
+            setTimeout(() => {
+                const wrapper = tableElement.closest('.datatable-wrapper');
+                const infoElement = wrapper ? wrapper.querySelector('.datatable-info') : null;
+                let startIdx = 0;
+
+                if (infoElement) {
+                    // Extract the first number from the info text (e.g., "Menampilkan 6 sampai 10...")
+                    const match = infoElement.innerText.match(/\d+/);
+                    if (match) {
+                        startIdx = parseInt(match[0]) - 1;
+                    }
+                }
+
+                const rows = tableElement.querySelectorAll('tbody tr');
+                rows.forEach((row, index) => {
+                    const cell = row.querySelector('.row-index');
+                    if (cell && !row.classList.contains('datatable-empty')) {
+                        cell.innerText = (startIdx + index + 1) + ".";
+                    }
+                });
+            }, 50);
+        };
+
+        // Bind events for numbering updates
+        dataTable.on("datatable.page", updateRowNumbers);
+        dataTable.on("datatable.sort", updateRowNumbers);
+        dataTable.on("datatable.perpage", updateRowNumbers);
+        dataTable.on("datatable.search", updateRowNumbers);
+
+        // Move the selector to bottom after init
+        dataTable.on("datatable.init", () => {
+            updateRowNumbers();
+            const topDropdown = document.querySelector(".datatable-top .datatable-dropdown");
+            const bottomContainer = document.querySelector(".datatable-bottom");
+            
+            if (topDropdown && bottomContainer) {
+                const bottomLeft = document.createElement("div");
+                bottomLeft.className = "datatable-bottom-left";
+                
+                // Clear any leftover text like "{select}" from the label
+                const label = topDropdown.querySelector("label");
+                if (label) {
+                    // Keep only the select element, remove text nodes
+                    const selector = label.querySelector(".datatable-selector");
+                    label.innerHTML = "";
+                    if (selector) label.appendChild(selector);
+                }
+                
+                bottomLeft.appendChild(topDropdown);
+                
+                // Find info element and move it into bottomLeft
+                const info = bottomContainer.querySelector(".datatable-info");
+                if (info) bottomLeft.appendChild(info);
+                
+                bottomContainer.insertBefore(bottomLeft, bottomContainer.firstChild);
+            }
+        });
+    }
+
+    // 2. Initialize TomSelect for Employee Search
+    let tomSelectInstance = null;
+    const modalSelect = document.getElementById('modal_user_id');
+    if (modalSelect) {
+        tomSelectInstance = new TomSelect(modalSelect, {
+            plugins: ['dropdown_input'],
+            create: false,
+            sortField: {
+                field: "text",
+                direction: "asc"
+            },
+            placeholder: "-- Cari & Pilih Karyawan --",
+            allowEmptyOption: true,
+            maxOptions: 1000,
+            render: {
+                option: function(data, escape) {
+                    if (data.value === "") return '<div class="option text-muted">-- Unassign / Kosongkan --</div>';
+                    const parts = data.text.split(' - ');
+                    const name = parts[0];
+                    const meta = parts.slice(1).join(' - ');
+                    return `
+                        <div class="option">
+                            <div class="employee-option">
+                                <span class="employee-name">${escape(name)}</span>
+                                <span class="employee-meta">${escape(meta)}</span>
+                            </div>
+                        </div>`;
+                },
+                item: function(data, escape) {
+                    return `<div>${escape(data.text)}</div>`;
+                }
+            }
+        });
+    }
+
+    // 3. Modal Assign Event Handling
+    const modalAssign = document.getElementById('modalAssign');
+    if (modalAssign) {
+        modalAssign.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const assetId = button.getAttribute('data-bs-id');
+            const userId = button.getAttribute('data-bs-user');
+            const assetName = button.getAttribute('data-bs-assetname');
+
+            const modalAssetId = modalAssign.querySelector('#modal_asset_id');
+            const modalAssetInfo = modalAssign.querySelector('#modal_asset_info');
+            
+            modalAssetId.value = assetId;
+            modalAssetInfo.value = assetName;
+            
+            if (tomSelectInstance) {
+                tomSelectInstance.setValue(userId || "");
+            }
+        });
+    }
+
+    // 4. Modal Edit Label Handling
+    const modalEditLabel = document.getElementById('modalEditLabel');
+    if (modalEditLabel) {
+        modalEditLabel.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const assetId = button.getAttribute('data-bs-id');
+            const label = button.getAttribute('data-bs-label');
+
+            const modalIdInput = modalEditLabel.querySelector('#edit_label_asset_id');
+            const modalLabelInput = modalEditLabel.querySelector('#edit_label_input');
+
+            modalIdInput.value = assetId;
+            modalLabelInput.value = label;
+        });
+    }
+});
+</script>
+{{ end }}

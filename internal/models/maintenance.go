@@ -8,6 +8,7 @@ import (
 
 type MaintenanceDocument struct {
 	ID            string `gorm:"size:36;not null;uniqueIndex;primaryKey"`
+	Category      string `gorm:"size:50;index"`
 	Branch        string `gorm:"size:100;index"`
 	Department    string `gorm:"size:100;index"`
 	SubDepartment string `gorm:"size:100;index"`

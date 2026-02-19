@@ -1,0 +1,240 @@
+{{ define "assets_kso/asetkso_bulk_form" }}
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-sm-6">
+        <h3 class="mb-0">{{ .title }}</h3>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-end">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item"><a href="/inventori/aset-laptop">Aset KSO</a></li>
+          <li class="breadcrumb-item active" aria-current="page">{{ .title }}</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="app-content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-10 mx-auto">
+        <div class="card card-success card-outline shadow-sm">
+          <div class="card-header border-0 pb-0">
+            <h3 class="card-title fw-bold text-success">
+              <i class="bi bi-stack me-2"></i>
+              Bulk Input Aset KSO
+            </h3>
+          </div>
+          <form action="/inventori/aset-laptop/bulk-store" method="POST">
+            <div class="card-body p-4">
+              <input type="hidden" name="redirect_to" value="/inventori/aset-laptop">
+              
+              <div class="row mb-4">
+                <div class="col-md-6 pe-md-4 border-end">
+                  <h6 class="text-uppercase text-muted fw-bold small mb-4">Pengaturan Bulk</h6>
+                  <div class="mb-3">
+                    <label for="inventory_number_start" class="form-label fw-semibold">Starting Inventory Number</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-tag-fill"></i></span>
+                      <input type="text" name="inventory_number_start" class="form-control" id="inventory_number_start" placeholder="Contoh: KSO-001" required>
+                    </div>
+                    <div class="form-text mt-2"><i class="bi bi-info-circle me-1"></i> Angka di bagian akhir akan ditambahkan secara otomatis.</div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="quantity" class="form-label fw-semibold">Jumlah Unit (Quantity)</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-hash"></i></span>
+                      <input type="number" name="quantity" class="form-control" id="quantity" value="1" min="1" required>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6 ps-md-4">
+                  <h6 class="text-uppercase text-muted fw-bold small mb-4">Informasi Unit</h6>
+                  <div class="mb-3">
+                    <label for="asset_name" class="form-label fw-semibold">Nama Aset</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-cpu"></i></span>
+                      <input type="text" name="asset_name" class="form-control" id="asset_name" placeholder="Nama aset yang sama untuk semua unit" required>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="category" class="form-label fw-semibold">Kategori Aset</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-folder2-open"></i></span>
+                      <select name="category" class="form-select" id="category" required>
+                        <option value="">-- Pilih Kategori --</option>
+                        {{ range .categories }}
+                        <option value="{{ .Name }}">{{ .Name }}</option>
+                        {{ end }}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <hr class="my-4 opacity-10">
+
+              <div class="row">
+                <div class="col-md-6 pe-md-4 border-end">
+                  <h6 class="text-uppercase text-muted fw-bold small mb-4">Spesifikasi & Identitas</h6>
+                  <div class="mb-3">
+                    <label for="brand" class="form-label fw-semibold">Merk / Brand</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-patch-check"></i></span>
+                      <input type="text" name="brand" class="form-control" id="brand" placeholder="Masukkan Merk">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="type_model" class="form-label fw-semibold">Type / Model</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-box-seam"></i></span>
+                      <input type="text" name="type_model" class="form-control" id="type_model" placeholder="Masukkan Type / Model">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="color" class="form-label fw-semibold">Warna</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-palette"></i></span>
+                      <input type="text" name="color" class="form-control" id="color" placeholder="Masukkan Warna">
+                    </div>
+                  </div>
+                  <div id="spec-generic">
+                    <div class="mb-3">
+                      <label for="specification" class="form-label fw-semibold">Keterangan Spesifikasi</label>
+                      <textarea name="specification" class="form-control" id="specification" rows="3" placeholder="Masukkan Detail Spesifikasi"></textarea>
+                    </div>
+                  </div>
+
+                  <div id="spec-computer" style="display: none;">
+                    <div class="row">
+                       <div class="col-md-6 mb-3">
+                         <label class="form-label fw-semibold">Sistem Operasi (OS)</label>
+                         <input type="text" name="spec_os" id="spec_os" class="form-control" placeholder="Windows 11">
+                       </div>
+                       <div class="col-md-6 mb-3">
+                         <label class="form-label fw-semibold">Processor</label>
+                         <input type="text" name="spec_processor" id="spec_processor" class="form-control" placeholder="Intel i5">
+                       </div>
+                       <div class="col-md-12 mb-3">
+                          <label class="form-label fw-semibold">Memory (RAM)</label>
+                          <div class="row g-2">
+                             <div class="col-4">
+                                <input type="number" name="spec_ram_size" id="spec_ram_size" class="form-control" placeholder="Size">
+                             </div>
+                             <div class="col-3">
+                                <select name="spec_ram_unit" id="spec_ram_unit" class="form-select">
+                                   <option value="GB">GB</option>
+                                   <option value="TB">TB</option>
+                                </select>
+                             </div>
+                             <div class="col-5">
+                                <select name="spec_ram_type" id="spec_ram_type" class="form-select">
+                                   <option value="">-- Type RAM --</option>
+                                   {{ range .ramTypes }}
+                                   <option value="{{ .Name }}">{{ .Name }}</option>
+                                   {{ end }}
+                                </select>
+                             </div>
+                          </div>
+                       </div>
+                       <div class="col-md-12 mb-3">
+                          <label class="form-label fw-semibold">Penyimpanan (HDD/SSD)</label>
+                          <div class="row g-2">
+                             <div class="col-4">
+                                <input type="number" name="spec_storage_size" id="spec_storage_size" class="form-control" placeholder="Size">
+                             </div>
+                             <div class="col-3">
+                                <select name="spec_storage_unit" id="spec_storage_unit" class="form-select">
+                                   <option value="GB">GB</option>
+                                   <option value="TB">TB</option>
+                                </select>
+                             </div>
+                             <div class="col-5">
+                                <select name="spec_storage_type" id="spec_storage_type" class="form-select">
+                                   <option value="">-- Type Disk --</option>
+                                   {{ range .storageTypes }}
+                                   <option value="{{ .Name }}">{{ .Name }}</option>
+                                   {{ end }}
+                                </select>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6 ps-md-4">
+                  <h6 class="text-uppercase text-muted fw-bold small mb-4">Logistik & Status</h6>
+                  <div class="mb-3">
+                    <label for="location" class="form-label fw-semibold">Lokasi</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-geo-alt"></i></span>
+                      <input type="text" name="location" class="form-control" id="location" placeholder="Masukkan Lokasi">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="purchase_date" class="form-label fw-semibold">Tanggal Pembelian</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-event"></i></span>
+                      <input type="text" name="purchase_date" class="form-control bg-white" id="purchase_date" required placeholder="Pilih Tanggal">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="status" class="form-label fw-semibold">Status Kondisi</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-activity"></i></span>
+                      <select name="status" class="form-select" id="status" required>
+                        <option value="Ready">Ready</option>
+                        <option value="Rusak">Rusak</option>
+                        <option value="Hilang">Hilang</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 pb-4 px-4 d-flex gap-2">
+              <button type="submit" class="btn btn-success px-4 fw-semibold shadow-sm">
+                <i class="bi bi-save me-1"></i> Generate & Simpan Aset
+              </button>
+              <a href="/inventori/aset-laptop" class="btn btn-outline-secondary px-4 fw-semibold">
+                Batal
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    flatpickr("#purchase_date", {
+      dateFormat: "Y-m-d",
+      defaultDate: "today",
+      allowInput: true
+    });
+
+    // Handle Dynamic Specification
+    const categorySelect = document.getElementById('category');
+    const specGeneric = document.getElementById('spec-generic');
+    const specComputer = document.getElementById('spec-computer');
+
+    function toggleSpecFields() {
+      const category = categorySelect.value;
+      if (category === 'Laptop' || category === 'Komputer') {
+        specGeneric.style.display = 'none';
+        specComputer.style.display = 'block';
+      } else {
+        specGeneric.style.display = 'block';
+        specComputer.style.display = 'none';
+      }
+    }
+
+    categorySelect.addEventListener('change', toggleSpecFields);
+  });
+</script>
+{{ end }}

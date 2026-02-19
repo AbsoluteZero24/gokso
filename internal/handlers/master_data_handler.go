@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/AbsoluteZero24/goaset/internal/models"
+	"github.com/AbsoluteZero24/gokso/internal/models"
 	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 )

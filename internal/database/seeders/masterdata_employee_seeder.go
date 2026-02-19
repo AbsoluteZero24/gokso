@@ -1,7 +1,7 @@
 package seeders
 
 import (
-	"github.com/AbsoluteZero24/goaset/internal/models"
+	"github.com/AbsoluteZero24/gokso/internal/models"
 	"gorm.io/gorm"
 )
 

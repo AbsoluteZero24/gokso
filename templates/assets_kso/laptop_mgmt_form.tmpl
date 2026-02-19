@@ -1,0 +1,238 @@
+{{ define "assets_kso/laptop_mgmt_form" }}
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-sm-6">
+        <h3 class="mb-0">{{ .title }}</h3>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-end">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item"><a href="/asset-management/laptop">Laptop Management</a></li>
+          <li class="breadcrumb-item active" aria-current="page">{{ .title }}</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="app-content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-10 mx-auto">
+        <div class="card card-primary card-outline shadow-sm">
+          <div class="card-header border-0 pb-0">
+            <h3 class="card-title fw-bold">
+              <i class="bi bi-laptop me-2"></i>
+              Data Laptop Management
+            </h3>
+          </div>
+          <form action="{{ if .asset }}/inventori/aset-laptop/update/{{ .asset.ID }}{{ else }}/inventori/aset-laptop{{ end }}" method="POST">
+            <div class="card-body p-4">
+              <input type="hidden" name="redirect_to" value="/asset-management/laptop">
+              <input type="hidden" name="category" value="Laptop">
+              
+              <div class="row">
+                <!-- Unit Information -->
+                <div class="col-md-6 pe-md-4 border-end">
+                  <h6 class="text-uppercase text-muted fw-bold small mb-4">Informasi Unit</h6>
+                  <div class="mb-3">
+                    <label for="inventory_number" class="form-label fw-semibold">No. Inventaris</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-tag"></i></span>
+                      <input type="text" name="inventory_number" class="form-control" id="inventory_number" placeholder="Masukkan No. Inventaris" value="{{ if .asset }}{{ .asset.InventoryNumber }}{{ end }}" required>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="serial_number" class="form-label fw-semibold">Serial Number</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-hash"></i></span>
+                      <input type="text" name="serial_number" class="form-control" id="serial_number" placeholder="Masukkan Serial Number" value="{{ if .asset }}{{ .asset.SerialNumber }}{{ end }}">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="asset_name" class="form-label fw-semibold">Nama Aset / Merk</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-cpu"></i></span>
+                      <input type="text" name="asset_name" class="form-control" id="asset_name" placeholder="Masukkan Nama Aset" value="{{ if .asset }}{{ .asset.AssetName }}{{ end }}" required>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="type_model" class="form-label fw-semibold">Type / Model</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-box-seam"></i></span>
+                      <input type="text" name="type_model" class="form-control" id="type_model" placeholder="Masukkan Type / Model" value="{{ if .asset }}{{ .asset.TypeModel }}{{ end }}">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="device_name" class="form-label fw-semibold">Nama Perangkat (Host)</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-display"></i></span>
+                      <input type="text" name="device_name" class="form-control" id="device_name" placeholder="Masukkan Nama Perangkat" value="{{ if .asset }}{{ .asset.DeviceName }}{{ end }}">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Assignment & Logic -->
+                <div class="col-md-6 ps-md-4">
+                  <h6 class="text-uppercase text-muted fw-bold small mb-4">Pemegang & Logistik</h6>
+                  <div class="mb-3">
+                    <label for="location" class="form-label fw-semibold">Lokasi Penyimpanan</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-geo-alt"></i></span>
+                      <input type="text" name="location" class="form-control" id="location" placeholder="Masukkan Lokasi" value="{{ if .asset }}{{ .asset.Location }}{{ end }}">
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="user_id" class="form-label fw-semibold">Pemegang (Karyawan)</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"><i class="bi bi-person-check"></i></span>
+                      <select name="user_id" class="form-select" id="user_id">
+                        <option value="">-- Tidak Ada / Ready di Gudang --</option>
+                        {{ range .users }}
+                        <option value="{{ .ID }}" {{ if $.asset }}{{ if eq $.asset.UserID .ID }}selected{{ end }}{{ end }}>{{ .Name }} ({{ .NIK }})</option>
+                        {{ end }}
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label for="purchase_date" class="form-label fw-semibold">Tanggal Pembelian</label>
+                      <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-calendar-event"></i></span>
+                        <input type="text" name="purchase_date" class="form-control bg-white" id="purchase_date" value="{{ if .asset }}{{ .asset.PurchaseDate.Format "2006-01-02" }}{{ end }}" required placeholder="Pilih Tanggal">
+                      </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                      <label for="status" class="form-label fw-semibold">Status Aset</label>
+                      <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"><i class="bi bi-activity"></i></span>
+                        <select name="status" class="form-select" id="status" required>
+                          <option value="Ready" {{ if .asset }}{{ if eq .asset.Status "Ready" }}selected{{ end }}{{ end }}>Ready</option>
+                          <option value="Rusak" {{ if .asset }}{{ if eq .asset.Status "Rusak" }}selected{{ end }}{{ end }}>Rusak</option>
+                          <option value="Hilang" {{ if .asset }}{{ if eq .asset.Status "Hilang" }}selected{{ end }}{{ end }}>Hilang</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <h6 class="text-uppercase text-muted fw-bold small mb-3 mt-2">Spesifikasi Laptop</h6>
+                  <div class="row">
+                     <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold small">Sistem Operasi</label>
+                        <input type="text" name="spec_os" id="spec_os" class="form-control form-control-sm" placeholder="Windows 11">
+                     </div>
+                     <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold small">Processor</label>
+                        <input type="text" name="spec_processor" id="spec_processor" class="form-control form-control-sm" placeholder="Intel i5">
+                     </div>
+                     <div class="col-md-12 mb-3">
+                        <label class="form-label fw-semibold small">Memory (RAM)</label>
+                        <div class="row g-2">
+                           <div class="col-4">
+                              <input type="number" name="spec_ram_size" id="spec_ram_size" class="form-control form-control-sm" placeholder="Size">
+                           </div>
+                           <div class="col-3">
+                              <select name="spec_ram_unit" id="spec_ram_unit" class="form-select form-select-sm">
+                                 <option value="GB">GB</option>
+                                 <option value="TB">TB</option>
+                              </select>
+                           </div>
+                           <div class="col-5">
+                              <select name="spec_ram_type" id="spec_ram_type" class="form-select form-select-sm">
+                                 <option value="">-- Type RAM --</option>
+                                 {{ range .ramTypes }}
+                                 <option value="{{ .Name }}">{{ .Name }}</option>
+                                 {{ end }}
+                              </select>
+                           </div>
+                        </div>
+                     </div>
+                     <div class="col-md-12 mb-3">
+                        <label class="form-label fw-semibold small">Penyimpanan (HDD/SSD)</label>
+                        <div class="row g-2">
+                           <div class="col-4">
+                              <input type="number" name="spec_storage_size" id="spec_storage_size" class="form-control form-control-sm" placeholder="Size">
+                           </div>
+                           <div class="col-3">
+                              <select name="spec_storage_unit" id="spec_storage_unit" class="form-select form-select-sm">
+                                 <option value="GB">GB</option>
+                                 <option value="TB">TB</option>
+                              </select>
+                           </div>
+                           <div class="col-5">
+                              <select name="spec_storage_type" id="spec_storage_type" class="form-select form-select-sm">
+                                 <option value="">-- Type Disk --</option>
+                                 {{ range .storageTypes }}
+                                 <option value="{{ .Name }}">{{ .Name }}</option>
+                                 {{ end }}
+                              </select>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+                  <!-- Hidden textarea for backward compatibility with handler -->
+                  <textarea name="specification" id="specification" style="display:none">{{ if .asset }}{{ .asset.Specification }}{{ end }}</textarea>
+                </div>
+              </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 pb-4 px-4 d-flex gap-2">
+              <button type="submit" class="btn btn-primary px-4 fw-semibold shadow-sm">
+                <i class="bi bi-save me-1"></i> Simpan Data Laptop
+              </button>
+              <a href="/asset-management/laptop" class="btn btn-outline-secondary px-4 fw-semibold">
+                Batal
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('purchase_date');
+    const isEdit = dateInput.value !== "";
+    
+    flatpickr("#purchase_date", {
+      dateFormat: "Y-m-d",
+      defaultDate: isEdit ? dateInput.value : "today",
+      allowInput: true
+    });
+
+    // Populate specification fields if in edit mode
+    if (isEdit) {
+      const specTextarea = document.getElementById('specification');
+      const currentSpec = specTextarea.value;
+      if (currentSpec) {
+        const parts = currentSpec.split(',').map(s => s.trim());
+        if (parts.length >= 1) document.getElementById('spec_processor').value = parts[0];
+        
+        // Parse RAM: "RAM 16 GB DDR4"
+        if (parts.length >= 2) {
+           let ramPart = parts[1].replace(/^RAM\s+/i, ''); // "16 GB DDR4"
+           let ramMatch = ramPart.match(/^(\d+)\s+(GB|TB)\s+(.*)$/i);
+           if (ramMatch) {
+              document.getElementById('spec_ram_size').value = ramMatch[1];
+              document.getElementById('spec_ram_unit').value = ramMatch[2].toUpperCase();
+              document.getElementById('spec_ram_type').value = ramMatch[3];
+           }
+        }
+        
+        // Parse Storage: "512 GB NVMe SSD"
+        if (parts.length >= 3) {
+           let storagePart = parts[2]; // "512 GB NVMe SSD"
+           let storageMatch = storagePart.match(/^(\d+)\s+(GB|TB)\s+(.*)$/i);
+           if (storageMatch) {
+              document.getElementById('spec_storage_size').value = storageMatch[1];
+              document.getElementById('spec_storage_unit').value = storageMatch[2].toUpperCase();
+              document.getElementById('spec_storage_type').value = storageMatch[3];
+           }
+        }
+
+        if (parts.length >= 4) document.getElementById('spec_os').value = parts[3];
+      }
+    }
+  });
+</script>
+{{ end }}

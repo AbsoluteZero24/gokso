@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/AbsoluteZero24/goaset/internal/models"
+	"github.com/AbsoluteZero24/gokso/internal/models"
 )
 
 // Home menampilkan halaman dashboard dengan ringkasan statistik aset dan karyawan

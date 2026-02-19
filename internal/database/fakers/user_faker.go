@@ -5,7 +5,7 @@ import (
 
 	"github.com/bxcodec/faker/v3"
 
-	"github.com/AbsoluteZero24/goaset/internal/models"
+	"github.com/AbsoluteZero24/gokso/internal/models"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )

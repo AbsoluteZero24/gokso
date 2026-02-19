@@ -1,0 +1,41 @@
+{{ define "eform/fill" }}
+<div class="app-content-header">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-6">
+                <h3 class="mb-0">{{ .formName }}</h3>
+            </div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-end">
+                    <li class="breadcrumb-item"><a href="/">Home</a></li>
+                    <li class="breadcrumb-item"><a href="/godms/dms">eForm</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ .formName }}</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="app-content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-6 mx-auto">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-5 text-center">
+                        <div class="mb-4">
+                            <i class="bi bi-cone-striped text-warning" style="font-size: 4rem;"></i>
+                        </div>
+                        <h4 class="fw-bold">Formulir Sedang Dikembangkan</h4>
+                        <p class="text-muted">Maaf, formulir <strong>{{ .formName }}</strong> saat ini sedang dalam tahap pengembangan digitalisasi. Silakan hubungi tim IT atau Administrasi untuk mendapatkan versi fisik/PDF.</p>
+                        <div class="mt-4">
+                            <a href="/godms/dms" class="btn btn-primary px-4">
+                                <i class="bi bi-arrow-left me-1"></i> Kembali ke Katalog
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{ end }}

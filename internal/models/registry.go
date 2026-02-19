@@ -20,5 +20,7 @@ func RegisterModels() []Model {
 		{Model: RolePermission{}},
 		{Model: MaintenanceDocument{}},
 		{Model: MaintenanceReport{}},
+		{Model: DMSFolder{}},
+		{Model: DMSFile{}},
 	}
 }

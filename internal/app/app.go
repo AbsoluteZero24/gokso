@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/AbsoluteZero24/goaset/internal/config"
-	"github.com/AbsoluteZero24/goaset/internal/handlers"
+	"github.com/AbsoluteZero24/gokso/internal/config"
+	"github.com/AbsoluteZero24/gokso/internal/handlers"
 	"github.com/joho/godotenv"
 )
 
@@ -30,14 +30,14 @@ func Run() {
 		log.Printf("Warning: .env file not found, using environment variables")
 	}
 
-	appConfig.AppName = Getenv("APP_NAME", "Goaset")
+	appConfig.AppName = Getenv("APP_NAME", "gokso")
 	appConfig.AppEnv = Getenv("APP_ENV", "development")
 	appConfig.AppPort = Getenv("APP_PORT", "9001")
 
 	dbConfig.DBHost = Getenv("DB_HOST", "localhost")
 	dbConfig.DBUser = Getenv("DB_USER", "postgres")
 	dbConfig.DBPassword = Getenv("DB_PASSWORD", "Sci$iK50")
-	dbConfig.DBName = Getenv("DB_NAME", "goasetdb")
+	dbConfig.DBName = Getenv("DB_NAME", "goksodb")
 	dbConfig.DBPort = Getenv("DB_PORT", "5432")
 
 	flag.Parse()

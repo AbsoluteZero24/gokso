@@ -8,9 +8,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/AbsoluteZero24/goaset/internal/config"
-	"github.com/AbsoluteZero24/goaset/internal/database"
-	"github.com/AbsoluteZero24/goaset/internal/database/seeders"
+	"github.com/AbsoluteZero24/gokso/internal/config"
+	"github.com/AbsoluteZero24/gokso/internal/database"
+	"github.com/AbsoluteZero24/gokso/internal/database/seeders"
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
 	"github.com/urfave/cli"
@@ -114,6 +114,16 @@ func (server *Server) InitCommands(appConfig config.AppConfig, dbConfig config.D
 			Name: "db:seed_masterdata_asset",
 			Action: func(c *cli.Context) error {
 				err := seeders.SeedMasterDataAsset(server.DB)
+				if err != nil {
+					log.Fatal(err)
+				}
+				return nil
+			},
+		},
+		{
+			Name: "db:seed_dms",
+			Action: func(c *cli.Context) error {
+				err := seeders.SeedDMS(server.DB)
 				if err != nil {
 					log.Fatal(err)
 				}

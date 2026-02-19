@@ -3,7 +3,7 @@ package seeders
 import (
 	"math/rand"
 
-	"github.com/AbsoluteZero24/goaset/internal/database/fakers"
+	"github.com/AbsoluteZero24/gokso/internal/database/fakers"
 	"gorm.io/gorm"
 )
 

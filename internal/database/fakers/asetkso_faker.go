@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/AbsoluteZero24/goaset/internal/models"
+	"github.com/AbsoluteZero24/gokso/internal/models"
 	"github.com/bxcodec/faker/v3"
 	"github.com/google/uuid"
 )

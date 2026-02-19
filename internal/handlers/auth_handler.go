@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AbsoluteZero24/goaset/internal/models"
+	"github.com/AbsoluteZero24/gokso/internal/models"
 	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
 	"github.com/unrolled/render"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var store = sessions.NewCookieStore([]byte("goaset-secret-key-change-in-production"))
+var store = sessions.NewCookieStore([]byte("gokso-secret-key-change-in-production"))
 
 func init() {
 	store.Options = &sessions.Options{
@@ -29,7 +29,7 @@ func init() {
 // LoginForm menampilkan halaman login admin
 func (server *Server) LoginForm(w http.ResponseWriter, r *http.Request) {
 	// Check if already logged in
-	session, _ := store.Get(r, "goaset-session")
+	session, _ := store.Get(r, "gokso-session")
 	if session.Values["admin_id"] != nil {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
@@ -60,7 +60,7 @@ func (server *Server) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create session
-	session, _ := store.Get(r, "goaset-session")
+	session, _ := store.Get(r, "gokso-session")
 	session.Values["admin_id"] = admin.ID
 	session.Values["admin_username"] = admin.Username
 	session.Values["admin_role"] = admin.Role
@@ -71,7 +71,7 @@ func (server *Server) Login(w http.ResponseWriter, r *http.Request) {
 
 // Logout menghapus data session admin dan mengarahkan ke halaman login
 func (server *Server) Logout(w http.ResponseWriter, r *http.Request) {
-	session, _ := store.Get(r, "goaset-session")
+	session, _ := store.Get(r, "gokso-session")
 	session.Values["admin_id"] = nil
 	session.Values["admin_username"] = nil
 	session.Values["admin_role"] = nil
@@ -84,7 +84,7 @@ func (server *Server) Logout(w http.ResponseWriter, r *http.Request) {
 // GetCurrentAdmin returns the current logged in admin info from session
 // GetCurrentAdmin mengambil informasi admin yang sedang login dari session
 func GetCurrentAdmin(r *http.Request) (adminID string, username string, role string, isLoggedIn bool) {
-	session, err := store.Get(r, "goaset-session")
+	session, err := store.Get(r, "gokso-session")
 	if err != nil {
 		return "", "", "", false
 	}
