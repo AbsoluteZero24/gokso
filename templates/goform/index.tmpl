@@ -1,4 +1,4 @@
-{{ define "eform/index" }}
+{{ define "goform/index" }}
 <style>
     :root {
         --ef-bg: #f8fafc;
@@ -9,20 +9,20 @@
         --ef-text-main: #1e293b;
     }
 
-    .eform-container {
+    .goform-container {
         padding: 2rem;
         background: var(--ef-bg);
         min-height: 100vh;
     }
 
-    .eform-header {
+    .goform-header {
         margin-bottom: 2.5rem;
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
     }
 
-    .eform-title h1 {
+    .goform-title h1 {
         font-size: 1.875rem;
         font-weight: 800;
         color: var(--ef-text-main);
@@ -30,7 +30,7 @@
         letter-spacing: -0.025em;
     }
 
-    .eform-title p {
+    .goform-title p {
         color: var(--ef-secondary);
         margin-bottom: 0;
     }
@@ -187,10 +187,10 @@
     }
 </style>
 
-<div class="eform-container">
-    <div class="eform-header">
-        <div class="eform-title">
-            <h1>Digital Forms</h1>
+<div class="goform-container">
+    <div class="goform-header">
+        <div class="goform-title">
+            <h1>GoForm</h1>
             <p>Pilih formulir untuk diisi dan akan otomatis tersimpan dalam sistem eDoc.</p>
         </div>
         <div class="search-box">
@@ -231,7 +231,7 @@
                 <div class="stat-badge">
                     <i class="bi bi-file-earmark-text"></i> PDF Format
                 </div>
-                <a href="/godms/dms/fill/{{ .id }}" class="btn-fill">
+                <a href="/goform/fill/{{ .id }}" class="btn-fill">
                     Isi Formulir <i class="bi bi-arrow-right ms-1"></i>
                 </a>
             </div>

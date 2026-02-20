@@ -112,9 +112,9 @@ func (server *Server) initializeRoutes() {
 	server.Router.HandleFunc("/godms/bulk-download", server.AuthRequired(server.BulkDownload)).Methods("POST")
 	server.Router.HandleFunc("/godms/folder-list", server.AuthRequired(server.GetFolderList)).Methods("GET")
 	server.Router.HandleFunc("/godms/trash", server.AuthRequired(server.ViewTrash)).Methods("GET")
-	server.Router.HandleFunc("/godms/dms", server.AuthRequired(server.ListEForm)).Methods("GET")
-	server.Router.HandleFunc("/godms/dms/fill/{id}", server.AuthRequired(server.FillEForm)).Methods("GET")
-	server.Router.HandleFunc("/godms/dms/submit/{id}", server.AuthRequired(server.SubmitEForm)).Methods("POST")
+	server.Router.HandleFunc("/goform", server.AuthRequired(server.ListGoForm)).Methods("GET")
+	server.Router.HandleFunc("/goform/fill/{id}", server.AuthRequired(server.FillGoForm)).Methods("GET")
+	server.Router.HandleFunc("/goform/submit/{id}", server.AuthRequired(server.SubmitGoForm)).Methods("POST")
 
 	// Pengaturan Pengguna (Hanya Super Admin)
 	server.Router.HandleFunc("/setting/user", server.RoleRequired([]string{"super_admin"}, server.ListSettingUser)).Methods("GET")

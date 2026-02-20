@@ -12,8 +12,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// ListEForm menampilkan katalog formulir digital
-func (server *Server) ListEForm(w http.ResponseWriter, r *http.Request) {
+// ListGoForm menampilkan katalog formulir digital
+func (server *Server) ListGoForm(w http.ResponseWriter, r *http.Request) {
 	// Dummy data untuk katalog form
 	forms := []map[string]interface{}{
 		{
@@ -58,20 +58,20 @@ func (server *Server) ListEForm(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	server.RenderHTML(w, r, http.StatusOK, "eform/index", map[string]interface{}{
-		"title": "eForm Catalog",
+	server.RenderHTML(w, r, http.StatusOK, "goform/index", map[string]interface{}{
+		"title": "GoForm Catalog",
 		"forms": forms,
 		"msg":   r.URL.Query().Get("msg"),
 	})
 }
 
-// FillEForm menampilkan formulir untuk diisi
-func (server *Server) FillEForm(w http.ResponseWriter, r *http.Request) {
+// FillGoForm menampilkan formulir untuk diisi
+func (server *Server) FillGoForm(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
 	// Tentukan template berdasarkan ID form
-	templateName := "eform/fill"
+	templateName := "goform/fill"
 	formName := ""
 
 	var employees []models.User
@@ -93,12 +93,12 @@ func (server *Server) FillEForm(w http.ResponseWriter, r *http.Request) {
 		formName = "Surat Jalan Barang"
 	case "form-bast":
 		formName = "BA Serah Terima Aset"
-		templateName = "eform/form_bast"
+		templateName = "goform/form_bast"
 	case "form-bast-laptop":
 		formName = "BA Serah Terima Laptop/Komputer"
-		templateName = "eform/form_bast_laptop"
+		templateName = "goform/form_bast_laptop"
 	default:
-		http.Redirect(w, r, "/godms/dms", http.StatusSeeOther)
+		http.Redirect(w, r, "/goform", http.StatusSeeOther)
 		return
 	}
 
@@ -111,8 +111,8 @@ func (server *Server) FillEForm(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// SubmitEForm menangani pengiriman data formulir
-func (server *Server) SubmitEForm(w http.ResponseWriter, r *http.Request) {
+// SubmitGoForm menangani pengiriman data formulir
+func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -202,7 +202,7 @@ func (server *Server) SubmitEForm(w http.ResponseWriter, r *http.Request) {
 		// Auto-assign assets to recipient (Requirement: Update asset holder on BAST submit)
 		if len(assetIDs) > 0 && p2ID != "" {
 			if err := server.DB.Model(&models.AssetKSO{}).Where("id IN ?", assetIDs).Update("user_id", p2ID).Error; err != nil {
-				fmt.Printf("[EForm Handler] Warning: Failed to auto-assign assets to recipient: %v\n", err)
+				fmt.Printf("[GoForm Handler] Warning: Failed to auto-assign assets to recipient: %v\n", err)
 			}
 		}
 
@@ -238,5 +238,5 @@ func (server *Server) SubmitEForm(w http.ResponseWriter, r *http.Request) {
 
 	server.DB.Create(&newFile)
 
-	http.Redirect(w, r, "/godms/dms?msg="+msg, http.StatusSeeOther)
+	http.Redirect(w, r, "/goform?msg="+msg, http.StatusSeeOther)
 }
