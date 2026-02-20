@@ -745,6 +745,26 @@
                     else alert('Failed to move items to trash');
                 });
             }
+        } else if (action === 'download') {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/godms/bulk-download';
+            
+            selectedItems.forEach(item => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                if (item.type === 'folder') {
+                    input.name = 'folder_ids[]';
+                } else {
+                    input.name = 'file_ids[]';
+                }
+                input.value = item.id;
+                form.appendChild(input);
+            });
+            
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
         } else if (action === 'move') {
             openMoveModal();
         }

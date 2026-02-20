@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -566,4 +567,111 @@ func (server *Server) GetFolderList(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(folders)
+}
+
+// BulkDownload mendownload banyak file/folder sekaligus sebagai satu file ZIP
+func (server *Server) BulkDownload(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	folderIDs := r.Form["folder_ids[]"]
+	fileIDs := r.Form["file_ids[]"]
+
+	if len(folderIDs) == 0 && len(fileIDs) == 0 {
+		http.Error(w, "No items selected", http.StatusBadRequest)
+		return
+	}
+
+	// NEW: If ONLY one file is selected (no folders), download it directly
+	if len(folderIDs) == 0 && len(fileIDs) == 1 {
+		var file models.DMSFile
+		if err := server.DB.Where("id = ?", fileIDs[0]).First(&file).Error; err == nil {
+			physicalPath := filepath.Join("public", "uploads", "edoc", filepath.Base(file.FilePath))
+
+			// Set headers for direct download
+			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", file.Name))
+			w.Header().Set("Content-Type", "application/octet-stream") // Or detect from extension
+
+			http.ServeFile(w, r, physicalPath)
+			return
+		}
+	}
+
+	// Buat ZIP di memory atau temp file
+	// Untuk demo, kita gunakan buffer memory. Jika file sangat besar, gunakan temp file.
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=gokso_download_%s.zip", time.Now().Format("20060102_150405")))
+
+	zipWriter := zip.NewWriter(w)
+	defer zipWriter.Close()
+
+	// Fungsi helper untuk menambah file ke zip
+	addFileToZip := func(file models.DMSFile, prefix string) error {
+		physicalPath := filepath.Join("public", "uploads", "edoc", filepath.Base(file.FilePath))
+		f, err := os.Open(physicalPath)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		// Gunakan forward slash untuk ZIP entry names (standard zip behavior)
+		zipPath := file.Name
+		if prefix != "" {
+			zipPath = strings.ReplaceAll(filepath.Join(prefix, file.Name), "\\", "/")
+		}
+
+		zipFile, err := zipWriter.Create(zipPath)
+		if err != nil {
+			return err
+		}
+
+		_, err = io.Copy(zipFile, f)
+		return err
+	}
+
+	// Fungsi rekursif untuk menambah folder ke zip
+	var addFolderToZip func(folderID string, prefix string) error
+	addFolderToZip = func(folderID string, prefix string) error {
+		var folder models.DMSFolder
+		if err := server.DB.Where("id = ?", folderID).First(&folder).Error; err != nil {
+			return err
+		}
+
+		newPrefix := strings.ReplaceAll(filepath.Join(prefix, folder.Name), "\\", "/")
+
+		// 1. Tambah semua file di folder ini
+		var files []models.DMSFile
+		server.DB.Where("folder_id = ? AND trashed_at IS NULL", folderID).Find(&files)
+		for _, file := range files {
+			if err := addFileToZip(file, newPrefix); err != nil {
+				fmt.Printf("Error adding file %s to zip: %v\n", file.Name, err)
+			}
+		}
+
+		// 2. Tambah subfolder
+		var subfolders []models.DMSFolder
+		server.DB.Where("parent_id = ? AND trashed_at IS NULL", folderID).Find(&subfolders)
+		for _, sub := range subfolders {
+			if err := addFolderToZip(sub.ID, newPrefix); err != nil {
+				fmt.Printf("Error adding subfolder %s to zip: %v\n", sub.Name, err)
+			}
+		}
+
+		return nil
+	}
+
+	// Proses Item yang dipilih
+	for _, id := range fileIDs {
+		var file models.DMSFile
+		if err := server.DB.Where("id = ?", id).First(&file).Error; err == nil {
+			addFileToZip(file, "")
+		}
+	}
+
+	for _, id := range folderIDs {
+		addFolderToZip(id, "")
+	}
 }

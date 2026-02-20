@@ -199,6 +199,13 @@ func (server *Server) SubmitEForm(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Auto-assign assets to recipient (Requirement: Update asset holder on BAST submit)
+		if len(assetIDs) > 0 && p2ID != "" {
+			if err := server.DB.Model(&models.AssetKSO{}).Where("id IN ?", assetIDs).Update("user_id", p2ID).Error; err != nil {
+				fmt.Printf("[EForm Handler] Warning: Failed to auto-assign assets to recipient: %v\n", err)
+			}
+		}
+
 		prefix := "BAST"
 		if id == "form-bast-laptop" {
 			prefix = "BAST_IT"

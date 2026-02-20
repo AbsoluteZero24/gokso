@@ -109,6 +109,7 @@ func (server *Server) initializeRoutes() {
 	server.Router.HandleFunc("/godms/bulk-trash", server.AuthRequired(server.BulkTrash)).Methods("POST")
 	server.Router.HandleFunc("/godms/bulk-restore", server.AuthRequired(server.BulkRestore)).Methods("POST")
 	server.Router.HandleFunc("/godms/bulk-delete-permanent", server.AuthRequired(server.BulkDeletePermanent)).Methods("POST")
+	server.Router.HandleFunc("/godms/bulk-download", server.AuthRequired(server.BulkDownload)).Methods("POST")
 	server.Router.HandleFunc("/godms/folder-list", server.AuthRequired(server.GetFolderList)).Methods("GET")
 	server.Router.HandleFunc("/godms/trash", server.AuthRequired(server.ViewTrash)).Methods("GET")
 	server.Router.HandleFunc("/godms/dms", server.AuthRequired(server.ListEForm)).Methods("GET")
