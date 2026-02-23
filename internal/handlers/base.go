@@ -40,6 +40,28 @@ func (server *Server) Initialize(appConfig config.AppConfig, dbConfig config.DBC
 				"add": func(a, b int) int {
 					return a + b
 				},
+				"formatSize": func(size int64) string {
+					const (
+						KB = 1024
+						MB = KB * 1024
+						GB = MB * 1024
+						TB = GB * 1024
+					)
+					s := float64(size)
+					if size >= TB {
+						return fmt.Sprintf("%.2f TB", s/TB)
+					}
+					if size >= GB {
+						return fmt.Sprintf("%.2f GB", s/GB)
+					}
+					if size >= MB {
+						return fmt.Sprintf("%.2f MB", s/MB)
+					}
+					if size >= KB {
+						return fmt.Sprintf("%.2f KB", s/KB)
+					}
+					return fmt.Sprintf("%.2f KB", s/KB) // Show small files in KB instead of 0 GB
+				},
 			},
 		},
 	})

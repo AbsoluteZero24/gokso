@@ -432,18 +432,28 @@ func (server *Server) getEDocBreadcrumb(folderID string) []models.DMSFolder {
 	return breadcrumbs
 }
 
-// Helper untuk format ukuran file
+// Helper untuk format ukuran file ke KB, MB, GB atau TB
 func (server *Server) formatSize(size int64) string {
-	const unit = 1024
-	if size < unit {
-		return fmt.Sprintf("%d B", size)
+	const (
+		KB = 1024
+		MB = KB * 1024
+		GB = MB * 1024
+		TB = GB * 1024
+	)
+	s := float64(size)
+	if size >= TB {
+		return fmt.Sprintf("%.2f TB", s/TB)
 	}
-	div, exp := int64(unit), 0
-	for n := size / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
+	if size >= GB {
+		return fmt.Sprintf("%.2f GB", s/GB)
 	}
-	return fmt.Sprintf("%.1f %ciB", float64(size)/float64(div), "KMGTPE"[exp])
+	if size >= MB {
+		return fmt.Sprintf("%.2f MB", s/MB)
+	}
+	if size >= KB {
+		return fmt.Sprintf("%.2f KB", s/KB)
+	}
+	return fmt.Sprintf("%.2f KB", s/KB)
 }
 
 // BulkMove memindahkan beberapa item sekaligus ke folder baru

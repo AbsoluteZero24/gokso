@@ -206,7 +206,7 @@
                                 <span class="fw-semibold">{{ .Name }}</span>
                             </div>
                         </td>
-                        <td class="text-muted">{{ .Size }} bytes</td>
+                        <td class="text-muted">{{ formatSize .Size }}</td>
                         <td class="text-muted">{{ if .TrashedAt }}{{ .TrashedAt.Format "02 Jan 2006" }}{{ else }}-{{ end }}</td>
                         <td class="text-end">
                             <div class="dropdown" onclick="event.stopPropagation()">
