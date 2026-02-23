@@ -70,6 +70,23 @@
                         <div class="card-body p-4">
                             <!-- Informasi Dokumen -->
                             <div class="row mb-4">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label fw-bold small text-muted text-uppercase">Kategori Dokumen</label>
+                                    <div class="d-flex gap-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="document_category" id="kat_pengambilan" value="Pengambilan" checked>
+                                            <label class="form-check-label" for="kat_pengambilan">Pengambilan</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="document_category" id="kat_pengembalian" value="Pengembalian">
+                                            <label class="form-check-label" for="kat_pengembalian">Pengembalian</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="document_category" id="kat_tukar" value="Tukar">
+                                            <label class="form-check-label" for="kat_tukar">Penukaran (Tukar)</label>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold small text-muted text-uppercase">Nomor Dokumen</label>
                                     <div class="input-group">
@@ -86,6 +103,39 @@
                                 </div>
                             </div>
 
+                            <!-- Detail Pertukaran (Hanya muncul jika kategori Tukar) -->
+                            <div id="exchangeSection" class="mb-4 p-3 border rounded bg-light" style="display: none;">
+                                <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-arrow-left-right me-2"></i>DETAIL PERTUKARAN ASET</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small text-muted">Aset Lama (Ditarik/Kembali)</label>
+                                        <select name="old_asset_id" id="old_asset_id" class="form-select">
+                                            <option value="">-- Pilih Aset Lama --</option>
+                                            {{ range .assets }}
+                                                {{ if .UserID }}
+                                                <option value="{{ .ID }}" data-user="{{ .User.Name }}">
+                                                    {{ .InventoryNumber }} - {{ .AssetName }} (Assign: {{ .User.Name }})
+                                                </option>
+                                                {{ end }}
+                                            {{ end }}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small text-muted">Aset Baru (Diserahkan)</label>
+                                        <select name="new_asset_id" id="new_asset_id" class="form-select">
+                                            <option value="">-- Pilih Aset Baru --</option>
+                                            {{ range .assets }}
+                                                {{ if not .UserID }}
+                                                <option value="{{ .ID }}">
+                                                    {{ .InventoryNumber }} - {{ .AssetName }}
+                                                </option>
+                                                {{ end }}
+                                            {{ end }}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="row">
                                 <!-- Pihak Pertama (Pemberi) -->
                                 <div class="col-md-6 pe-md-4 border-end">
@@ -98,6 +148,16 @@
                                             <option value="{{ .ID }}">{{ .Name }} - {{ .Department }}</option>
                                             {{ end }}
                                         </select>
+                                    </div>
+                                    <!-- Status Kondisi Aset Lama (Hanya Tukar) -->
+                                    <div id="conditionSection" class="mb-3" style="display: none;">
+                                        <label class="form-label">Status Kondisi Aset Lama</label>
+                                        <select name="asset_condition" id="asset_condition" class="form-select">
+                                            <option value="Ready">Ready / Bagus</option>
+                                            <option value="Rusak">Rusak</option>
+                                            <option value="Hilang">Hilang</option>
+                                        </select>
+                                        <small class="text-muted">Jika pilih Rusak, status aset di inventori akan otomatis terupdate.</small>
                                     </div>
                                 </div>
 
@@ -117,7 +177,7 @@
                             </div>
 
                             <!-- Detail Aset -->
-                            <div class="mt-4">
+                            <div class="mt-4" id="standardDetailSection">
                                 <h6 class="fw-bold mb-3 border-bottom pb-2">DETAIL ASET</h6>
                                 <div class="table-responsive">
                                     <table class="table table-bordered align-middle" id="assetTable">
@@ -190,12 +250,18 @@ const systemAssets = [
         asset_name: "{{ .AssetName }}",
         category: "{{ .Category }}",
         label: "{{ .DeviceName }}",
-        serial_number: "{{ .SerialNumber }}"
+        serial_number: "{{ .SerialNumber }}",
+        user_id: "{{ if .UserID }}{{ .UserID }}{{ end }}",
+        user_name: "{{ if .UserID }}{{ .User.Name }}{{ end }}"
     },
     {{ end }}
 ];
 
 document.addEventListener('DOMContentLoaded', function() {
+    const addRowBtn = document.getElementById('addRow');
+    const assetTableBody = document.getElementById('assetTableBody');
+    let rowCount = 0;
+
     // Initialize Flatpickr for Handover Date
     if (typeof flatpickr !== 'undefined') {
         flatpickr("#handover_date", {
@@ -217,24 +283,102 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof TomSelect !== 'undefined') {
         new TomSelect('#p1_employee_id', { ...tsConfig, placeholder: "-- Pilih Pemberi --" });
         new TomSelect('#p2_employee_id', { ...tsConfig, placeholder: "-- Pilih Penerima --" });
+        
+        // Initialize Exchange Selectors
+        const oldAssetSelect = new TomSelect('#old_asset_id', { 
+            ...tsConfig, 
+            placeholder: "-- Pilih Aset Lama --",
+            searchField: ['text', 'user'],
+        });
+        const newAssetSelect = new TomSelect('#new_asset_id', { ...tsConfig, placeholder: "-- Pilih Aset Baru --" });
+
+        // Category Logic
+        const exchangeSection = document.getElementById('exchangeSection');
+        const conditionSection = document.getElementById('conditionSection');
+        const standardDetailSection = document.getElementById('standardDetailSection');
+        const radios = document.querySelectorAll('input[name="document_category"]');
+        
+        function updateVisibility() {
+            const selectedRadio = document.querySelector('input[name="document_category"]:checked');
+            if (!selectedRadio) return;
+            
+            const selectedValue = selectedRadio.value;
+            if (selectedValue === 'Tukar') {
+                exchangeSection.style.display = 'block';
+                conditionSection.style.display = 'block';
+                standardDetailSection.style.display = 'none';
+                
+                // Disable required inputs in standard detail section to allow submission
+                standardDetailSection.querySelectorAll('select, input').forEach(el => {
+                    if (el.hasAttribute('required')) {
+                        el.setAttribute('data-was-required', 'true');
+                        el.removeAttribute('required');
+                    }
+                });
+                
+                // Make exchange fields required if in 'Tukar' mode
+                document.getElementById('old_asset_id').setAttribute('required', 'required');
+                document.getElementById('new_asset_id').setAttribute('required', 'required');
+            } else {
+                exchangeSection.style.display = 'none';
+                conditionSection.style.display = 'none';
+                standardDetailSection.style.display = 'block';
+
+                // Restore required inputs in standard detail
+                standardDetailSection.querySelectorAll('[data-was-required="true"]').forEach(el => {
+                    el.setAttribute('required', 'required');
+                    el.removeAttribute('data-was-required');
+                });
+                
+                // Remove required from exchange fields
+                document.getElementById('old_asset_id').removeAttribute('required');
+                document.getElementById('new_asset_id').removeAttribute('required');
+            }
+
+            // Refresh asset table rows based on category filter
+            if (selectedValue !== 'Tukar') {
+                assetTableBody.innerHTML = '';
+                createAssetRow();
+            }
+        }
+
+        radios.forEach(radio => {
+            radio.addEventListener('change', updateVisibility);
+        });
+
+        // Initialize visibility on load
+        updateVisibility();
     }
 
-    const addRowBtn = document.getElementById('addRow');
-    const assetTableBody = document.getElementById('assetTableBody');
-    let rowCount = 0;
+
 
     function createAssetRow() {
         rowCount++;
         const rowId = `row-${rowCount}`;
         const tr = document.createElement('tr');
         tr.id = rowId;
+        
+        const category = document.querySelector('input[name="document_category"]:checked')?.value || 'Pengambilan';
+        
+        let filteredAssets = systemAssets.filter(a => a.category.toLowerCase() === 'laptop' || a.category.toLowerCase() === 'komputer');
+        
+        // Dynamic Filter Logic
+        if (category === 'Pengembalian') {
+            // Only show assigned assets for return
+            filteredAssets = filteredAssets.filter(a => a.user_id !== "");
+        } else if (category === 'Pengambilan') {
+            // Only show unassigned assets for new handover
+            filteredAssets = filteredAssets.filter(a => a.user_id === "");
+        }
+
         tr.innerHTML = `
             <td>
                 <select name="selected_asset_ids[]" class="asset-selector" required>
                     <option value="">-- Cari No. Inventaris atau Nama Aset --</option>
-                    ${systemAssets.filter(a => a.category.toLowerCase() === 'laptop' || a.category.toLowerCase() === 'komputer').map(a => {
+                    ${filteredAssets.map(a => {
                         const labelText = a.label ? ` (${a.label})` : '';
-                        return `<option value="${a.id}">${a.inventory_number} - ${a.asset_name}${labelText}</option>`;
+                        const userText = a.user_name ? ` - Assign: ${a.user_name}` : '';
+                        return `<option value="${a.id}" data-user="${a.user_name || ''}">${a.inventory_number} - ${a.asset_name}${labelText}${userText}</option>`;
                     }).join('')}
                 </select>
                 <input type="hidden" name="asset_name[]" id="name-${rowId}">
@@ -258,6 +402,7 @@ document.addEventListener('DOMContentLoaded', function() {
             create: false,
             placeholder: "-- Cari Aset --",
             dropdownParent: 'body',
+            searchField: ['text', 'user'],
             onChange: function(val) {
                 const asset = systemAssets.find(a => a.id === val);
                 if (asset) {

@@ -78,7 +78,7 @@ func (server *Server) FillGoForm(w http.ResponseWriter, r *http.Request) {
 	server.DB.Order("name asc").Find(&employees)
 
 	var assets []models.AssetKSO
-	query := server.DB.Order("inventory_number asc")
+	query := server.DB.Preload("User").Order("inventory_number asc")
 	if id == "form-bast-laptop" {
 		query = query.Where("LOWER(category) = ? OR LOWER(category) = ?", "laptop", "komputer")
 	}
@@ -152,6 +152,7 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 		p2ID := r.FormValue("p2_employee_id")
 		dateStr := r.FormValue("handover_date")
 		data.Notes = r.FormValue("notes")
+		data.Category = r.FormValue("document_category")
 
 		if dateStr != "" {
 			data.HandoverDate, _ = time.Parse("2006-01-02", dateStr)
@@ -169,13 +170,34 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 			server.DB.Where("id IN ?", assetIDs).Find(&data.Items)
 		}
 
+		// Fetch Exchange Assets if "Tukar"
+		if data.Category == "Tukar" {
+			oldID := r.FormValue("old_asset_id")
+			newID := r.FormValue("new_asset_id")
+			if oldID != "" {
+				data.OldAsset = &models.AssetKSO{}
+				server.DB.Where("id = ?", oldID).First(data.OldAsset)
+			}
+			if newID != "" {
+				data.NewAsset = &models.AssetKSO{}
+				server.DB.Where("id = ?", newID).First(data.NewAsset)
+			}
+		}
+
 		// Signature Data
 		data.SigP1Data = r.FormValue("sig_p1_data")
 		data.SigP2Data = r.FormValue("sig_p2_data")
 
 		pdfTitle := "BERITA ACARA SERAH TERIMA"
+		prefix := "BAST"
 		if id == "form-bast-laptop" {
 			pdfTitle = "BERITA ACARA SERAH TERIMA\nLAPTOP/KOMPUTER"
+			prefix = "BAST_IT"
+
+			// Adjust prefix based on category as requested
+			if data.Category != "" {
+				prefix = fmt.Sprintf("BAST_IT_%s", data.Category)
+			}
 
 			// Create/Find Subfolder "BAST Laptop/Komputer"
 			var subFolder models.DMSFolder
@@ -199,18 +221,44 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Auto-assign assets to recipient (Requirement: Update asset holder on BAST submit)
-		if len(assetIDs) > 0 && p2ID != "" {
-			if err := server.DB.Model(&models.AssetKSO{}).Where("id IN ?", assetIDs).Update("user_id", p2ID).Error; err != nil {
-				fmt.Printf("[GoForm Handler] Warning: Failed to auto-assign assets to recipient: %v\n", err)
+		// Auto-assign/unassign assets based on category
+		if len(assetIDs) > 0 {
+			if data.Category == "Pengembalian" {
+				// Auto-unassign (Requirement: Clear holder on return)
+				if err := server.DB.Model(&models.AssetKSO{}).Where("id IN ?", assetIDs).Update("user_id", nil).Error; err != nil {
+					fmt.Printf("[GoForm Handler] Warning: Failed to unassign assets: %v\n", err)
+				}
+			} else if p2ID != "" && data.Category != "Tukar" {
+				// Auto-assign to recipient (only for non-exchange handover)
+				if err := server.DB.Model(&models.AssetKSO{}).Where("id IN ?", assetIDs).Update("user_id", p2ID).Error; err != nil {
+					fmt.Printf("[GoForm Handler] Warning: Failed to auto-assign assets: %v\n", err)
+				}
 			}
 		}
 
-		prefix := "BAST"
-		if id == "form-bast-laptop" {
-			prefix = "BAST_IT"
+		// Handle exchange assignments if "Tukar"
+		if data.Category == "Tukar" && p2ID != "" {
+			condition := r.FormValue("asset_condition")
+			if data.NewAsset != nil {
+				server.DB.Model(&models.AssetKSO{}).Where("id = ?", data.NewAsset.ID).Update("user_id", p2ID)
+			}
+			if data.OldAsset != nil {
+				// Clear holder (Unassign)
+				server.DB.Model(&models.AssetKSO{}).Where("id = ?", data.OldAsset.ID).Update("user_id", nil)
+
+				// Update Status based on condition selected
+				if condition != "" {
+					server.DB.Model(&models.AssetKSO{}).Where("id = ?", data.OldAsset.ID).Update("status", condition)
+				}
+			}
 		}
-		fileName = fmt.Sprintf("%s_%s_%s.pdf", prefix, data.P2.Name, time.Now().Format("20060102_150405"))
+
+		// Dynamic Filename: For Pengembalian, focus on P1 (The Giver)
+		personName := data.P2.Name
+		if data.Category == "Pengembalian" {
+			personName = data.P1.Name
+		}
+		fileName = fmt.Sprintf("%s_%s_%s.pdf", prefix, personName, time.Now().Format("20060102_150405"))
 		msg = "Berita Acara Serah Terima (BAST) berhasil dibuat dan disimpan ke eDoc."
 	} else {
 		fileName = fmt.Sprintf("Form_%s_%s.pdf", id, time.Now().Format("20060102_150405"))
