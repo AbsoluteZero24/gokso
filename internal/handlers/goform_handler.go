@@ -136,13 +136,15 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 
 	// 2. Siapkan data file
 	fileID := uuid.New().String()
-	fileName := ""
+	fileName := "" // Akan diisi di bawah
+	var physicalPath string
 	msg := "Formulir berhasil dikirim."
-	uploadDir := filepath.Join("public", "uploads", "edoc")
+
+	// Tentukan directory upload berdasarkan folder di eDoc
+	uploadDir := server.getPhysicalFolderPath(&folder.ID)
 	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
 		os.MkdirAll(uploadDir, 0755)
 	}
-	physicalPath := filepath.Join(uploadDir, fileID+".pdf")
 
 	if id == "form-bast" || id == "form-bast-laptop" {
 		// Collect BAST Data
@@ -214,7 +216,16 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 			folder = subFolder // Re-assign folder so the file is saved here
 		}
 
+		// Dynamic Filename: For Pengembalian, focus on P1 (The Giver)
+		personName := data.P2.Name
+		if data.Category == "Pengembalian" {
+			personName = data.P1.Name
+		}
+		fileName = fmt.Sprintf("%s_%s_%s.pdf", prefix, personName, time.Now().Format("20060102_150405"))
+		msg = "Berita Acara Serah Terima (BAST) berhasil dibuat dan disimpan ke eDoc."
+
 		// Generate PDF
+		physicalPath = filepath.Join(uploadDir, server.sanitizeFileName(fileName))
 		err := server.GenerateBASTPDF(data, pdfTitle, physicalPath)
 		if err != nil {
 			http.Error(w, "Failed to generate PDF: "+err.Error(), http.StatusInternalServerError)
@@ -252,17 +263,10 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-
-		// Dynamic Filename: For Pengembalian, focus on P1 (The Giver)
-		personName := data.P2.Name
-		if data.Category == "Pengembalian" {
-			personName = data.P1.Name
-		}
-		fileName = fmt.Sprintf("%s_%s_%s.pdf", prefix, personName, time.Now().Format("20060102_150405"))
-		msg = "Berita Acara Serah Terima (BAST) berhasil dibuat dan disimpan ke eDoc."
 	} else {
 		fileName = fmt.Sprintf("Form_%s_%s.pdf", id, time.Now().Format("20060102_150405"))
 		// 3. Simulasikan pembuatan file fisik (.pdf dummy) untuk form lain
+		physicalPath = filepath.Join(uploadDir, server.sanitizeFileName(fileName))
 		dummyContent := []byte("%PDF-1.4\n% Dummy generated file for " + fileName)
 		os.WriteFile(physicalPath, dummyContent, 0644)
 	}
@@ -274,7 +278,7 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 		Name:       fileName,
 		Size:       0, // Will be updated below
 		Extension:  "pdf",
-		FilePath:   "/public/uploads/edoc/" + fileID + ".pdf",
+		FilePath:   "/" + filepath.ToSlash(physicalPath),
 		UploadedBy: "System",
 		Category:   "Digital Form",
 	}

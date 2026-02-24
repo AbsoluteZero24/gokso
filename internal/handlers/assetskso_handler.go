@@ -279,16 +279,13 @@ func (server *Server) UpdateAssetKSO(w http.ResponseWriter, r *http.Request) {
 	}
 
 	purchaseDate, _ := time.Parse("2006-01-02", r.FormValue("purchase_date"))
-	userID := r.FormValue("user_id")
-	var userIDPtr *string
-	if userID != "" {
-		userIDPtr = &userID
-	}
 
 	asset.InventoryNumber = r.FormValue("inventory_number")
 	asset.SerialNumber = r.FormValue("serial_number")
 	asset.AssetName = r.FormValue("asset_name")
-	asset.DeviceName = r.FormValue("device_name")
+	if r.Form.Has("device_name") {
+		asset.DeviceName = r.FormValue("device_name")
+	}
 	asset.Category = r.FormValue("category")
 	asset.Brand = r.FormValue("brand")
 	asset.TypeModel = r.FormValue("type_model")
@@ -297,7 +294,14 @@ func (server *Server) UpdateAssetKSO(w http.ResponseWriter, r *http.Request) {
 
 	asset.Color = r.FormValue("color")
 	asset.Location = r.FormValue("location")
-	asset.UserID = userIDPtr
+	if r.Form.Has("user_id") {
+		userID := r.FormValue("user_id")
+		var userIDPtr *string
+		if userID != "" {
+			userIDPtr = &userID
+		}
+		asset.UserID = userIDPtr
+	}
 	asset.PurchaseDate = purchaseDate
 	asset.Status = r.FormValue("status")
 	if err := server.DB.Save(&asset).Error; err != nil {

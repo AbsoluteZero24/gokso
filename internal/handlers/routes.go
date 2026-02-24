@@ -112,6 +112,7 @@ func (server *Server) initializeRoutes() {
 	server.Router.HandleFunc("/godms/bulk-download", server.AuthRequired(server.BulkDownload)).Methods("POST")
 	server.Router.HandleFunc("/godms/folder-list", server.AuthRequired(server.GetFolderList)).Methods("GET")
 	server.Router.HandleFunc("/godms/trash", server.AuthRequired(server.ViewTrash)).Methods("GET")
+	server.Router.HandleFunc("/godms/migrate", server.AuthRequired(server.MigrateDMS)).Methods("GET")
 	server.Router.HandleFunc("/goform", server.AuthRequired(server.ListGoForm)).Methods("GET")
 	server.Router.HandleFunc("/goform/fill/{id}", server.AuthRequired(server.FillGoForm)).Methods("GET")
 	server.Router.HandleFunc("/goform/submit/{id}", server.AuthRequired(server.SubmitGoForm)).Methods("POST")

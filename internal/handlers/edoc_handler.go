@@ -16,6 +16,115 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// Helper untuk mendapatkan path fisik folder berdasarkan struktur di DB
+func (server *Server) getPhysicalFolderPath(folderID *string) string {
+	baseDir := filepath.Join("public", "nas", "eDoc")
+	if folderID == nil || *folderID == "" {
+		return baseDir
+	}
+
+	var pathParts []string
+	currentID := *folderID
+
+	// Gunakan map untuk menghindari infinite loop jika ada circular reference (meskipun tidak mungkin di UI)
+	visited := make(map[string]bool)
+
+	for currentID != "" && !visited[currentID] {
+		visited[currentID] = true
+		var folder models.DMSFolder
+		if err := server.DB.Unscoped().Where("id = ?", currentID).First(&folder).Error; err != nil {
+			break
+		}
+		// Bersihkan nama folder dari karakter terlarang
+		folderName := server.sanitizeFileName(folder.Name)
+		pathParts = append([]string{folderName}, pathParts...)
+		if folder.ParentID != nil {
+			currentID = *folder.ParentID
+		} else {
+			currentID = ""
+		}
+	}
+	return filepath.Join(baseDir, filepath.Join(pathParts...))
+}
+
+// Helper untuk membersihkan nama file dari karakter terlarang
+func (server *Server) sanitizeFileName(name string) string {
+	badChars := []string{"<", ">", ":", "\"", "/", "\\", "|", "?", "*"}
+	sanitized := name
+	for _, char := range badChars {
+		sanitized = strings.ReplaceAll(sanitized, char, "_")
+	}
+	return strings.TrimSpace(sanitized)
+}
+
+// Helper untuk memindahkan file secara fisik dan update DB
+func (server *Server) moveFilePhysically(file *models.DMSFile, newFolderID *string, newName string) error {
+	oldPath := strings.TrimPrefix(file.FilePath, "/")
+	newDir := server.getPhysicalFolderPath(newFolderID)
+	os.MkdirAll(newDir, 0755)
+
+	if newName == "" {
+		newName = file.Name
+	}
+	sanitizedName := server.sanitizeFileName(newName)
+	newPath := filepath.Join(newDir, sanitizedName)
+
+	// Handle duplicate names (jika path berubah)
+	if _, err := os.Stat(newPath); err == nil && oldPath != newPath {
+		ext := filepath.Ext(sanitizedName)
+		nameOnly := strings.TrimSuffix(sanitizedName, ext)
+		newPath = filepath.Join(newDir, fmt.Sprintf("%s_%d%s", nameOnly, time.Now().Unix(), ext))
+	}
+
+	if oldPath != "" && oldPath != newPath {
+		if _, err := os.Stat(oldPath); err == nil {
+			os.Rename(oldPath, newPath)
+		}
+	}
+
+	file.Name = newName
+	file.FolderID = newFolderID
+	file.FilePath = "/" + filepath.ToSlash(newPath)
+	return server.DB.Save(file).Error
+}
+
+// Helper untuk sinkronisasi struktur folder secara fisik (rekursif)
+func (server *Server) syncFolderPhysically(folderID string) {
+	// 1. Update semua file di folder ini
+	var files []models.DMSFile
+	server.DB.Where("folder_id = ?", folderID).Find(&files)
+	for i := range files {
+		server.moveFilePhysically(&files[i], files[i].FolderID, files[i].Name)
+	}
+
+	// 2. Rekursif untuk subfolder
+	var subfolders []models.DMSFolder
+	server.DB.Where("parent_id = ?", folderID).Find(&subfolders)
+	for _, sub := range subfolders {
+		server.syncFolderPhysically(sub.ID)
+	}
+}
+
+// MigrateDMS memindahkan semua file lama ke struktur folder yang baru
+func (server *Server) MigrateDMS(w http.ResponseWriter, r *http.Request) {
+	// 1. Proses semua file yang ada di root (folder_id IS NULL)
+	var rootFiles []models.DMSFile
+	server.DB.Where("folder_id IS NULL").Find(&rootFiles)
+	for i := range rootFiles {
+		server.moveFilePhysically(&rootFiles[i], nil, rootFiles[i].Name)
+	}
+
+	// 2. Proses semua folder root (parent_id IS NULL)
+	var rootFolders []models.DMSFolder
+	server.DB.Where("parent_id IS NULL").Find(&rootFolders)
+	for _, folder := range rootFolders {
+		server.syncFolderPhysically(folder.ID)
+	}
+
+	w.Write([]byte("Migrasi selesai. Semua file telah dipindahkan ke folder public/nas/ sesuai struktur."))
+	w.WriteHeader(http.StatusOK)
+}
+
 // ListEDoc menampilkan halaman utama Digital Management System (DMS)
 func (server *Server) ListEDoc(w http.ResponseWriter, r *http.Request) {
 	var folders []models.DMSFolder
@@ -103,6 +212,8 @@ func (server *Server) RenameFolder(w http.ResponseWriter, r *http.Request) {
 
 	if id != "" && newName != "" {
 		server.DB.Model(&models.DMSFolder{}).Where("id = ?", id).Update("name", newName)
+		// Sinkronisasi fisik semua isi folder (karena path berubah)
+		server.syncFolderPhysically(id)
 	}
 
 	http.Redirect(w, r, r.Header.Get("Referer"), http.StatusSeeOther)
@@ -114,7 +225,10 @@ func (server *Server) RenameFile(w http.ResponseWriter, r *http.Request) {
 	newName := r.FormValue("name")
 
 	if id != "" && newName != "" {
-		server.DB.Model(&models.DMSFile{}).Where("id = ?", id).Update("name", newName)
+		var file models.DMSFile
+		if err := server.DB.Where("id = ?", id).First(&file).Error; err == nil {
+			server.moveFilePhysically(&file, file.FolderID, newName)
+		}
 	}
 
 	http.Redirect(w, r, r.Header.Get("Referer"), http.StatusSeeOther)
@@ -195,8 +309,11 @@ func (server *Server) deleteFolderRecursive(folderID string) {
 	for _, file := range files {
 		// Hapus fisik
 		if file.FilePath != "" {
-			physicalPath := filepath.Join("public", "uploads", "edoc", filepath.Base(file.FilePath))
-			os.Remove(physicalPath)
+			// Path di model adalah format URL: /public/nas/xxx.ext atau /public/uploads/edoc/xxx.ext
+			physicalPath := strings.TrimPrefix(file.FilePath, "/")
+			if _, err := os.Stat(physicalPath); err == nil {
+				os.Remove(physicalPath)
+			}
 		}
 		// Hapus DB
 		server.DB.Unscoped().Delete(&file)
@@ -210,8 +327,15 @@ func (server *Server) deleteFolderRecursive(folderID string) {
 		server.deleteFolderRecursive(sub.ID)
 	}
 
-	// 3. Akhirnya hapus folder itu sendiri
-	server.DB.Unscoped().Where("id = ?", folderID).Delete(&models.DMSFolder{})
+	// 3. Akhirnya hapus folder itu sendiri (dan direktorinya jika kosong)
+	var folder models.DMSFolder
+	if err := server.DB.Unscoped().Where("id = ?", folderID).First(&folder).Error; err == nil {
+		dirPath := server.getPhysicalFolderPath(&folderID)
+		if _, err := os.Stat(dirPath); err == nil {
+			os.Remove(dirPath) // Hanya akan terhapus jika kosong
+		}
+		server.DB.Unscoped().Delete(&folder)
+	}
 }
 
 // DeleteFilePermanently menghapus file secara permanen dari database dan penyimpanan fisik
@@ -222,10 +346,10 @@ func (server *Server) DeleteFilePermanently(w http.ResponseWriter, r *http.Reque
 		if err := server.DB.Unscoped().Where("id = ?", id).First(&file).Error; err == nil {
 			// Hapus file fisik jika ada
 			if file.FilePath != "" {
-				// Path di model adalah format URL: /public/uploads/edoc/xxx.ext
-				// Kita perlu ubah ke system path: public\uploads\edoc\xxx.ext
-				physicalPath := filepath.Join("public", "uploads", "edoc", filepath.Base(file.FilePath))
-				os.Remove(physicalPath)
+				physicalPath := strings.TrimPrefix(file.FilePath, "/")
+				if _, err := os.Stat(physicalPath); err == nil {
+					os.Remove(physicalPath)
+				}
 			}
 			// Hapus dari DB
 			server.DB.Unscoped().Delete(&file)
@@ -244,7 +368,13 @@ func (server *Server) UploadFile(w http.ResponseWriter, r *http.Request) {
 
 	files := r.MultipartForm.File["file"]
 	parentID := r.FormValue("folder_id")
-	uploadDir := filepath.Join("public", "uploads", "edoc")
+
+	var folderID *string
+	if parentID != "" {
+		folderID = &parentID
+	}
+
+	uploadDir := server.getPhysicalFolderPath(folderID)
 
 	// Pastikan direktori upload ada
 	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
@@ -258,11 +388,16 @@ func (server *Server) UploadFile(w http.ResponseWriter, r *http.Request) {
 		}
 		defer file.Close()
 
-		// Buat nama file unik untuk penyimpanan fisik
-		fileID := uuid.New().String()
-		ext := filepath.Ext(fileHeader.Filename)
-		physicalName := fileID + ext
-		dstPath := filepath.Join(uploadDir, physicalName)
+		// Gunakan nama file asli (sanitized)
+		sanitizedName := server.sanitizeFileName(fileHeader.Filename)
+		dstPath := filepath.Join(uploadDir, sanitizedName)
+
+		// Cek jika file sudah ada, jika ya tambahkan suffix agar tidak tertimpa
+		if _, err := os.Stat(dstPath); err == nil {
+			ext := filepath.Ext(sanitizedName)
+			nameOnly := strings.TrimSuffix(sanitizedName, ext)
+			dstPath = filepath.Join(uploadDir, fmt.Sprintf("%s_%d%s", nameOnly, time.Now().Unix(), ext))
+		}
 
 		dst, err := os.Create(dstPath)
 		if err != nil {
@@ -274,19 +409,17 @@ func (server *Server) UploadFile(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		var folderID *string
-		if parentID != "" {
-			folderID = &parentID
-		}
+		// Hitung path relatif untuk disimpan di DB agar bisa diakses via /public/nas/...
+		dbPath := "/" + filepath.ToSlash(dstPath)
 
 		// Simpan metadata ke DB
 		newFile := models.DMSFile{
-			ID:         fileID,
+			ID:         uuid.New().String(),
 			FolderID:   folderID,
 			Name:       fileHeader.Filename,
 			Size:       fileHeader.Size,
-			Extension:  strings.TrimPrefix(ext, "."),
-			FilePath:   "/public/uploads/edoc/" + physicalName,
+			Extension:  strings.TrimPrefix(filepath.Ext(fileHeader.Filename), "."),
+			FilePath:   dbPath,
 			UploadedBy: "System", // TODO: Get from session
 			Category:   "General",
 		}
@@ -308,7 +441,6 @@ func (server *Server) UploadFolder(w http.ResponseWriter, r *http.Request) {
 
 	files := r.MultipartForm.File["files"]
 	rootParentID := r.FormValue("folder_id")
-	uploadDir := filepath.Join("public", "uploads", "edoc")
 
 	// Map untuk melacak folder yang sudah dibuat/ditemukan dalam sesi upload ini
 	// Key: path/to/folder, Value: ID Folder di DB
@@ -370,15 +502,25 @@ func (server *Server) UploadFolder(w http.ResponseWriter, r *http.Request) {
 		}
 		defer file.Close()
 
-		fileID := uuid.New().String()
-		fileName := pathParts[len(pathParts)-1]
-		ext := filepath.Ext(fileName)
-		physicalName := fileID + ext
-		dstPath := filepath.Join(uploadDir, physicalName)
+		var folderID *string
+		if currentParentID != "" {
+			folderID = &currentParentID
+		}
 
-		// Simpan fisik
+		uploadDir := server.getPhysicalFolderPath(folderID)
 		if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
 			os.MkdirAll(uploadDir, 0755)
+		}
+
+		fileName := pathParts[len(pathParts)-1]
+		sanitizedName := server.sanitizeFileName(fileName)
+		dstPath := filepath.Join(uploadDir, sanitizedName)
+
+		// Cek jika file sudah ada
+		if _, err := os.Stat(dstPath); err == nil {
+			ext := filepath.Ext(sanitizedName)
+			nameOnly := strings.TrimSuffix(sanitizedName, ext)
+			dstPath = filepath.Join(uploadDir, fmt.Sprintf("%s_%d%s", nameOnly, time.Now().Unix(), ext))
 		}
 
 		dst, err := os.Create(dstPath)
@@ -388,19 +530,16 @@ func (server *Server) UploadFolder(w http.ResponseWriter, r *http.Request) {
 		defer dst.Close()
 		io.Copy(dst, file)
 
-		var folderID *string
-		if currentParentID != "" {
-			folderID = &currentParentID
-		}
+		dbPath := "/" + filepath.ToSlash(dstPath)
 
 		// Simpan DB
 		dbFile := models.DMSFile{
-			ID:         fileID,
+			ID:         uuid.New().String(),
 			FolderID:   folderID,
 			Name:       fileName,
 			Size:       fileHeader.Size,
-			Extension:  strings.TrimPrefix(ext, "."),
-			FilePath:   "/public/uploads/edoc/" + physicalName,
+			Extension:  strings.TrimPrefix(filepath.Ext(fileName), "."),
+			FilePath:   dbPath,
 			UploadedBy: "System",
 			Category:   "Uploaded",
 		}
@@ -468,27 +607,27 @@ func (server *Server) BulkMove(w http.ResponseWriter, r *http.Request) {
 	folderIDs := r.Form["folder_ids[]"]
 	fileIDs := r.Form["file_ids[]"]
 
+	var targetID *string
+	if targetFolderID != "" {
+		targetID = &targetFolderID
+	}
+
 	// Pindahkan folder
 	for _, id := range folderIDs {
-		// Pastikan tidak memindahkan folder ke dirinya sendiri atau subfoldernya
 		if id == targetFolderID {
 			continue
 		}
-
-		var parentID *string
-		if targetFolderID != "" {
-			parentID = &targetFolderID
-		}
-		server.DB.Model(&models.DMSFolder{}).Where("id = ?", id).Update("parent_id", parentID)
+		server.DB.Model(&models.DMSFolder{}).Where("id = ?", id).Update("parent_id", targetID)
+		// Sinkronisasi fisik isi folder
+		server.syncFolderPhysically(id)
 	}
 
 	// Pindahkan file
 	for _, id := range fileIDs {
-		var fID *string
-		if targetFolderID != "" {
-			fID = &targetFolderID
+		var file models.DMSFile
+		if err := server.DB.Where("id = ?", id).First(&file).Error; err == nil {
+			server.moveFilePhysically(&file, targetID, file.Name)
 		}
-		server.DB.Model(&models.DMSFile{}).Where("id = ?", id).Update("folder_id", fID)
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -560,8 +699,10 @@ func (server *Server) BulkDeletePermanent(w http.ResponseWriter, r *http.Request
 		var file models.DMSFile
 		if err := server.DB.Unscoped().Where("id = ?", id).First(&file).Error; err == nil {
 			if file.FilePath != "" {
-				physicalPath := filepath.Join("public", "uploads", "edoc", filepath.Base(file.FilePath))
-				os.Remove(physicalPath)
+				physicalPath := strings.TrimPrefix(file.FilePath, "/")
+				if _, err := os.Stat(physicalPath); err == nil {
+					os.Remove(physicalPath)
+				}
 			}
 			server.DB.Unscoped().Delete(&file)
 		}
@@ -599,7 +740,7 @@ func (server *Server) BulkDownload(w http.ResponseWriter, r *http.Request) {
 	if len(folderIDs) == 0 && len(fileIDs) == 1 {
 		var file models.DMSFile
 		if err := server.DB.Where("id = ?", fileIDs[0]).First(&file).Error; err == nil {
-			physicalPath := filepath.Join("public", "uploads", "edoc", filepath.Base(file.FilePath))
+			physicalPath := strings.TrimPrefix(file.FilePath, "/")
 
 			// Set headers for direct download
 			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", file.Name))
@@ -620,7 +761,7 @@ func (server *Server) BulkDownload(w http.ResponseWriter, r *http.Request) {
 
 	// Fungsi helper untuk menambah file ke zip
 	addFileToZip := func(file models.DMSFile, prefix string) error {
-		physicalPath := filepath.Join("public", "uploads", "edoc", filepath.Base(file.FilePath))
+		physicalPath := strings.TrimPrefix(file.FilePath, "/")
 		f, err := os.Open(physicalPath)
 		if err != nil {
 			return err
