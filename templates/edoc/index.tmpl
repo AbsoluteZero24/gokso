@@ -320,7 +320,16 @@
                     </ul>
                 </div>
                 {{ end }}
-                <h1 class="h3 fw-bold mb-0">eDoc Management</h1>
+                <h1 class="h3 fw-bold mb-0">
+                    {{ if eq .section "Operasi Luar Negeri" }}eDoc_OLN
+                    {{ else if eq .section "Keuangan & Administrasi" }}eDoc_KEUADM
+                    {{ else if eq .section "Sistem, Kepatuhan & Pelayanan Pelanggan" }}eDoc_SKPP
+                    {{ else if eq .section "Operasi Dalam Negeri" }}eDoc_ODN
+                    {{ else if eq .section "Pengembangan Usaha, Hubungan Pemangku Stakeholder & Penjualan" }}eDoc_PUHPKP
+                    {{ else if eq .section "Sistem Informasi" }}eDoc_SI
+                    {{ else }}eDoc Management{{ end }}
+                </h1>
+
             </div>
             <div class="d-flex align-items-center gap-4">
                 <div class="text-end">
@@ -328,10 +337,11 @@
                     <div class="fw-bold">{{ .totalStorage }}</div>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="/godms/trash" class="btn btn-outline-danger rounded-pill px-4">
+                    <a href="/godms/trash?section={{ .section }}" class="btn btn-outline-danger rounded-pill px-4">
                         <i class="bi bi-trash me-2"></i> Trash Bin
                     </a>
                 </div>
+
             </div>
         </div>
     </div>
@@ -339,9 +349,10 @@
     <!-- Path Branding / Breadcrumb -->
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb bg-white p-3 rounded-3 border shadow-sm mb-0">
-            <li class="breadcrumb-item"><a href="/godms/doc" class="text-decoration-none">
+            <li class="breadcrumb-item"><a href="/godms/doc?section={{ .section }}" class="text-decoration-none">
                 <i class="bi bi-house-door-fill me-1"></i> Root
             </a></li>
+
             {{ range .breadcrumbs }}
             <li class="breadcrumb-item"><a href="/godms/doc/{{ .ID }}" class="text-decoration-none">{{ .Name }}</a></li>
             {{ end }}
@@ -456,13 +467,17 @@
 <!-- Hidden Inputs for Upload -->
 <form id="uploadFileForm" action="/godms/file/upload" method="POST" enctype="multipart/form-data" style="display: none;">
     <input type="file" id="fileInput" name="file" onchange="this.form.submit()" multiple>
+    <input type="hidden" name="section" value="{{ .section }}">
     {{ if .currentFolder }}<input type="hidden" name="folder_id" value="{{ .currentFolder.ID }}">{{ end }}
 </form>
 
+
 <form id="uploadFolderForm" action="/godms/folder/upload" method="POST" enctype="multipart/form-data" style="display: none;">
     <input type="file" id="folderInput" name="files" webkitdirectory directory multiple onchange="this.form.submit()">
+    <input type="hidden" name="section" value="{{ .section }}">
     {{ if .currentFolder }}<input type="hidden" name="folder_id" value="{{ .currentFolder.ID }}">{{ end }}
 </form>
+
 
 <!-- Modal Rename -->
 <div class="modal fade" id="renameModal" tabindex="-1">
@@ -498,7 +513,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form action="/godms/folder/store" method="POST">
+                <input type="hidden" name="section" value="{{ .section }}">
                 {{ if .currentFolder }}<input type="hidden" name="parent_id" value="{{ .currentFolder.ID }}">{{ end }}
+
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label text-muted">Folder Name</label>
@@ -799,9 +816,10 @@
         
         try {
             if (allFoldersCache.length === 0) {
-                const response = await fetch('/godms/folder-list');
+                const response = await fetch('/godms/folder-list?section={{ .section }}');
                 allFoldersCache = await response.json();
             }
+
             renderFoldersByParent('');
         } catch (err) {
             container.innerHTML = '<div class="p-4 text-center text-danger">Failed to load folders</div>';
@@ -967,9 +985,11 @@
         const items = e.dataTransfer.items;
         if (items) {
             const formData = new FormData();
+            formData.append('section', '{{ .section }}');
             {{ if .currentFolder }}
             formData.append('folder_id', '{{ .currentFolder.ID }}');
             {{ end }}
+
             
             const entries = [];
             for (let i = 0; i < items.length; i++) {

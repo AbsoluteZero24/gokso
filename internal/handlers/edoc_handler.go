@@ -17,8 +17,15 @@ import (
 )
 
 // Helper untuk mendapatkan path fisik folder berdasarkan struktur di DB
-func (server *Server) getPhysicalFolderPath(folderID *string) string {
-	baseDir := filepath.Join("public", "nas", "eDoc")
+// Helper untuk mendapatkan path fisik folder berdasarkan struktur di DB
+func (server *Server) getPhysicalFolderPath(folderID *string, section string) string {
+	// Jika section kosong, default ke "eDoc" untuk kompatibilitas lama atau asumsikan SI jika tidak ditentukan
+	nasFolder := section
+	if nasFolder == "" {
+		nasFolder = "eDoc"
+	}
+	baseDir := filepath.Join("public", "nas", nasFolder)
+
 	if folderID == nil || *folderID == "" {
 		return baseDir
 	}
@@ -38,6 +45,13 @@ func (server *Server) getPhysicalFolderPath(folderID *string) string {
 		// Bersihkan nama folder dari karakter terlarang
 		folderName := server.sanitizeFileName(folder.Name)
 		pathParts = append([]string{folderName}, pathParts...)
+
+		// Update section if it was empty (optional, but ensures we use the correct root)
+		if nasFolder == "eDoc" && folder.Section != "" {
+			nasFolder = folder.Section
+			baseDir = filepath.Join("public", "nas", nasFolder)
+		}
+
 		if folder.ParentID != nil {
 			currentID = *folder.ParentID
 		} else {
@@ -58,9 +72,10 @@ func (server *Server) sanitizeFileName(name string) string {
 }
 
 // Helper untuk memindahkan file secara fisik dan update DB
+// Helper untuk memindahkan file secara fisik dan update DB
 func (server *Server) moveFilePhysically(file *models.DMSFile, newFolderID *string, newName string) error {
 	oldPath := strings.TrimPrefix(file.FilePath, "/")
-	newDir := server.getPhysicalFolderPath(newFolderID)
+	newDir := server.getPhysicalFolderPath(newFolderID, file.Section)
 	os.MkdirAll(newDir, 0755)
 
 	if newName == "" {
@@ -107,6 +122,10 @@ func (server *Server) syncFolderPhysically(folderID string) {
 
 // MigrateDMS memindahkan semua file lama ke struktur folder yang baru
 func (server *Server) MigrateDMS(w http.ResponseWriter, r *http.Request) {
+	// 0. Update Section untuk data lama yang kosong
+	server.DB.Model(&models.DMSFolder{}).Where("section = ? OR section IS NULL", "").Update("section", "Sistem Informasi")
+	server.DB.Model(&models.DMSFile{}).Where("section = ? OR section IS NULL", "").Update("section", "Sistem Informasi")
+
 	// 1. Proses semua file yang ada di root (folder_id IS NULL)
 	var rootFiles []models.DMSFile
 	server.DB.Where("folder_id IS NULL").Find(&rootFiles)
@@ -121,23 +140,30 @@ func (server *Server) MigrateDMS(w http.ResponseWriter, r *http.Request) {
 		server.syncFolderPhysically(folder.ID)
 	}
 
-	w.Write([]byte("Migrasi selesai. Semua file telah dipindahkan ke folder public/nas/ sesuai struktur."))
+	w.Write([]byte("Migrasi selesai. Semua file telah dipindahkan ke folder public/nas/ sesuai struktur section yang baru."))
 	w.WriteHeader(http.StatusOK)
 }
 
 // ListEDoc menampilkan halaman utama Digital Management System (DMS)
+// ListEDoc menampilkan halaman utama Digital Management System (DMS)
 func (server *Server) ListEDoc(w http.ResponseWriter, r *http.Request) {
+	section := r.URL.Query().Get("section")
+	if section == "" {
+		section = "Sistem Informasi" // Default section
+	}
+
 	var folders []models.DMSFolder
-	server.DB.Where("parent_id IS NULL AND trashed_at IS NULL").Find(&folders)
+	server.DB.Where("section = ? AND parent_id IS NULL AND trashed_at IS NULL", section).Find(&folders)
 
 	var files []models.DMSFile
-	server.DB.Where("folder_id IS NULL AND trashed_at IS NULL").Find(&files)
+	server.DB.Where("section = ? AND folder_id IS NULL AND trashed_at IS NULL", section).Find(&files)
 
 	var totalSize int64
-	server.DB.Model(&models.DMSFile{}).Select("COALESCE(sum(size), 0)").Scan(&totalSize)
+	server.DB.Model(&models.DMSFile{}).Where("section = ?", section).Select("COALESCE(sum(size), 0)").Scan(&totalSize)
 
 	server.RenderHTML(w, r, http.StatusOK, "edoc/index", map[string]interface{}{
-		"title":        "Digital Management System (DMS)",
+		"title":        "Digital Management System (DMS) - " + section,
+		"section":      section,
 		"folders":      folders,
 		"files":        files,
 		"totalStorage": server.formatSize(totalSize),
@@ -146,17 +172,24 @@ func (server *Server) ListEDoc(w http.ResponseWriter, r *http.Request) {
 }
 
 // StoreFolder menyimpan folder baru ke database
+// StoreFolder menyimpan folder baru ke database
 func (server *Server) StoreFolder(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
+	section := r.FormValue("section")
+	if section == "" {
+		section = "Sistem Informasi"
+	}
+
 	if name == "" {
-		http.Redirect(w, r, "/godms/doc", http.StatusSeeOther)
+		http.Redirect(w, r, "/godms/doc?section="+section, http.StatusSeeOther)
 		return
 	}
 
 	folder := models.DMSFolder{
-		ID:    uuid.New().String(),
-		Name:  name,
-		Color: "#fbbf24", // Default yellow
+		ID:      uuid.New().String(),
+		Name:    name,
+		Section: section,
+		Color:   "#fbbf24", // Default yellow
 	}
 
 	if parentID := r.FormValue("parent_id"); parentID != "" {
@@ -167,13 +200,14 @@ func (server *Server) StoreFolder(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("Error creating folder: %v\n", err)
 	}
 
-	redirect := "/godms/doc"
+	redirect := "/godms/doc?section=" + section
 	if folder.ParentID != nil {
 		redirect = "/godms/doc/" + *folder.ParentID
 	}
 	http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
 
+// ListFolderContent menampilkan isi dari sebuah folder (subfolder dan file)
 // ListFolderContent menampilkan isi dari sebuah folder (subfolder dan file)
 func (server *Server) ListFolderContent(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -192,10 +226,11 @@ func (server *Server) ListFolderContent(w http.ResponseWriter, r *http.Request) 
 	server.DB.Where("folder_id = ? AND trashed_at IS NULL", folderID).Find(&files)
 
 	var totalSize int64
-	server.DB.Model(&models.DMSFile{}).Select("COALESCE(sum(size), 0)").Scan(&totalSize)
+	server.DB.Model(&models.DMSFile{}).Where("section = ?", currentFolder.Section).Select("COALESCE(sum(size), 0)").Scan(&totalSize)
 
 	server.RenderHTML(w, r, http.StatusOK, "edoc/index", map[string]interface{}{
 		"title":         currentFolder.Name,
+		"section":       currentFolder.Section,
 		"currentFolder": currentFolder,
 		"folders":       subfolders,
 		"files":         files,
@@ -259,15 +294,22 @@ func (server *Server) MoveFileToTrash(w http.ResponseWriter, r *http.Request) {
 }
 
 // ViewTrash menampilkan semua item yang ada di tempat sampah
+// ViewTrash menampilkan semua item yang ada di tempat sampah
 func (server *Server) ViewTrash(w http.ResponseWriter, r *http.Request) {
+	section := r.URL.Query().Get("section")
+	if section == "" {
+		section = "Sistem Informasi"
+	}
+
 	var folders []models.DMSFolder
-	server.DB.Where("trashed_at IS NOT NULL").Find(&folders)
+	server.DB.Where("section = ? AND trashed_at IS NOT NULL", section).Find(&folders)
 
 	var files []models.DMSFile
-	server.DB.Where("trashed_at IS NOT NULL").Find(&files)
+	server.DB.Where("section = ? AND trashed_at IS NOT NULL", section).Find(&files)
 
 	server.RenderHTML(w, r, http.StatusOK, "edoc/trashbin", map[string]interface{}{
-		"title":   "Tempat Sampah",
+		"title":   "Tempat Sampah - " + section,
+		"section": section,
 		"folders": folders,
 		"files":   files,
 		"isTrash": true,
@@ -330,7 +372,7 @@ func (server *Server) deleteFolderRecursive(folderID string) {
 	// 3. Akhirnya hapus folder itu sendiri (dan direktorinya jika kosong)
 	var folder models.DMSFolder
 	if err := server.DB.Unscoped().Where("id = ?", folderID).First(&folder).Error; err == nil {
-		dirPath := server.getPhysicalFolderPath(&folderID)
+		dirPath := server.getPhysicalFolderPath(&folderID, folder.Section)
 		if _, err := os.Stat(dirPath); err == nil {
 			os.Remove(dirPath) // Hanya akan terhapus jika kosong
 		}
@@ -359,6 +401,7 @@ func (server *Server) DeleteFilePermanently(w http.ResponseWriter, r *http.Reque
 }
 
 // UploadFile menangani unggahan satu atau beberapa file ke DMS
+// UploadFile menangani unggahan satu atau beberapa file ke DMS
 func (server *Server) UploadFile(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(100 << 20) // 100MB limit
 	if err != nil {
@@ -368,13 +411,22 @@ func (server *Server) UploadFile(w http.ResponseWriter, r *http.Request) {
 
 	files := r.MultipartForm.File["file"]
 	parentID := r.FormValue("folder_id")
+	section := r.FormValue("section")
+	if section == "" {
+		section = "Sistem Informasi"
+	}
 
 	var folderID *string
 	if parentID != "" {
 		folderID = &parentID
+		// Jika ada parent, gunakan section dari parent agar konsisten
+		var parent models.DMSFolder
+		if err := server.DB.Where("id = ?", parentID).First(&parent).Error; err == nil {
+			section = parent.Section
+		}
 	}
 
-	uploadDir := server.getPhysicalFolderPath(folderID)
+	uploadDir := server.getPhysicalFolderPath(folderID, section)
 
 	// Pastikan direktori upload ada
 	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
@@ -416,6 +468,7 @@ func (server *Server) UploadFile(w http.ResponseWriter, r *http.Request) {
 		newFile := models.DMSFile{
 			ID:         uuid.New().String(),
 			FolderID:   folderID,
+			Section:    section,
 			Name:       fileHeader.Filename,
 			Size:       fileHeader.Size,
 			Extension:  strings.TrimPrefix(filepath.Ext(fileHeader.Filename), "."),
@@ -441,6 +494,17 @@ func (server *Server) UploadFolder(w http.ResponseWriter, r *http.Request) {
 
 	files := r.MultipartForm.File["files"]
 	rootParentID := r.FormValue("folder_id")
+	section := r.FormValue("section")
+	if section == "" {
+		section = "Sistem Informasi"
+	}
+
+	if rootParentID != "" {
+		var parent models.DMSFolder
+		if err := server.DB.Where("id = ?", rootParentID).First(&parent).Error; err == nil {
+			section = parent.Section
+		}
+	}
 
 	// Map untuk melacak folder yang sudah dibuat/ditemukan dalam sesi upload ini
 	// Key: path/to/folder, Value: ID Folder di DB
@@ -480,10 +544,12 @@ func (server *Server) UploadFolder(w http.ResponseWriter, r *http.Request) {
 						// Buat folder baru
 						newFolderID := uuid.New().String()
 						newFolder := models.DMSFolder{
-							ID:    newFolderID,
-							Name:  folderName,
-							Color: "#fbbf24",
+							ID:      newFolderID,
+							Name:    folderName,
+							Section: section,
+							Color:   "#fbbf24",
 						}
+
 						if currentParentID != "" {
 							newFolder.ParentID = &currentParentID
 						}
@@ -507,7 +573,16 @@ func (server *Server) UploadFolder(w http.ResponseWriter, r *http.Request) {
 			folderID = &currentParentID
 		}
 
-		uploadDir := server.getPhysicalFolderPath(folderID)
+		// Ambil section dari folder parent atau tentukan default
+		section := "Sistem Informasi"
+		if folderID != nil {
+			var f models.DMSFolder
+			if err := server.DB.Where("id = ?", *folderID).First(&f).Error; err == nil {
+				section = f.Section
+			}
+		}
+
+		uploadDir := server.getPhysicalFolderPath(folderID, section)
 		if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
 			os.MkdirAll(uploadDir, 0755)
 		}
@@ -536,6 +611,7 @@ func (server *Server) UploadFolder(w http.ResponseWriter, r *http.Request) {
 		dbFile := models.DMSFile{
 			ID:         uuid.New().String(),
 			FolderID:   folderID,
+			Section:    section,
 			Name:       fileName,
 			Size:       fileHeader.Size,
 			Extension:  strings.TrimPrefix(filepath.Ext(fileName), "."),
@@ -543,6 +619,7 @@ func (server *Server) UploadFolder(w http.ResponseWriter, r *http.Request) {
 			UploadedBy: "System",
 			Category:   "Uploaded",
 		}
+
 		if err := server.DB.Create(&dbFile).Error; err != nil {
 			fmt.Printf("Error creating folder file in DB: %v\n", err)
 		}
@@ -712,9 +789,15 @@ func (server *Server) BulkDeletePermanent(w http.ResponseWriter, r *http.Request
 }
 
 // GetFolderList mengembalikan semua folder aktif dalam format JSON (untuk modal pindahkan)
+// GetFolderList mengembalikan semua folder aktif dalam format JSON (untuk modal pindahkan)
 func (server *Server) GetFolderList(w http.ResponseWriter, r *http.Request) {
+	section := r.URL.Query().Get("section")
+	query := server.DB.Where("trashed_at IS NULL")
+	if section != "" {
+		query = query.Where("section = ?", section)
+	}
 	var folders []models.DMSFolder
-	server.DB.Where("trashed_at IS NULL").Order("name ASC").Find(&folders)
+	query.Order("name ASC").Find(&folders)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(folders)

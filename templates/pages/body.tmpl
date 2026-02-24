@@ -1,4 +1,31 @@
 {{ define "pages/body" }}
+<style>
+  /* Fix sidebar text truncation */
+  .sidebar-menu .nav-link p {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.2;
+    padding-right: 20px; /* Space for the arrow */
+    display: inline-block;
+    width: calc(100% - 30px);
+    vertical-align: middle;
+  }
+  .sidebar-menu .nav-link .nav-arrow {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .sidebar-menu .nav-item > .nav-link {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+</style>
+
       <!--begin::Sidebar-->
       <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
         <!--begin::Sidebar Brand-->
@@ -159,6 +186,97 @@
                   </p>
                 </a>
                 <ul class="nav nav-treeview">
+                  <!-- Operasi Luar Negeri -->
+                  <li class="nav-item">
+                    <a href="#" class="nav-link">
+                      <i class="nav-icon bi bi-globe"></i>
+                      <p>
+                        Operasi Luar Negeri
+                        <i class="nav-arrow bi bi-chevron-right"></i>
+                      </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                      <li class="nav-item">
+                        <a href="/godms/doc?section=Operasi Luar Negeri" class="nav-link">
+                          <i class="nav-icon bi bi-file-earmark-ruled"></i>
+                          <p>eDoc_OLN</p>
+                        </a>
+                      </li>
+                    </ul>
+                  </li>
+                  <!-- Keuangan & Administrasi -->
+                  <li class="nav-item">
+                    <a href="#" class="nav-link">
+                      <i class="nav-icon bi bi-cash-stack"></i>
+                      <p>
+                        Keuangan & Administrasi
+                        <i class="nav-arrow bi bi-chevron-right"></i>
+                      </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                      <li class="nav-item">
+                        <a href="/godms/doc?section=Keuangan & Administrasi" class="nav-link">
+                          <i class="nav-icon bi bi-file-earmark-ruled"></i>
+                          <p>eDoc_KEUADM</p>
+                        </a>
+                      </li>
+                    </ul>
+                  </li>
+                  <!-- Sistem, Kepatuhan & Pelayanan Pelanggan -->
+                  <li class="nav-item">
+                    <a href="#" class="nav-link">
+                      <i class="nav-icon bi bi-shield-check"></i>
+                      <p>
+                        Sistem, Kepatuhan & Pelayanan Pelanggan
+                        <i class="nav-arrow bi bi-chevron-right"></i>
+                      </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                      <li class="nav-item">
+                        <a href="/godms/doc?section=Sistem, Kepatuhan & Pelayanan Pelanggan" class="nav-link">
+                          <i class="nav-icon bi bi-file-earmark-ruled"></i>
+                          <p>eDoc_SKPP</p>
+                        </a>
+                      </li>
+                    </ul>
+                  </li>
+                  <!-- Operasi Dalam Negeri -->
+                  <li class="nav-item">
+                    <a href="#" class="nav-link">
+                      <i class="nav-icon bi bi-house-door"></i>
+                      <p>
+                        Operasi Dalam Negeri
+                        <i class="nav-arrow bi bi-chevron-right"></i>
+                      </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                      <li class="nav-item">
+                        <a href="/godms/doc?section=Operasi Dalam Negeri" class="nav-link">
+                          <i class="nav-icon bi bi-file-earmark-ruled"></i>
+                          <p>eDoc_ODN</p>
+                        </a>
+                      </li>
+                    </ul>
+                  </li>
+                  <!-- Pengembangan Usaha, Hubungan Pemangku Stakeholder & Penjualan -->
+                  <li class="nav-item">
+                    <a href="#" class="nav-link">
+                      <i class="nav-icon bi bi-graph-up-arrow"></i>
+                      <p>
+                        Pengembangan Usaha, Hubungan Pemangku Stakeholder & Penjualan
+                        <i class="nav-arrow bi bi-chevron-right"></i>
+                      </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                      <li class="nav-item">
+                        <a href="/godms/doc?section=Pengembangan Usaha, Hubungan Pemangku Stakeholder & Penjualan" class="nav-link">
+                          <i class="nav-icon bi bi-file-earmark-ruled"></i>
+                          <p>eDoc_PUHPKP</p>
+                        </a>
+                      </li>
+                    </ul>
+                  </li>
+                  <!-- Sistem Informasi -->
                   <li class="nav-item">
                     <a href="#" class="nav-link">
                       <i class="nav-icon bi bi-info-circle"></i>
@@ -169,16 +287,16 @@
                     </a>
                     <ul class="nav nav-treeview">
                       <li class="nav-item">
-                        <a href="/godms/doc" class="nav-link">
+                        <a href="/godms/doc?section=Sistem Informasi" class="nav-link">
                           <i class="nav-icon bi bi-file-earmark-ruled"></i>
-                          <p>eDoc</p>
+                          <p>eDoc_SI</p>
                         </a>
                       </li>
-
                     </ul>
                   </li>
                 </ul>
               </li>
+
               {{ if .Permissions.administration }}
               <li class="nav-item">
                 <a href="#" class="nav-link">

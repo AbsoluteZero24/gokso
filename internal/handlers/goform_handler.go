@@ -125,13 +125,17 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 	// 1. Dapatkan atau Buat Folder "Digital Reports" di eDoc
 	var folder models.DMSFolder
 	folderName := "Laporan Digital"
+	section := "Sistem Informasi" // Default section for forms
 	if err := server.DB.Where("name = ? AND parent_id IS NULL", folderName).First(&folder).Error; err != nil {
 		folder = models.DMSFolder{
-			ID:    uuid.New().String(),
-			Name:  folderName,
-			Color: "#3b82f6", // Blue
+			ID:      uuid.New().String(),
+			Name:    folderName,
+			Section: section,
+			Color:   "#3b82f6", // Blue
 		}
 		server.DB.Create(&folder)
+	} else {
+		section = folder.Section
 	}
 
 	// 2. Siapkan data file
@@ -141,7 +145,8 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 	msg := "Formulir berhasil dikirim."
 
 	// Tentukan directory upload berdasarkan folder di eDoc
-	uploadDir := server.getPhysicalFolderPath(&folder.ID)
+	uploadDir := server.getPhysicalFolderPath(&folder.ID, section)
+
 	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
 		os.MkdirAll(uploadDir, 0755)
 	}
@@ -208,12 +213,15 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 				subFolder = models.DMSFolder{
 					ID:       uuid.New().String(),
 					Name:     subFolderName,
+					Section:  section,
 					ParentID: &folder.ID,
 					Color:    "#ec4899", // Pink matching the icon
 				}
 				server.DB.Create(&subFolder)
 			}
 			folder = subFolder // Re-assign folder so the file is saved here
+			section = folder.Section
+
 		}
 
 		// Dynamic Filename: For Pengembalian, focus on P1 (The Giver)
@@ -275,6 +283,7 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 	newFile := models.DMSFile{
 		ID:         fileID,
 		FolderID:   &folder.ID,
+		Section:    section,
 		Name:       fileName,
 		Size:       0, // Will be updated below
 		Extension:  "pdf",
