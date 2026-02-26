@@ -25,6 +25,18 @@ func Initialize(dbConfig config.DBConfig) (*gorm.DB, error) {
 
 // Migrate melakukan migrasi skema database untuk semua model yang terdaftar
 func Migrate(db *gorm.DB) {
+	// Cek apakah database sudah diinisialisasi (dengan mengecek tabel admins)
+	if db.Migrator().HasTable("admins") {
+		var count int64
+		db.Table("admins").Count(&count)
+		if count > 0 {
+			fmt.Println("Database sudah terinisialisasi dan memiliki data. Melewati proses migrasi.")
+			return
+		}
+	}
+
+	fmt.Println("Memulai proses migrasi database...")
+
 	// Drop any potential old indices or constraints that don't account for soft delete
 	db.Exec("DROP INDEX IF EXISTS idx_asset_kso_inventory_number")
 	db.Exec("DROP INDEX IF EXISTS inventory_number")

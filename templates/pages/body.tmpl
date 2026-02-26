@@ -1,28 +1,38 @@
 {{ define "pages/body" }}
 <style>
-  /* Fix sidebar text truncation */
+  /* Fix sidebar text truncation and layout */
+  .sidebar-menu .nav-item > .nav-link {
+    display: flex;
+    align-items: center;
+    position: relative; /* Base for absolute positioning */
+    padding: 10px 15px;
+    width: 100%;
+  }
   .sidebar-menu .nav-link p {
     white-space: normal !important;
     overflow: visible !important;
-    text-overflow: clip !important;
     line-height: 1.2;
-    padding-right: 20px; /* Space for the arrow */
-    display: inline-block;
-    width: calc(100% - 30px);
-    vertical-align: middle;
+    margin-left: 10px;
+    margin-bottom: 0;
+    flex: 1;
+    padding-right: 20px; /* Space for the absolute arrow */
   }
   .sidebar-menu .nav-link .nav-arrow {
     position: absolute;
     right: 15px;
     top: 50%;
-    transform: translateY(-50%);
-  }
-  .sidebar-menu .nav-item > .nav-link {
+    transform: translateY(-50%); /* Start centered */
+    transition: transform 0.3s ease;
     display: flex;
     align-items: center;
-    position: relative;
-    padding-top: 10px;
-    padding-bottom: 10px;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    transform-origin: center;
+  }
+  /* Preserve the centering transform while rotating */
+  .sidebar-menu .nav-item.menu-open > .nav-link .nav-arrow {
+    transform: translateY(-50%) rotate(90deg);
   }
 </style>
 
@@ -66,8 +76,8 @@
                 </a>
               </li>
 
-              <li class="nav-item">
-                <a href="#" class="nav-link">
+              <li class="nav-item {{ if or .Permissions.inventori .Permissions.asset_management .Permissions.maintenance (eq .AdminRole "super_admin") }}has-treeview{{ end }}">
+                <a href="javascript:void(0)" class="nav-link">
                   <i class="nav-icon bi bi-box"></i>
                   <p>
                     GoAsset
@@ -75,9 +85,9 @@
                   </p>
                 </a>
                 <ul class="nav nav-treeview">
-                  {{ if .Permissions.inventori }}
+                  {{ if or .Permissions.inventori (eq .AdminRole "super_admin") }}
                   <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-archive"></i>
                       <p>
                         Inventori
@@ -92,7 +102,7 @@
                         </a>
                       </li>
                       <li class="nav-item">
-                        <a href="#" class="nav-link">
+                        <a href="javascript:void(0)" class="nav-link">
                           <i class="nav-icon bi bi-database"></i>
                           <p>
                             Master Data
@@ -111,9 +121,9 @@
                     </ul>
                   </li>
                   {{ end }}
-                  {{ if .Permissions.asset_management }}
+                  {{ if or .Permissions.asset_management (eq .AdminRole "super_admin") }}
                   <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-file-earmark-text"></i>
                       <p>
                         Asset Management
@@ -136,9 +146,9 @@
                     </ul>
                   </li>
                   {{ end }}
-                  {{ if .Permissions.maintenance }}
+                  {{ if or .Permissions.maintenance (eq .AdminRole "super_admin") }}
                   <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-tools"></i>
                       <p>
                         Maintenance
@@ -178,7 +188,7 @@
               </li>
 
               <li class="nav-item">
-                <a href="#" class="nav-link">
+                <a href="javascript:void(0)" class="nav-link">
                   <i class="nav-icon bi bi-journal-text"></i>
                   <p>
                     GoDMS
@@ -188,7 +198,7 @@
                 <ul class="nav nav-treeview">
                   <!-- Operasi Luar Negeri -->
                   <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-globe"></i>
                       <p>
                         Operasi Luar Negeri
@@ -206,7 +216,7 @@
                   </li>
                   <!-- Keuangan & Administrasi -->
                   <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-cash-stack"></i>
                       <p>
                         Keuangan & Administrasi
@@ -224,7 +234,7 @@
                   </li>
                   <!-- Sistem, Kepatuhan & Pelayanan Pelanggan -->
                   <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-shield-check"></i>
                       <p>
                         Sistem, Kepatuhan & Pelayanan Pelanggan
@@ -242,7 +252,7 @@
                   </li>
                   <!-- Operasi Dalam Negeri -->
                   <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-house-door"></i>
                       <p>
                         Operasi Dalam Negeri
@@ -260,7 +270,7 @@
                   </li>
                   <!-- Pengembangan Usaha, Hubungan Pemangku Stakeholder & Penjualan -->
                   <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-graph-up-arrow"></i>
                       <p>
                         Pengembangan Usaha, Hubungan Pemangku Stakeholder & Penjualan
@@ -278,7 +288,7 @@
                   </li>
                   <!-- Sistem Informasi -->
                   <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-info-circle"></i>
                       <p>
                         Sistem Informasi
@@ -299,7 +309,7 @@
 
               {{ if .Permissions.administration }}
               <li class="nav-item">
-                <a href="#" class="nav-link">
+                <a href="javascript:void(0)" class="nav-link">
                   <i class="nav-icon bi bi-person-gear"></i>
                   <p>
                     Administration
@@ -314,7 +324,7 @@
                     </a>
                   </li>
                   <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-database"></i>
                       <p>
                         Master Data Employee
@@ -353,7 +363,7 @@
               {{ end }}
               {{ if eq .AdminRole "super_admin" }}
               <li class="nav-item">
-                <a href="#" class="nav-link">
+                <a href="javascript:void(0)" class="nav-link">
                   <i class="nav-icon bi bi-gear"></i>
                   <p>
                     Setting

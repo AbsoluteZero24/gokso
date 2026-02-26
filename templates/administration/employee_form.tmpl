@@ -202,6 +202,23 @@
     }
   }
 
+  // Initialize Tom Select for searchable dropdowns
+  let branchTS, positionTS;
+
+  document.addEventListener('DOMContentLoaded', function() {
+    branchTS = new TomSelect('#branch', {
+      create: false,
+      plugins: ['dropdown_input'],
+      sortField: { field: 'text', order: 'asc' }
+    });
+
+    positionTS = new TomSelect('#position', {
+      create: false,
+      plugins: ['dropdown_input'],
+      sortField: { field: 'text', order: 'asc' }
+    });
+  });
+
   // Initialize if edit mode
   window.onload = function() {
     const branchSelect = document.getElementById('branch');
@@ -209,7 +226,8 @@
       const initialDept = "{{ if .user }}{{ .user.Department }}{{ end }}";
       const initialSub = "{{ if .user }}{{ .user.SubDepartment }}{{ end }}";
       
-      const branch = masterData.find(b => b.name === branchSelect.value);
+      const branchName = branchSelect.value;
+      const branch = masterData.find(b => b.name === branchName);
       if (branch) {
         const deptSelect = document.getElementById('department');
         deptSelect.innerHTML = '<option value="">-- Pilih Bagian --</option>';

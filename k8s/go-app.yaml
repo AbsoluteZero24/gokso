@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: go-app-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-app
+spec:
+  replicas: 1 # Set to 1 because ReadWriteOnce PVC can only be bound to one node
+  selector:
+    matchLabels:
+      app: go-app
+  template:
+    metadata:
+      labels:
+        app: go-app
+    spec:
+      initContainers:
+        - name: db-migrate
+          image: gokso-app:latest
+          imagePullPolicy: IfNotPresent
+          command: ["./main", "db:migrate"]
+          env:
+            - name: DB_HOST
+              value: "postgres-service"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "Sci$iK50"
+            - name: DB_NAME
+              value: "goksodb"
+            - name: DB_PORT
+              value: "5432"
+      containers:
+        - name: go-app
+          image: gokso-app:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9001
+          env:
+            - name: APP_NAME
+              value: "gokso"
+            - name: APP_ENV
+              value: "production"
+            - name: APP_PORT
+              value: "9001"
+            - name: DB_HOST
+              value: "postgres-service"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "Sci$iK50"
+            - name: DB_NAME
+              value: "goksodb"
+            - name: DB_PORT
+              value: "5432"
+          volumeMounts:
+            - name: app-storage
+              mountPath: /root/public/nas
+              subPath: nas
+            - name: app-storage
+              mountPath: /root/public/uploads
+              subPath: uploads
+      volumes:
+        - name: app-storage
+          persistentVolumeClaim:
+            claimName: go-app-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-app-service
+spec:
+  selector:
+    app: go-app
+  ports:
+    - protocol: TCP
+      port: 9001
+      targetPort: 9001

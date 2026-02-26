@@ -125,18 +125,22 @@
   }
 
   .filter-reset {
-    color: #dc3545;
-    font-size: 1.1rem;
+    color: #6c757d;
+    font-size: 1.25rem;
     display: flex;
     align-items: center;
-    margin-left: 8px;
-    transition: transform 0.2s ease;
+    justify-content: center;
+    margin-left: 4px;
+    padding: 2px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
     text-decoration: none;
+    line-height: 1;
   }
 
   .filter-reset:hover {
-    color: #b02a37;
-    transform: scale(1.1);
+    background-color: rgba(0, 0, 0, 0.05);
+    color: #333;
   }
 
   /* Modern Search Styling */
@@ -227,7 +231,7 @@
                             </div>
                             {{ if .selectedYear }}
                             <a href="/inventori/aset-laptop?year=" class="filter-reset" title="Hapus Filter">
-                              <i class="bi bi-x-circle-fill"></i>
+                              <i class="bi bi-x"></i>
                             </a>
                             {{ end }}
                           </div>

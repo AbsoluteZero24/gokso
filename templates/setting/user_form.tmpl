@@ -97,20 +97,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const userIdSelect = document.getElementById('user_id');
     const usernameInput = document.getElementById('username');
     
+    // Initialize Tom Select
+    const ts = new TomSelect('#user_id', {
+      create: false,
+      plugins: ['dropdown_input'],
+      sortField: { field: 'text', order: 'asc' }
+    });
+
     {{ if not .admin }}
-    userIdSelect.addEventListener('change', function() {
-        const selectedOption = this.options[this.selectedIndex];
-        if (selectedOption.value) {
-            // Get NIK or Name for default username
-            const text = selectedOption.text;
-            const nikMatch = text.match(/\((.*?)\)/);
-            if (nikMatch && nikMatch[1]) {
-                // If it looks like an email or has numbers (NIK), use it
-                usernameInput.value = nikMatch[1].toLowerCase().replace(/\s+/g, '');
-            } else {
-                const name = text.split(' (')[0];
-                usernameInput.value = name.toLowerCase().replace(/\s+/g, '.');
-            }
+    // Tom Select change event
+    ts.on('change', function(value) {
+        if (!value) return;
+        
+        // Get the original option text
+        const option = userIdSelect.options[userIdSelect.selectedIndex];
+        if (!option) return;
+        
+        const text = option.text;
+        const nikMatch = text.match(/\((.*?)\)/);
+        if (nikMatch && nikMatch[1]) {
+            usernameInput.value = nikMatch[1].toLowerCase().replace(/\s+/g, '');
+        } else {
+            const name = text.split(' (')[0];
+            usernameInput.value = name.toLowerCase().replace(/\s+/g, '.');
         }
     });
     {{ end }}

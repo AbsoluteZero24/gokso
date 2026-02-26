@@ -191,6 +191,13 @@
 </div>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // Searchable employee selection
+    new TomSelect('#user_id', {
+      create: false,
+      plugins: ['dropdown_input'],
+      sortField: { field: 'text', order: 'asc' }
+    });
+
     const dateInput = document.getElementById('purchase_date');
     const isEdit = dateInput.value !== "";
     
