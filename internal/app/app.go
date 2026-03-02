@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/AbsoluteZero24/gokso/internal/config"
+	"github.com/AbsoluteZero24/gokso/internal/database"
+	"github.com/AbsoluteZero24/gokso/internal/database/seeders"
 	"github.com/AbsoluteZero24/gokso/internal/handlers"
 	"github.com/joho/godotenv"
 )
@@ -43,10 +45,28 @@ func Run() {
 	flag.Parse()
 	arg := flag.Arg(0)
 
+	// Support for monolithic initialization via env var
+	autoMigrate := Getenv("APP_AUTO_MIGRATE", "false") == "true"
+
 	if arg != "" {
 		server.InitCommands(appConfig, dbConfig)
 	} else {
 		server.Initialize(appConfig, dbConfig)
+
+		if autoMigrate {
+			log.Println("Auto-migration enabled. Initializing database...")
+			database.Migrate(server.DB)
+
+			log.Println("Seeding database...")
+			// We can call specific seeders or the main DBSeed
+			seeders.SeedAdmin(server.DB)
+			seeders.SeedPermissions(server.DB)
+			seeders.SeedMasterDataEmployee(server.DB)
+			seeders.SeedMasterDataAsset(server.DB)
+			seeders.SeedDMS(server.DB)
+			log.Println("Database initialization complete.")
+		}
+
 		server.Run(":" + appConfig.AppPort)
 	}
 }

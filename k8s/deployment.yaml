@@ -1,42 +1,47 @@
-# --- PostgreSQL ---
+# --- Storage ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: postgres-pvc
+  name: gokso-pvc
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 1Gi
+      storage: 10Gi
 ---
+# --- Monolith Service ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgres-service
+  name: gokso-service
 spec:
+  type: LoadBalancer
   selector:
-    app: postgres
+    app: gokso
   ports:
-    - protocol: TCP
-      port: 5432
-      targetPort: 5432
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 9001
 ---
+# --- Monolith Deployment (App + DB) ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: postgres
+  name: gokso
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: postgres
+      app: gokso
   template:
     metadata:
       labels:
-        app: postgres
+        app: gokso
     spec:
       containers:
+        # 1. PostgreSQL Container (Sidecar)
         - name: postgres
           image: postgres:15-alpine
           ports:
@@ -49,91 +54,14 @@ spec:
             - name: POSTGRES_DB
               value: goksodb
           volumeMounts:
-            - name: postgres-storage
+            - name: storage
               mountPath: /var/lib/postgresql/data
-      volumes:
-        - name: postgres-storage
-          persistentVolumeClaim:
-            claimName: postgres-pvc
+              subPath: postgres-data
 
----
-# --- DB Migration Job ---
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: go-app-migrate
-spec:
-  template:
-    spec:
-      containers:
-        - name: db-migrate
-          image: absolutezero24/gokso-app:latest
-          imagePullPolicy: IfNotPresent
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              ./main db:migrate && 
-              ./main db:seed_admin && 
-              ./main db:seed_permission && 
-              ./main db:seed_masterdata_employee && 
-              ./main db:seed_masterdata_asset && 
-              ./main db:seed_dms
-          env:
-            - name: DB_HOST
-              value: "postgres-service"
-            - name: DB_USER
-              value: "postgres"
-            - name: DB_PASSWORD
-              value: "Sci$iK50"
-            - name: DB_NAME
-              value: "goksodb"
-            - name: DB_PORT
-              value: "5432"
-      restartPolicy: OnFailure
-  backoffLimit: 4
----
-# --- Go Application ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: go-app-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: go-app-service
-spec:
-  selector:
-    app: go-app
-  ports:
-    - protocol: TCP
-      port: 9001
-      targetPort: 9001
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: go-app
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: go-app
-  template:
-    metadata:
-      labels:
-        app: go-app
-    spec:
-      containers:
+        # 2. Go Application Container
         - name: go-app
           image: absolutezero24/gokso-app:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 9001
           env:
@@ -143,8 +71,10 @@ spec:
               value: "production"
             - name: APP_PORT
               value: "9001"
+            - name: APP_AUTO_MIGRATE # Integrated migration
+              value: "true"
             - name: DB_HOST
-              value: "postgres-service"
+              value: "localhost" # Connect to the sidecar via localhost
             - name: DB_USER
               value: "postgres"
             - name: DB_PASSWORD
@@ -154,92 +84,14 @@ spec:
             - name: DB_PORT
               value: "5432"
           volumeMounts:
-            - name: app-storage
+            - name: storage
               mountPath: /root/public/nas
               subPath: nas
-            - name: app-storage
+            - name: storage
               mountPath: /root/public/uploads
               subPath: uploads
+      
       volumes:
-        - name: app-storage
+        - name: storage
           persistentVolumeClaim:
-            claimName: go-app-pvc
-
----
-# --- Nginx ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: nginx-config
-data:
-  nginx.conf: |
-    events {
-        worker_connections 1024;
-    }
-    http {
-        include       /etc/nginx/mime.types;
-        default_type  application/octet-stream;
-        
-        upstream go_app {
-            server go-app-service:9001;
-        }
-        
-        server {
-            listen 80;
-            server_name localhost;
-
-            location / {
-                proxy_pass http://go_app;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $scheme;
-            }
-
-            # Optional: Serve static files directly if mounted
-            # location /public/ {
-            #     alias /usr/share/nginx/html/public/;
-            # }
-        }
-    }
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: nginx-service
-spec:
-  type: LoadBalancer
-  selector:
-    app: nginx
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 80
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nginx
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: nginx
-  template:
-    metadata:
-      labels:
-        app: nginx
-    spec:
-      containers:
-        - name: nginx
-          image: nginx:alpine
-          ports:
-            - containerPort: 80
-          volumeMounts:
-            - name: nginx-config-volume
-              mountPath: /etc/nginx/nginx.conf
-              subPath: nginx.conf
-      volumes:
-        - name: nginx-config-volume
-          configMap:
-            name: nginx-config
+            claimName: gokso-pvc
