@@ -65,6 +65,56 @@ func (server *Server) ListGoForm(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ApiListGoForm returns JSON for form catalogue
+func (server *Server) ApiListGoForm(w http.ResponseWriter, r *http.Request) {
+	forms := []map[string]interface{}{
+		{
+			"id":          "form-maintenance",
+			"name":        "Laporan Pemeliharaan Bulanan",
+			"description": "Formulir standar untuk pencatatan rutin kondisi aset laptop & komputer.",
+			"icon":        "Tools",
+			"color":       "#3b82f6",
+			"category":    "IT Support",
+		},
+		{
+			"id":          "form-peminjaman",
+			"name":        "Permohonan Pinjam Aset",
+			"description": "Digunakan untuk mengajukan peminjaman aset kantor bagi karyawan.",
+			"icon":        "UserCheck",
+			"color":       "#10b981",
+			"category":    "Logistik",
+		},
+		{
+			"id":          "form-surat-jalan",
+			"name":        "Surat Jalan Barang",
+			"description": "Dokumen resmi pengiriman atau perpindahan aset antar cabang.",
+			"icon":        "Truck",
+			"color":       "#f59e0b",
+			"category":    "Logistik",
+		},
+		{
+			"id":          "form-bast",
+			"name":        "BA Serah Terima Aset",
+			"description": "Berita acara bukti penyerahan aset kepada pengguna/karyawan.",
+			"icon":        "ClipboardCheck",
+			"color":       "#8b5cf6",
+			"category":    "Asset Control",
+		},
+		{
+			"id":          "form-bast-laptop",
+			"name":        "BA Serah Terima Laptop/Komputer",
+			"description": "Berita acara bukti penyerahan khusus aset IT (Laptop/Komputer).",
+			"icon":        "Laptop",
+			"color":       "#ec4899",
+			"category":    "Asset Control",
+		},
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"forms": forms,
+	})
+}
+
 // FillGoForm menampilkan formulir untuk diisi
 func (server *Server) FillGoForm(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -106,6 +156,27 @@ func (server *Server) FillGoForm(w http.ResponseWriter, r *http.Request) {
 		"title":     "Isi " + formName,
 		"formID":    id,
 		"formName":  formName,
+		"employees": employees,
+		"assets":    assets,
+	})
+}
+
+// ApiGetGoFormInitData returns JSON data needed to fill a form
+func (server *Server) ApiGetGoFormInitData(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var employees []models.User
+	server.DB.Order("name asc").Find(&employees)
+
+	var assets []models.AssetKSO
+	query := server.DB.Preload("User").Order("inventory_number asc")
+	if id == "form-bast-laptop" {
+		query = query.Where("LOWER(category) = ? OR LOWER(category) = ?", "laptop", "komputer")
+	}
+	query.Find(&assets)
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
 		"employees": employees,
 		"assets":    assets,
 	})

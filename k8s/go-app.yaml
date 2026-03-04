@@ -25,7 +25,7 @@ spec:
     spec:
       initContainers:
         - name: db-migrate
-          image: gokso-app:latest
+          image: absolutezero24/gokso-app:latest
           imagePullPolicy: IfNotPresent
           command: ["./main", "db:migrate"]
           env:

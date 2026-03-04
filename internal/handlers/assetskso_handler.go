@@ -13,6 +13,70 @@ import (
 	"gorm.io/gorm"
 )
 
+// ApiListAssetKSO returns JSON list of assets KSO
+func (server *Server) ApiListAssetKSO(w http.ResponseWriter, r *http.Request) {
+	year := r.URL.Query().Get("year")
+
+	var assets []models.AssetKSO
+	db := server.DB.Model(&models.AssetKSO{}).Preload("User")
+
+	if year != "" {
+		startOfYear := fmt.Sprintf("%s-01-01 00:00:00", year)
+		endOfYear := fmt.Sprintf("%s-12-31 23:59:59", year)
+		db = db.Where("purchase_date BETWEEN ? AND ?", startOfYear, endOfYear)
+	}
+
+	if err := db.Order("inventory_number asc").Find(&assets).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	// Provide a list of years for filter
+	currentYear := time.Now().Year()
+	var years []int
+	for y := 2024; y <= currentYear+1; y++ {
+		years = append(years, y)
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"assets":       assets,
+		"selectedYear": year,
+		"years":        years,
+	})
+}
+
+// ApiDeleteAssetKSO handles JSON delete request
+func (server *Server) ApiDeleteAssetKSO(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	if err := server.DB.Where("id = ?", id).Delete(&models.AssetKSO{}).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Asset deleted successfully"})
+}
+
+// ApiBulkDeleteAssetKSO handles JSON bulk delete request
+func (server *Server) ApiBulkDeleteAssetKSO(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		server.Renderer.JSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+
+	ids := r.Form["ids"]
+	if len(ids) > 0 {
+		if err := server.DB.Where("id IN ?", ids).Delete(&models.AssetKSO{}).Error; err != nil {
+			server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Assets deleted successfully"})
+}
+
 // fetchAssetMasterData mengambil data master (kategori, RAM, penyimpanan) untuk form aset
 func (server *Server) fetchAssetMasterData() (map[string]interface{}, error) {
 	var categories []models.MasterAssetCategory
@@ -361,6 +425,60 @@ func (server *Server) ListAssetLaptop(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ApiListAssetLaptop returns JSON list of laptop assets and users for assignment
+func (server *Server) ApiListAssetLaptop(w http.ResponseWriter, r *http.Request) {
+	var assets []models.AssetKSO
+	server.DB.Preload("User").Where("category = ?", "Laptop").Order("inventory_number asc").Find(&assets)
+
+	var users []models.User
+	server.DB.Find(&users)
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"assets": assets,
+		"users":  users,
+	})
+}
+
+// ApiAssignAssetLaptop handles JSON request to assign/unassign employee to laptop
+func (server *Server) ApiAssignAssetLaptop(w http.ResponseWriter, r *http.Request) {
+	_ = r.ParseForm()
+	assetID := r.FormValue("asset_id")
+	userID := r.FormValue("user_id")
+
+	var asset models.AssetKSO
+	if err := server.DB.Where("id = ?", assetID).First(&asset).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusNotFound, map[string]string{"error": "Asset not found"})
+		return
+	}
+
+	if userID == "" {
+		asset.UserID = nil
+	} else {
+		asset.UserID = &userID
+	}
+
+	if err := server.DB.Save(&asset).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Assignment updated successfully"})
+}
+
+// ApiUpdateAssetLabel handles JSON request to update device label
+func (server *Server) ApiUpdateAssetLabel(w http.ResponseWriter, r *http.Request) {
+	_ = r.ParseForm()
+	assetID := r.FormValue("asset_id")
+	deviceName := r.FormValue("device_name")
+
+	if err := server.DB.Model(&models.AssetKSO{}).Where("id = ?", assetID).Update("device_name", deviceName).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Label updated successfully"})
+}
+
 // CreateAssetLaptopForm menampilkan form untuk menambah aset Laptop baru melalui menu Asset Management
 func (server *Server) CreateAssetLaptopForm(w http.ResponseWriter, r *http.Request) {
 	var users []models.User
@@ -426,7 +544,34 @@ func (server *Server) AssignAssetLaptop(w http.ResponseWriter, r *http.Request) 
 		server.DB.Save(&asset)
 	}
 
-	http.Redirect(w, r, "/asset-management/laptop", http.StatusSeeOther)
+	http.Redirect(w, r, "/inventori/aset?msg=Tgl Perolehan & Label berhasil disimpan", http.StatusSeeOther)
+}
+
+// ApiStoreAssetKSO handles JSON request to add new asset
+func (server *Server) ApiStoreAssetKSO(w http.ResponseWriter, r *http.Request) {
+	_ = r.ParseForm()
+
+	asset := models.AssetKSO{
+		ID:              uuid.New().String(),
+		InventoryNumber: r.FormValue("inventory_number"),
+		AssetName:       r.FormValue("asset_name"),
+		Category:        r.FormValue("category"),
+		Brand:           r.FormValue("brand"),
+		TypeModel:       r.FormValue("type_model"),
+		SerialNumber:    r.FormValue("serial_number"),
+		DeviceName:      r.FormValue("device_name"),
+		Specification:   r.FormValue("specification"),
+		Color:           r.FormValue("color"),
+		Location:        r.FormValue("location"),
+		Status:          "Ready",
+	}
+
+	if err := server.DB.Create(&asset).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{"message": "Aset berhasil ditambahkan", "asset": asset})
 }
 
 // ListAssetKomputer menampilkan halaman manajemen aset khusus untuk kategori Komputer
@@ -774,6 +919,170 @@ func (server *Server) MaintenanceLaptop(w http.ResponseWriter, r *http.Request) 
 		"AdminRole":       adminRole,
 		"years":           years,
 	})
+}
+
+// ApiMaintenanceLaptop returns JSON data for maintenance laptop page
+func (server *Server) ApiMaintenanceLaptop(w http.ResponseWriter, r *http.Request) {
+	year := r.URL.Query().Get("year")
+	semester := r.URL.Query().Get("semester")
+	branchParam := r.URL.Query().Get("branch")
+	dept := r.URL.Query().Get("department")
+	subDeptParam := r.URL.Query().Get("sub_department")
+
+	now := time.Now()
+	if year == "" {
+		year = fmt.Sprintf("%d", now.Year())
+	}
+	if semester == "" {
+		if now.Month() <= 6 {
+			semester = "S1"
+		} else {
+			semester = "S2"
+		}
+	}
+
+	period := fmt.Sprintf("%s-%s", semester, year)
+	selectedYearInt, _ := strconv.Atoi(year)
+
+	var years []int
+	for y := 2024; y <= now.Year()+1; y++ {
+		years = append(years, y)
+	}
+
+	var branches []models.MasterBranch
+	server.DB.Preload("Departments.SubDepartments").Find(&branches)
+
+	var assets []models.AssetKSO
+	server.DB.Preload("User").Where("category = ?", "Laptop").Find(&assets)
+
+	var reports []models.MaintenanceReport
+	server.DB.Where("period = ? AND document_id IS NULL", period).Find(&reports)
+
+	reportMap := make(map[string]models.MaintenanceReport)
+	for _, r := range reports {
+		reportMap[r.AssetID] = r
+	}
+
+	groupedAssets := make(map[string][]map[string]interface{})
+	for _, asset := range assets {
+		report, exists := reportMap[asset.ID]
+		if exists && report.InspectionDate.Year() != selectedYearInt {
+			exists = false
+			report = models.MaintenanceReport{}
+		}
+
+		effBranch := asset.User.Branch
+		effDept := asset.User.Department
+		effSubDept := asset.User.SubDepartment
+
+		if exists && report.IsSubmitted && report.UserBranch != "" {
+			effBranch = report.UserBranch
+			effDept = report.UserDepartment
+			effSubDept = report.UserSubDepartment
+		}
+
+		if branchParam != "" && effBranch != branchParam {
+			continue
+		}
+		if dept != "" && effDept != dept {
+			continue
+		}
+		if subDeptParam != "" && effSubDept != subDeptParam {
+			continue
+		}
+
+		groupKey := effSubDept
+		if groupKey == "" {
+			groupKey = "Lainnya"
+		}
+
+		assetData := map[string]interface{}{
+			"Asset":     asset,
+			"Report":    report,
+			"HasReport": exists,
+		}
+
+		groupedAssets[groupKey] = append(groupedAssets[groupKey], assetData)
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"groupedAssets": groupedAssets,
+		"branches":      branches,
+		"years":         years,
+		"period":        period,
+	})
+}
+
+// ApiStoreMaintenanceLaptop handles JSON request to save maintenance data
+func (server *Server) ApiStoreMaintenanceLaptop(w http.ResponseWriter, r *http.Request) {
+	_ = r.ParseForm()
+
+	assetID := r.FormValue("asset_id")
+	period := r.FormValue("period")
+	antivirus := r.FormValue("antivirus_updated") == "true"
+	clearTemp := r.FormValue("clear_temporary") == "true"
+	condition := r.FormValue("overall_condition")
+	inspectionDateStr := r.FormValue("inspection_date")
+	remarks := r.FormValue("remarks")
+
+	adminID, _, _, _ := GetCurrentAdmin(r)
+
+	inspectionDate, err := time.Parse("2006-01-02", inspectionDateStr)
+	if err != nil {
+		inspectionDate = time.Now()
+	}
+
+	var asset models.AssetKSO
+	server.DB.Preload("User").Where("id = ?", assetID).First(&asset)
+
+	var userName, userPos, userBranch, userDept, userSub string
+	if asset.User.ID != "" {
+		userName = asset.User.Name
+		userPos = asset.User.Position
+		userBranch = asset.User.Branch
+		userDept = asset.User.Department
+		userSub = asset.User.SubDepartment
+	}
+
+	var existingReport models.MaintenanceReport
+	server.DB.Where("asset_id = ? AND period = ?", assetID, period).Limit(1).Find(&existingReport)
+
+	if existingReport.ID != "" {
+		existingReport.AntivirusUpdated = antivirus
+		existingReport.ClearTemporary = clearTemp
+		existingReport.OverallCondition = condition
+		existingReport.InspectionDate = inspectionDate
+		existingReport.Remarks = remarks
+		existingReport.CheckerID = adminID
+		if existingReport.UserName == "" {
+			existingReport.UserName = userName
+			existingReport.UserPosition = userPos
+			existingReport.UserBranch = userBranch
+			existingReport.UserDepartment = userDept
+			existingReport.UserSubDepartment = userSub
+		}
+		server.DB.Save(&existingReport)
+	} else {
+		newReport := models.MaintenanceReport{
+			ID:                uuid.New().String(),
+			AssetID:           assetID,
+			Period:            period,
+			AntivirusUpdated:  antivirus,
+			ClearTemporary:    clearTemp,
+			OverallCondition:  condition,
+			InspectionDate:    inspectionDate,
+			Remarks:           remarks,
+			CheckerID:         adminID,
+			UserName:          userName,
+			UserPosition:      userPos,
+			UserBranch:        userBranch,
+			UserDepartment:    userDept,
+			UserSubDepartment: userSub,
+		}
+		server.DB.Create(&newReport)
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Maintenance data saved successfully"})
 }
 
 func (server *Server) MaintenanceKomputer(w http.ResponseWriter, r *http.Request) {
@@ -1157,6 +1466,35 @@ func (server *Server) MaintenanceHistory(w http.ResponseWriter, r *http.Request)
 
 	server.RenderHTML(w, r, http.StatusOK, "maintenance/history", map[string]interface{}{
 		"title":     "Riwayat Pemeliharaan",
+		"documents": documents,
+	})
+}
+
+// ApiMaintenanceHistoryDetail returns JSON for a specific maintenance document and its reports
+func (server *Server) ApiMaintenanceHistoryDetail(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var doc models.MaintenanceDocument
+	if err := server.DB.First(&doc, "id = ?", id).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusNotFound, map[string]string{"error": "Document not found"})
+		return
+	}
+
+	var reports []models.MaintenanceReport
+	server.DB.Preload("Asset").Where("document_id = ?", id).Find(&reports)
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"doc":     doc,
+		"reports": reports,
+	})
+}
+
+// ApiMaintenanceHistory returns JSON list of maintenance documents
+func (server *Server) ApiMaintenanceHistory(w http.ResponseWriter, r *http.Request) {
+	var documents []models.MaintenanceDocument
+	server.DB.Order("created_at desc").Find(&documents)
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
 		"documents": documents,
 	})
 }

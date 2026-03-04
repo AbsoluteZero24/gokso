@@ -43,6 +43,48 @@ func (server *Server) ListSettingUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ApiListSettingUser returns JSON list of admin users
+func (server *Server) ApiListSettingUser(w http.ResponseWriter, r *http.Request) {
+	type AdminWithUser struct {
+		models.Admin
+		EmployeeName string
+		NIK          string
+	}
+
+	var admins []models.Admin
+	server.DB.Find(&admins)
+
+	var data []AdminWithUser
+	for _, admin := range admins {
+		var user models.User
+		if admin.UserID != "" {
+			server.DB.Select("name", "nik").Where("id = ?", admin.UserID).First(&user)
+		}
+		data = append(data, AdminWithUser{
+			Admin:        admin,
+			EmployeeName: user.Name,
+			NIK:          user.NIK,
+		})
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"admins": data,
+	})
+}
+
+// ApiDeleteSettingUser handles JSON delete request for admin
+func (server *Server) ApiDeleteSettingUser(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	if err := server.DB.Delete(&models.Admin{}, "id = ?", id).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Admin user deleted successfully"})
+}
+
 // CreateSettingUserForm menampilkan form untuk menambah user admin baru
 func (server *Server) CreateSettingUserForm(w http.ResponseWriter, r *http.Request) {
 	var employees []models.User

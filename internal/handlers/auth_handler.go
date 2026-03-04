@@ -69,6 +69,35 @@ func (server *Server) Login(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+// ApiLogin handles JSON login request
+func (server *Server) ApiLogin(w http.ResponseWriter, r *http.Request) {
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+
+	var admin models.Admin
+	if err := server.DB.Where("username = ?", username).First(&admin).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusUnauthorized, map[string]string{"error": "Username atau password salah"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(admin.Password), []byte(password)); err != nil {
+		server.Renderer.JSON(w, http.StatusUnauthorized, map[string]string{"error": "Username atau password salah"})
+		return
+	}
+
+	session, _ := store.Get(r, "gokso-session")
+	session.Values["admin_id"] = admin.ID
+	session.Values["admin_username"] = admin.Username
+	session.Values["admin_role"] = admin.Role
+	session.Save(r, w)
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"message":  "Login successful",
+		"username": admin.Username,
+		"role":     admin.Role,
+	})
+}
+
 // Logout menghapus data session admin dan mengarahkan ke halaman login
 func (server *Server) Logout(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "gokso-session")
@@ -78,7 +107,32 @@ func (server *Server) Logout(w http.ResponseWriter, r *http.Request) {
 	session.Options.MaxAge = -1
 	session.Save(r, w)
 
+	if r.Header.Get("Accept") == "application/json" {
+		server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Logged out"})
+		return
+	}
+
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+// ApiCheckAuth returns current session status
+func (server *Server) ApiCheckAuth(w http.ResponseWriter, r *http.Request) {
+	adminID, username, role, isLoggedIn := GetCurrentAdmin(r)
+	if !isLoggedIn {
+		server.Renderer.JSON(w, http.StatusUnauthorized, map[string]interface{}{"isLoggedIn": false})
+		return
+	}
+
+	// Get full admin details including avatar and name
+	adminData := server.GetAdminData(r)
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"isLoggedIn": true,
+		"admin_id":   adminID,
+		"username":   username,
+		"name":       adminData["AdminName"],
+		"role":       role,
+		"avatar":     adminData["AdminAvatar"],
+	})
 }
 
 // GetCurrentAdmin returns the current logged in admin info from session

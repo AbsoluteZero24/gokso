@@ -144,12 +144,11 @@ func (server *Server) MigrateDMS(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// ListEDoc menampilkan halaman utama Digital Management System (DMS)
-// ListEDoc menampilkan halaman utama Digital Management System (DMS)
+// ListEDoc displays the main DMS page (HTML)
 func (server *Server) ListEDoc(w http.ResponseWriter, r *http.Request) {
 	section := r.URL.Query().Get("section")
 	if section == "" {
-		section = "Sistem Informasi" // Default section
+		section = "Sistem Informasi"
 	}
 
 	var folders []models.DMSFolder
@@ -171,7 +170,62 @@ func (server *Server) ListEDoc(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// StoreFolder menyimpan folder baru ke database
+// ApiListEDoc returns JSON for DMS main page
+func (server *Server) ApiListEDoc(w http.ResponseWriter, r *http.Request) {
+	section := r.URL.Query().Get("section")
+	if section == "" {
+		section = "Sistem Informasi"
+	}
+
+	var folders []models.DMSFolder
+	server.DB.Where("section = ? AND parent_id IS NULL AND trashed_at IS NULL", section).Find(&folders)
+
+	var files []models.DMSFile
+	server.DB.Where("section = ? AND folder_id IS NULL AND trashed_at IS NULL", section).Find(&files)
+
+	var totalSize int64
+	server.DB.Model(&models.DMSFile{}).Where("section = ?", section).Select("COALESCE(sum(size), 0)").Scan(&totalSize)
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"section":      section,
+		"folders":      folders,
+		"files":        files,
+		"totalStorage": server.formatSize(totalSize),
+		"isTrash":      false,
+	})
+}
+
+// ApiListFolderContent returns JSON for folder content
+func (server *Server) ApiListFolderContent(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	folderID := vars["id"]
+
+	var currentFolder models.DMSFolder
+	if err := server.DB.Where("id = ?", folderID).First(&currentFolder).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusNotFound, map[string]string{"error": "Folder not found"})
+		return
+	}
+
+	var subfolders []models.DMSFolder
+	server.DB.Where("parent_id = ? AND trashed_at IS NULL", folderID).Find(&subfolders)
+
+	var files []models.DMSFile
+	server.DB.Where("folder_id = ? AND trashed_at IS NULL", folderID).Find(&files)
+
+	var totalSize int64
+	server.DB.Model(&models.DMSFile{}).Where("section = ?", currentFolder.Section).Select("COALESCE(sum(size), 0)").Scan(&totalSize)
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"section":       currentFolder.Section,
+		"currentFolder": currentFolder,
+		"folders":       subfolders,
+		"files":         files,
+		"breadcrumbs":   server.getEDocBreadcrumb(folderID),
+		"totalStorage":  server.formatSize(totalSize),
+		"isTrash":       false,
+	})
+}
+
 // StoreFolder menyimpan folder baru ke database
 func (server *Server) StoreFolder(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
@@ -207,8 +261,7 @@ func (server *Server) StoreFolder(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
 
-// ListFolderContent menampilkan isi dari sebuah folder (subfolder dan file)
-// ListFolderContent menampilkan isi dari sebuah folder (subfolder dan file)
+// ListFolderContent displays content of a folder (HTML)
 func (server *Server) ListFolderContent(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	folderID := vars["id"]

@@ -20,6 +20,15 @@ func (server *Server) ListMasterBranch(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ApiListMasterBranch returns JSON list of branches
+func (server *Server) ApiListMasterBranch(w http.ResponseWriter, r *http.Request) {
+	var branches []models.MasterBranch
+	server.DB.Find(&branches)
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"branches": branches,
+	})
+}
+
 // StoreMasterBranch menyimpan data cabang baru ke database
 func (server *Server) StoreMasterBranch(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
@@ -104,6 +113,15 @@ func (server *Server) ListMasterDepartment(w http.ResponseWriter, r *http.Reques
 		"title":       "Master Bagian",
 		"departments": departments,
 		"branches":    branches,
+	})
+}
+
+// ApiListMasterDepartment returns JSON list of departments
+func (server *Server) ApiListMasterDepartment(w http.ResponseWriter, r *http.Request) {
+	var departments []models.MasterDepartment
+	server.DB.Preload("MasterBranch").Find(&departments)
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"departments": departments,
 	})
 }
 
@@ -200,6 +218,15 @@ func (server *Server) ListMasterSubDepartment(w http.ResponseWriter, r *http.Req
 	})
 }
 
+// ApiListMasterSubDepartment returns JSON list of sub-departments
+func (server *Server) ApiListMasterSubDepartment(w http.ResponseWriter, r *http.Request) {
+	var subDepts []models.MasterSubDepartment
+	server.DB.Preload("MasterDepartment").Find(&subDepts)
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"sub_departments": subDepts,
+	})
+}
+
 func (server *Server) StoreMasterSubDepartment(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	deptID := r.FormValue("master_department_id")
@@ -287,6 +314,15 @@ func (server *Server) ListMasterPosition(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+// ApiListMasterPosition returns JSON list of positions
+func (server *Server) ApiListMasterPosition(w http.ResponseWriter, r *http.Request) {
+	var positions []models.MasterPosition
+	server.DB.Find(&positions)
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"positions": positions,
+	})
+}
+
 func (server *Server) StoreMasterPosition(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	pos := models.MasterPosition{
@@ -362,6 +398,15 @@ func (server *Server) ListMasterAssetCategory(w http.ResponseWriter, r *http.Req
 
 	server.RenderHTML(w, r, http.StatusOK, "inventori/master_data/asset_category", map[string]interface{}{
 		"title":      "Master Kategori Aset",
+		"categories": categories,
+	})
+}
+
+// ApiListMasterAssetCategory returns JSON list of asset categories
+func (server *Server) ApiListMasterAssetCategory(w http.ResponseWriter, r *http.Request) {
+	var categories []models.MasterAssetCategory
+	server.DB.Find(&categories)
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
 		"categories": categories,
 	})
 }

@@ -134,8 +134,63 @@ func (server *Server) initializeRoutes() {
 	server.Router.HandleFunc("/profile/avatar", server.AuthRequired(server.UpdateAvatar)).Methods("POST")
 	server.Router.HandleFunc("/profile/signature", server.AuthRequired(server.UpdateSignature)).Methods("POST")
 
-	// Static files
+	// API Routes
+	api := server.Router.PathPrefix("/api").Subrouter()
+	api.HandleFunc("/login", server.ApiLogin).Methods("POST")
+	api.HandleFunc("/check-auth", server.ApiCheckAuth).Methods("GET")
+	api.HandleFunc("/dashboard", server.ApiDashboard).Methods("GET")
+	api.HandleFunc("/assets-kso", server.ApiListAssetKSO).Methods("GET")
+	api.HandleFunc("/assets-kso/store", server.ApiStoreAssetKSO).Methods("POST")
+	api.HandleFunc("/assets-kso/delete/{id}", server.ApiDeleteAssetKSO).Methods("DELETE")
+	api.HandleFunc("/assets-kso/bulk-delete", server.ApiBulkDeleteAssetKSO).Methods("POST")
+	api.HandleFunc("/assets-kso/laptop", server.ApiListAssetLaptop).Methods("GET")
+	api.HandleFunc("/assets-kso/laptop/assign", server.ApiAssignAssetLaptop).Methods("POST")
+	api.HandleFunc("/assets-kso/update-label", server.ApiUpdateAssetLabel).Methods("POST")
+	api.HandleFunc("/employees", server.ApiListEmployees).Methods("GET")
+	api.HandleFunc("/employees/store", server.ApiStoreEmployee).Methods("POST")
+	api.HandleFunc("/employees/delete/{id}", server.ApiDeleteEmployee).Methods("DELETE")
+	api.HandleFunc("/godms/doc", server.ApiListEDoc).Methods("GET")
+	api.HandleFunc("/godms/doc/{id}", server.ApiListFolderContent).Methods("GET")
+	api.HandleFunc("/setting/users", server.ApiListSettingUser).Methods("GET")
+	api.HandleFunc("/setting/users/delete/{id}", server.ApiDeleteSettingUser).Methods("DELETE")
+	api.HandleFunc("/goform/list", server.ApiListGoForm).Methods("GET")
+	api.HandleFunc("/goform/init/{id}", server.ApiGetGoFormInitData).Methods("GET")
+	api.HandleFunc("/maintenance/laptop", server.ApiMaintenanceLaptop).Methods("GET")
+	api.HandleFunc("/maintenance/laptop/store", server.ApiStoreMaintenanceLaptop).Methods("POST")
+	api.HandleFunc("/maintenance/history", server.ApiMaintenanceHistory).Methods("GET")
+	api.HandleFunc("/maintenance/history/{id}", server.ApiMaintenanceHistoryDetail).Methods("GET")
+	api.HandleFunc("/master-data/branch", server.ApiListMasterBranch).Methods("GET")
+	api.HandleFunc("/master-data/department", server.ApiListMasterDepartment).Methods("GET")
+	api.HandleFunc("/master-data/position", server.ApiListMasterPosition).Methods("GET")
+	api.HandleFunc("/master-data/sub-department", server.ApiListMasterSubDepartment).Methods("GET")
+	api.HandleFunc("/master-data/asset-category", server.ApiListMasterAssetCategory).Methods("GET")
+
+	// Static files (Legacy)
 	staticFileDirectory := http.Dir("./public")
 	staticFileHandler := http.StripPrefix("/public/", http.FileServer(staticFileDirectory))
 	server.Router.PathPrefix("/public/").Handler(staticFileHandler)
+
+	// React Frontend - Serve built files and handle SPA routing
+	frontendDir := http.Dir("./frontend/dist")
+	fileServer := http.FileServer(frontendDir)
+
+	server.Router.PathPrefix("/").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// If the file exists in the frontend dist, serve it
+		path := r.URL.Path
+		if path == "/" {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		// Check if file exists
+		f, err := frontendDir.Open(path)
+		if err == nil {
+			f.Close()
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		// Otherwise, serve index.html for SPA routing
+		http.ServeFile(w, r, "./frontend/dist/index.html")
+	}))
 }

@@ -1,35 +1,29 @@
-# Build stage
-FROM golang:1.24-alpine AS builder
+# Stage 1: Build React Frontend
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build
 
+# Stage 2: Build Go Backend
+FROM golang:1.24-alpine AS backend-builder
 WORKDIR /app
-
-# Copy go mod and sum files
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
-
-# Copy source code
 COPY . .
+# Copy built frontend assets to the location Go expects (usually ./public or similar)
+COPY --from=frontend-builder /app/frontend/dist ./public
+RUN CGO_ENABLED=0 GOOS=linux go build -o gokso ./cmd/web/main.go
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/web/main.go
-
-# Final stage
+# Stage 3: Final Production Image
 FROM alpine:latest
-
 RUN apk --no-cache add ca-certificates
-
 WORKDIR /root/
+COPY --from=backend-builder /app/gokso .
+COPY --from=backend-builder /app/public ./public
+# Copy any other necessary directories like templates or migrations
+COPY templates ./templates
 
-# Copy the binary from the builder stage
-COPY --from=builder /app/main .
-# Copy templates and public files
-COPY --from=builder /app/templates ./templates
-COPY --from=builder /app/public ./public
-
-# Expose port
 EXPOSE 9001
-
-# Command to run the executable
-CMD ["./main"]
+CMD ["./gokso"]

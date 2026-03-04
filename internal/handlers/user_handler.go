@@ -22,6 +22,32 @@ func (server *Server) ListEmployees(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ApiListEmployees returns JSON list of employees
+func (server *Server) ApiListEmployees(w http.ResponseWriter, r *http.Request) {
+	var users []models.User
+	if err := server.DB.Find(&users).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"users": users,
+	})
+}
+
+// ApiDeleteEmployee handles JSON delete request
+func (server *Server) ApiDeleteEmployee(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	if err := server.DB.Where("id = ?", id).Delete(&models.User{}).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Employee deleted successfully"})
+}
+
 // CreateEmployeeForm menampilkan form untuk menambah karyawan baru
 func (server *Server) CreateEmployeeForm(w http.ResponseWriter, r *http.Request) {
 	var branches []models.MasterBranch
@@ -63,6 +89,31 @@ func (server *Server) StoreEmployee(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/administration/employee?msg=Karyawan berhasil ditambahkan", http.StatusSeeOther)
+}
+
+// ApiStoreEmployee handles JSON request to add new employee
+func (server *Server) ApiStoreEmployee(w http.ResponseWriter, r *http.Request) {
+	_ = r.ParseForm()
+
+	user := models.User{
+		ID:             uuid.New().String(),
+		NIK:            r.FormValue("nik"),
+		Name:           r.FormValue("name"),
+		Email:          r.FormValue("email"),
+		Branch:         r.FormValue("branch"),
+		Department:     r.FormValue("department"),
+		SubDepartment:  r.FormValue("sub_department"),
+		Position:       r.FormValue("position"),
+		StatusKaryawan: r.FormValue("status_karyawan"),
+		Password:       "password123", // Default password
+	}
+
+	if err := server.DB.Create(&user).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{"message": "Karyawan berhasil ditambahkan", "user": user})
 }
 
 // EditEmployeeForm menampilkan form untuk mengubah data karyawan yang sudah ada
