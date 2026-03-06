@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import Select from 'react-select';
+import SearchableSelect from '../components/SearchableSelect';
 import SignaturePad from 'react-signature-canvas';
 import {
     FileCheck,
@@ -16,9 +16,11 @@ import {
     Smartphone,
     CircleCheck
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import ConfirmModal from '../components/ConfirmModal';
 
 const FormBASTLaptop = () => {
+    const { id } = useParams();
     const navigate = useNavigate();
     const [initData, setInitData] = useState({ employees: [], assets: [] });
     const [loading, setLoading] = useState(true);
@@ -41,11 +43,24 @@ const FormBASTLaptop = () => {
         notes: ''
     });
 
+    const [alertConfig, setAlertConfig] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info',
+        onConfirm: () => { }
+    });
+
+    const currentFormId = id || 'form-bast-laptop';
+
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await axios.get('/api/goform/init/form-bast-laptop');
-            setInitData(response.data);
+            const response = await axios.get(`/api/goform/init/${currentFormId}`);
+            setInitData({
+                employees: response.data.employees || [],
+                assets: response.data.assets || []
+            });
         } catch (error) {
             console.error('Error fetching init data:', error);
         } finally {
@@ -55,7 +70,7 @@ const FormBASTLaptop = () => {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [id]);
 
     const employeeOptions = initData.employees.map(e => ({
         value: e.ID,
@@ -125,14 +140,18 @@ const FormBASTLaptop = () => {
         e.preventDefault();
 
         if (sigRefP1.current.isEmpty() || sigRefP2.current.isEmpty()) {
-            alert('Harap lengkapi tanda tangan PIHAK PERTAMA dan PIHAK KEDUA.');
+            setAlertConfig({
+                isOpen: true,
+                title: 'Tanda Tangan Kosong',
+                message: 'Harap lengkapi tanda tangan PIHAK PERTAMA dan PIHAK KEDUA.',
+                type: 'danger',
+                onConfirm: () => setAlertConfig(prev => ({ ...prev, isOpen: false }))
+            });
             return;
         }
 
         setSubmitting(true);
         try {
-            // Create a native form data to match legacy backend expectations
-            // We will send it as multipart or x-www-form-urlencoded
             const webFormData = new URLSearchParams();
             webFormData.append('document_category', category);
             webFormData.append('handover_date', formData.handover_date);
@@ -153,13 +172,24 @@ const FormBASTLaptop = () => {
             webFormData.append('sig_p1_data', sigRefP1.current.toDataURL());
             webFormData.append('sig_p2_data', sigRefP2.current.toDataURL());
 
-            await axios.post('/goform/submit/form-bast-laptop', webFormData);
+            await axios.post(`/api/goform/submit/${currentFormId}`, webFormData);
 
-            alert('Berita Acara Serah Terima (BAST) berhasil dibuat dan disimpan ke eDoc.');
-            navigate('/goform');
+            setAlertConfig({
+                isOpen: true,
+                title: 'Berhasil',
+                message: 'Berita Acara Serah Terima (BAST) berhasil dibuat dan disimpan ke eDoc.',
+                type: 'success',
+                onConfirm: () => navigate('/goform')
+            });
         } catch (error) {
             console.error('Error submitting form:', error);
-            alert('Gagal mengirim formulir. Silakan coba lagi.');
+            setAlertConfig({
+                isOpen: true,
+                title: 'Gagal',
+                message: 'Gagal mengirim formulir. Silakan coba lagi.',
+                type: 'danger',
+                onConfirm: () => setAlertConfig(prev => ({ ...prev, isOpen: false }))
+            });
         } finally {
             setSubmitting(false);
         }
@@ -187,7 +217,9 @@ const FormBASTLaptop = () => {
                                 <FileCheck size={28} />
                             </div>
                             <div>
-                                <h1 style={{ fontSize: '1.25rem', fontWeight: 800 }}>BA Serah Terima Laptop/Komputer</h1>
+                                <h1 style={{ fontSize: '1.25rem', fontWeight: 800 }}>
+                                    {currentFormId === 'form-bast-laptop' ? 'BA Serah Terima Laptop/Komputer' : 'BA Serah Terima Aset'}
+                                </h1>
                                 <p style={{ color: 'var(--text-light)', fontSize: '0.875rem' }}>Lengkapi data di bawah ini untuk membuat dokumen BAST digital.</p>
                             </div>
                         </div>
@@ -214,7 +246,7 @@ const FormBASTLaptop = () => {
                             </div>
 
                             {/* Basic Info */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2.5rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '0.5rem' }}>Nomor Dokumen</label>
                                     <div style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.625rem 1rem' }}>
@@ -243,21 +275,23 @@ const FormBASTLaptop = () => {
                                     <h6 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, color: 'var(--primary)', marginBottom: '1.25rem', textTransform: 'uppercase' }}>
                                         <ArrowLeftRight size={18} /> Detail Pertukaran Aset
                                     </h6>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1.5rem' }}>
                                         <div>
                                             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-light)', marginBottom: '0.5rem' }}>Aset Lama (Ditarik/Kembali)</label>
-                                            <Select
+                                            <SearchableSelect
                                                 options={oldAssetOptions}
-                                                onChange={(opt) => setFormData({ ...formData, old_asset_id: opt?.value })}
+                                                value={formData.old_asset_id}
+                                                onChange={(val) => setFormData({ ...formData, old_asset_id: val })}
                                                 placeholder="Pilih Aset Lama..."
                                                 required
                                             />
                                         </div>
                                         <div>
                                             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-light)', marginBottom: '0.5rem' }}>Aset Baru (Diserahkan)</label>
-                                            <Select
+                                            <SearchableSelect
                                                 options={newAssetOptions}
-                                                onChange={(opt) => setFormData({ ...formData, new_asset_id: opt?.value })}
+                                                value={formData.new_asset_id}
+                                                onChange={(val) => setFormData({ ...formData, new_asset_id: val })}
                                                 placeholder="Pilih Aset Baru..."
                                                 required
                                             />
@@ -267,14 +301,15 @@ const FormBASTLaptop = () => {
                             )}
 
                             {/* The Two Parties */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', marginBottom: '2.5rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '3rem', marginBottom: '2.5rem' }}>
                                 <div>
                                     <h6 style={{ fontWeight: 800, borderBottom: '2px solid #f1f5f9', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>PIHAK PERTAMA (PEMBERI)</h6>
                                     <div style={{ marginBottom: '1.5rem' }}>
                                         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Nama Pemberi</label>
-                                        <Select
+                                        <SearchableSelect
                                             options={employeeOptions}
-                                            onChange={(opt) => setFormData({ ...formData, p1_employee_id: opt?.value })}
+                                            value={formData.p1_employee_id}
+                                            onChange={(val) => setFormData({ ...formData, p1_employee_id: val })}
                                             placeholder="Cari Karyawan..."
                                             required
                                         />
@@ -282,15 +317,15 @@ const FormBASTLaptop = () => {
                                     {category === 'Tukar' && (
                                         <div>
                                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Status Kondisi Aset Lama</label>
-                                            <select
+                                            <SearchableSelect
                                                 value={formData.asset_condition}
-                                                onChange={(e) => setFormData({ ...formData, asset_condition: e.target.value })}
-                                                style={{ width: '100%', padding: '0.625rem', borderRadius: '8px', border: '1px solid var(--border)' }}
-                                            >
-                                                <option value="Ready">Ready / Bagus</option>
-                                                <option value="Rusak">Rusak</option>
-                                                <option value="Hilang">Hilang</option>
-                                            </select>
+                                                onChange={(val) => setFormData({ ...formData, asset_condition: val })}
+                                                options={[
+                                                    { value: 'Ready', label: 'Ready / Bagus' },
+                                                    { value: 'Rusak', label: 'Rusak' },
+                                                    { value: 'Hilang', label: 'Hilang' }
+                                                ]}
+                                            />
                                         </div>
                                     )}
                                 </div>
@@ -298,9 +333,10 @@ const FormBASTLaptop = () => {
                                     <h6 style={{ fontWeight: 800, borderBottom: '2px solid #f1f5f9', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>PIHAK KEDUA (PENERIMA)</h6>
                                     <div style={{ marginBottom: '1.5rem' }}>
                                         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Nama Penerima</label>
-                                        <Select
+                                        <SearchableSelect
                                             options={employeeOptions}
-                                            onChange={(opt) => setFormData({ ...formData, p2_employee_id: opt?.value })}
+                                            value={formData.p2_employee_id}
+                                            onChange={(val) => setFormData({ ...formData, p2_employee_id: val })}
                                             placeholder="Cari Karyawan..."
                                             required
                                         />
@@ -313,22 +349,23 @@ const FormBASTLaptop = () => {
                                 <div style={{ marginBottom: '3rem' }}>
                                     <h6 style={{ fontWeight: 800, borderBottom: '2px solid #f1f5f9', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>DETAIL ASET</h6>
                                     <div style={{ border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                                             <thead style={{ background: '#f8fafc' }}>
                                                 <tr>
                                                     <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.813rem', fontWeight: 700, width: '45%' }}>Pilih / Cari Aset</th>
-                                                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.813rem', fontWeight: 700 }}>SerialNumber</th>
-                                                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.813rem', fontWeight: 700 }}>Label</th>
-                                                    <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.813rem', fontWeight: 700, width: '60px' }}></th>
+                                                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.813rem', fontWeight: 700, width: '25%' }}>SerialNumber</th>
+                                                    <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.813rem', fontWeight: 700, width: '22%' }}>Label</th>
+                                                    <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.813rem', fontWeight: 700, width: '50px' }}></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {formData.selected_assets.map((asset, index) => (
                                                     <tr key={index} style={{ borderTop: '1px solid var(--border)' }}>
                                                         <td style={{ padding: '0.75rem 1rem' }}>
-                                                            <Select
+                                                            <SearchableSelect
                                                                 options={standardAssetOptions}
-                                                                onChange={(opt) => handleAssetChange(index, opt)}
+                                                                value={asset.id}
+                                                                onChange={(val, opt) => handleAssetChange(index, opt)}
                                                                 placeholder="Cari No Inventoris..."
                                                                 required
                                                             />
@@ -361,7 +398,7 @@ const FormBASTLaptop = () => {
                             )}
 
                             {/* Signatures */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', marginBottom: '3rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '3rem', marginBottom: '3rem' }}>
                                 <div style={{ textAlign: 'center' }}>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '1rem' }}>Tanda Tangan PIHAK PERTAMA</label>
                                     <div style={{ background: '#f8fafc', border: '2px dashed var(--border)', borderRadius: '12px', height: '180px', position: 'relative' }}>
@@ -418,6 +455,17 @@ const FormBASTLaptop = () => {
           height: 100%;
         }
       `}</style>
+
+            <ConfirmModal
+                isOpen={alertConfig.isOpen}
+                onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={alertConfig.onConfirm}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                type={alertConfig.type}
+                confirmText="OK"
+                cancelText=""
+            />
         </div>
     );
 };

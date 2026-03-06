@@ -31,7 +31,7 @@ const GoForm = () => {
         setLoading(true);
         try {
             const response = await axios.get('/api/goform/list');
-            setForms(response.data.forms);
+            setForms(response.data.forms || []);
         } catch (error) {
             console.error('Error fetching goforms:', error);
         } finally {

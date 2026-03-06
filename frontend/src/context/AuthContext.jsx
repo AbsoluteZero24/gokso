@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         try {
-            await axios.get('/logout', { headers: { 'Accept': 'application/json' } });
+            await axios.get('/api/logout', { headers: { 'Accept': 'application/json' } });
             setUser(null);
         } catch (error) {
             console.error('Logout failed:', error);

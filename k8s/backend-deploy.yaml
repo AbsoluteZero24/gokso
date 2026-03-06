@@ -1,0 +1,120 @@
+# 1. Persistent Volume & Claim for NAS
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gokso-nas-pv
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /var/lib/docker/volumes/nas/_data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gokso-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+# 2. PostgreSQL
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gokso-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gokso-db
+  template:
+    metadata:
+      labels:
+        app: gokso-db
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        env:
+        - name: POSTGRES_DB
+          value: "goksodb"
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          value: "Sci$iK50"
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: db-storage
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: db-storage
+        persistentVolumeClaim:
+          claimName: gokso-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gokso-db-service
+spec:
+  selector:
+    app: gokso-db
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+---
+# 3. Go Backend
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gokso-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gokso-backend
+  template:
+    metadata:
+      labels:
+        app: gokso-backend
+    spec:
+      containers:
+      - name: backend
+        image: absolutezero24/gokso-backend:latest
+        imagePullPolicy: Always
+        env:
+        - name: APP_PORT
+          value: "9001"
+        - name: APP_AUTO_MIGRATE
+          value: "true"
+        - name: DB_HOST
+          value: "gokso-db-service"
+        - name: DB_USER
+          value: "postgres"
+        - name: DB_PASSWORD
+          value: "Sci$iK50"
+        - name: DB_NAME
+          value: "goksodb"
+        - name: DB_PORT
+          value: "5432"
+        ports:
+        - containerPort: 9001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gokso-backend-service
+spec:
+  selector:
+    app: gokso-backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9001

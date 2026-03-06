@@ -1,0 +1,146 @@
+package handlers
+
+import (
+	"net/http"
+
+	"github.com/gorilla/mux"
+)
+
+func (server *Server) initializeRoutes() {
+	server.Router = mux.NewRouter()
+
+	// 1. API ROUTES (Prefix: /api)
+	// All backend communication from React frontend goes through here
+	api := server.Router.PathPrefix("/api").Subrouter()
+
+	// Auth & User Session
+	api.HandleFunc("/login", server.ApiLogin).Methods("POST")
+	api.HandleFunc("/logout", server.Logout).Methods("GET")
+	api.HandleFunc("/check-auth", server.ApiCheckAuth).Methods("GET")
+
+	// Dashboard
+	api.HandleFunc("/dashboard", server.ApiDashboard).Methods("GET")
+
+	// Asset KSO (General Inventory)
+	api.HandleFunc("/assets-kso", server.ApiListAssetKSO).Methods("GET")
+	api.HandleFunc("/assets-kso/store", server.ApiStoreAssetKSO).Methods("POST")
+	api.HandleFunc("/assets-kso/bulk-store", server.ApiStoreAssetKSOBulk).Methods("POST")
+	api.HandleFunc("/assets-kso/update/{id}", server.ApiUpdateAssetKSO).Methods("POST")
+	api.HandleFunc("/assets-kso/delete/{id}", server.ApiDeleteAssetKSO).Methods("DELETE")
+	api.HandleFunc("/assets-kso/bulk-delete", server.ApiBulkDeleteAssetKSO).Methods("POST")
+	api.HandleFunc("/assets-kso/export", server.ApiExportAssets).Methods("GET")
+	api.HandleFunc("/assets-kso/import", server.ApiImportAssets).Methods("POST")
+
+	// Asset Management (Laptop/Komputer assignment & label)
+	api.HandleFunc("/assets-kso/laptop", server.ApiListAssetLaptop).Methods("GET")
+	api.HandleFunc("/assets-kso/laptop/assign", server.ApiAssignAssetLaptop).Methods("POST")
+	api.HandleFunc("/assets-kso/update-label", server.ApiUpdateAssetLabel).Methods("POST")
+
+	// Employees
+	api.HandleFunc("/employees", server.ApiListEmployees).Methods("GET")
+	api.HandleFunc("/employees/store", server.ApiStoreEmployee).Methods("POST")
+	api.HandleFunc("/employees/update/{id}", server.ApiUpdateEmployee).Methods("POST")
+	api.HandleFunc("/employees/delete/{id}", server.ApiDeleteEmployee).Methods("DELETE")
+	api.HandleFunc("/employees/export", server.ApiExportEmployees).Methods("GET")
+	api.HandleFunc("/employees/import", server.ApiImportEmployees).Methods("POST")
+
+	// GoDMS (Document Management System)
+	api.HandleFunc("/godms/edoc", server.ApiListEDoc).Methods("GET")
+	api.HandleFunc("/godms/edoc/{id}", server.ApiListFolderContent).Methods("GET")
+	api.HandleFunc("/godms/folders/list-all", server.ApiListAllFolders).Methods("GET")
+	api.HandleFunc("/godms/folder/store", server.ApiStoreFolder).Methods("POST")
+	api.HandleFunc("/godms/folder/rename", server.RenameFolder).Methods("POST")
+	api.HandleFunc("/godms/folder/trash", server.MoveFolderToTrash).Methods("POST")
+	api.HandleFunc("/godms/folder/restore", server.RestoreFolder).Methods("POST")
+	api.HandleFunc("/godms/file/upload", server.UploadFile).Methods("POST")
+	api.HandleFunc("/godms/file/download/{id}", server.DownloadFile).Methods("GET")
+	api.HandleFunc("/godms/file/trash", server.MoveFileToTrash).Methods("POST")
+	api.HandleFunc("/godms/file/restore", server.RestoreFile).Methods("POST")
+	api.HandleFunc("/godms/folder/delete", server.DeleteFolderPermanently).Methods("POST")
+	api.HandleFunc("/godms/file/delete", server.DeleteFilePermanently).Methods("POST")
+	api.HandleFunc("/godms/trash", server.ViewTrash).Methods("GET")
+	api.HandleFunc("/godms/bulk/move", server.BulkMove).Methods("POST")
+	api.HandleFunc("/godms/bulk/trash", server.BulkTrash).Methods("POST")
+	api.HandleFunc("/godms/bulk/restore", server.BulkRestore).Methods("POST")
+	api.HandleFunc("/godms/bulk/delete", server.BulkDeletePermanent).Methods("POST")
+	api.HandleFunc("/godms/migrate", server.MigrateDMS).Methods("GET")
+
+	// GoForm (Digital Form Catalog & Submission)
+	api.HandleFunc("/goform/list", server.ApiListGoForm).Methods("GET")
+	api.HandleFunc("/goform/init/{id}", server.ApiGetGoFormInitData).Methods("GET")
+	api.HandleFunc("/goform/submit/{id}", server.SubmitGoForm).Methods("POST")
+
+	// Master Data (Configurations)
+	api.HandleFunc("/master-data/branch", server.ApiListMasterBranch).Methods("GET")
+	api.HandleFunc("/master-data/branch/store", server.ApiStoreMasterBranch).Methods("POST")
+	api.HandleFunc("/master-data/branch/update/{id}", server.ApiUpdateMasterBranch).Methods("POST")
+	api.HandleFunc("/master-data/branch/delete/{id}", server.ApiDeleteMasterBranch).Methods("DELETE")
+
+	api.HandleFunc("/master-data/department", server.ApiListMasterDepartment).Methods("GET")
+	api.HandleFunc("/master-data/department/store", server.ApiStoreMasterDepartment).Methods("POST")
+	api.HandleFunc("/master-data/department/update/{id}", server.ApiUpdateMasterDepartment).Methods("POST")
+	api.HandleFunc("/master-data/department/delete/{id}", server.ApiDeleteMasterDepartment).Methods("DELETE")
+
+	api.HandleFunc("/master-data/position", server.ApiListMasterPosition).Methods("GET")
+	api.HandleFunc("/master-data/position/store", server.ApiStoreMasterPosition).Methods("POST")
+	api.HandleFunc("/master-data/position/update/{id}", server.ApiUpdateMasterPosition).Methods("POST")
+	api.HandleFunc("/master-data/position/delete/{id}", server.ApiDeleteMasterPosition).Methods("DELETE")
+
+	api.HandleFunc("/master-data/sub-department", server.ApiListMasterSubDepartment).Methods("GET")
+	api.HandleFunc("/master-data/sub-department/store", server.ApiStoreMasterSubDepartment).Methods("POST")
+	api.HandleFunc("/master-data/sub-department/update/{id}", server.ApiUpdateMasterSubDepartment).Methods("POST")
+	api.HandleFunc("/master-data/sub-department/delete/{id}", server.ApiDeleteMasterSubDepartment).Methods("DELETE")
+
+	api.HandleFunc("/master-data/asset-category", server.ApiListMasterAssetCategory).Methods("GET")
+	api.HandleFunc("/master-data/asset-category/store", server.ApiStoreMasterAssetCategory).Methods("POST")
+	api.HandleFunc("/master-data/asset-category/update/{id}", server.ApiUpdateMasterAssetCategory).Methods("POST")
+	api.HandleFunc("/master-data/asset-category/delete/{id}", server.ApiDeleteMasterAssetCategory).Methods("DELETE")
+
+	api.HandleFunc("/master-data/asset-specs", server.ApiGetAssetSpecs).Methods("GET")
+
+	// Settings & Profile
+	api.HandleFunc("/setting/users", server.ApiListSettingUser).Methods("GET")
+	api.HandleFunc("/setting/users/delete/{id}", server.ApiDeleteSettingUser).Methods("DELETE")
+	api.HandleFunc("/profile/update-password", server.UpdatePassword).Methods("POST")
+	api.HandleFunc("/profile/update-avatar", server.UpdateAvatar).Methods("POST")
+	api.HandleFunc("/profile/update-signature", server.UpdateSignature).Methods("POST")
+
+	// Notifications
+	api.HandleFunc("/notifications", server.ApiListNotifications).Methods("GET")
+	api.HandleFunc("/notifications/mark-read", server.ApiMarkNotificationsRead).Methods("POST")
+	api.HandleFunc("/notifications/clear", server.ApiClearNotifications).Methods("POST")
+
+	// 2. STATIC FILES
+	// Serving images, uploads, and other public assets
+	staticFileDirectory := http.Dir("./public")
+	staticFileHandler := http.StripPrefix("/public/", http.FileServer(staticFileDirectory))
+	server.Router.PathPrefix("/public/").Handler(staticFileHandler)
+
+	// GoForm (Digital Form Catalog & Submission)
+
+	// 3. REACT FRONTEND (SPA Routing)
+	// Catch-all handler: If request is not API or Static, serve the React app
+	// This allows React Router to handle clientside transitions even on refresh
+	frontendDir := http.Dir("./frontend/dist")
+	fileServer := http.FileServer(frontendDir)
+
+	server.Router.PathPrefix("/").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		// Direct root access
+		if path == "/" {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		// Check if the requested file actually exists in the build folder (e.g. assets/index-hash.js)
+		f, err := frontendDir.Open(path)
+		if err == nil {
+			f.Close()
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		// If it's a route (like /goform), serve the main index.html
+		http.ServeFile(w, r, "./frontend/dist/index.html")
+	}))
+}

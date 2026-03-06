@@ -6,7 +6,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8080',
+      '/api': 'http://localhost:9001',
+      '/public': 'http://localhost:9001',
+      '/godms': 'http://localhost:9001',
     }
   }
 })

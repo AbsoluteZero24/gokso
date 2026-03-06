@@ -10,15 +10,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@popperjs/core": "^2.11.8",
+    "admin-lte": "^4.0.0-beta3",
     "axios": "^1.13.6",
+    "bootstrap": "^5.3.8",
     "framer-motion": "^12.34.4",
     "lucide-react": "^0.576.0",
+    "mammoth": "^1.11.0",
+    "overlayscrollbars": "^2.14.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",
     "react-select": "^5.10.2",
     "react-signature-canvas": "^1.1.0-alpha.2",
-    "recharts": "^3.7.0"
+    "recharts": "^3.7.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

@@ -31,18 +31,16 @@ const Login = () => {
             <div className="login-box">
                 <div className="login-card">
                     <div className="login-logo">
-                        <div className="logo-icon" style={{ width: '64px', height: '64px', margin: '0 auto 1.5rem', borderRadius: '16px' }}>
-                            <span style={{ fontSize: '2rem', fontWeight: 800 }}>GK</span>
-                        </div>
+                        <img src="/logo-login.png" alt="GoKSO Logo" />
                     </div>
 
                     <div className="login-header">
                         <h1>Welcome Back</h1>
-                        <p>Please enter your details to sign in</p>
+                        <p>Enter your credentials to access your account</p>
                     </div>
 
                     {error && (
-                        <div className="error-alert" style={{ marginBottom: '1.5rem' }}>
+                        <div className="error-alert">
                             <CircleAlert size={18} />
                             <span>{error}</span>
                         </div>
@@ -63,7 +61,7 @@ const Login = () => {
                             </div>
                         </div>
 
-                        <div className="form-group" style={{ marginBottom: '2rem' }}>
+                        <div className="form-group" style={{ marginBottom: '2.5rem' }}>
                             <div className="custom-input-group">
                                 <Lock size={18} />
                                 <input
@@ -78,10 +76,10 @@ const Login = () => {
 
                         <button type="submit" className="btn-login" disabled={loading}>
                             {loading ? (
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                <>
                                     <Loader2 className="animate-spin" size={20} />
                                     Signing In...
-                                </div>
+                                </>
                             ) : 'Sign In'}
                         </button>
                     </form>

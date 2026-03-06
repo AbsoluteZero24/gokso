@@ -52,7 +52,10 @@ const Dashboard = () => {
         totalAssets: 0, readyAssets: 0, brokenAssets: 0, totalEmployees: 0, categoryStats: [], statusStats: []
     };
 
-    const barData = categoryStats.map(item => ({ name: item.category, count: item.count }));
+    const categoryStatsData = categoryStats || [];
+    const statusStatsData = statusStats || [];
+
+    const barData = categoryStatsData.map(item => ({ name: item.category, count: item.count }));
 
     const statusColors = {
         'Ready': '#10b981',
@@ -60,7 +63,7 @@ const Dashboard = () => {
         'Maintenance': '#f59e0b',
     };
 
-    const pieData = statusStats.map(item => ({
+    const pieData = statusStatsData.map(item => ({
         name: item.status,
         value: item.count,
         color: statusColors[item.status] || '#64748b'
@@ -70,7 +73,7 @@ const Dashboard = () => {
         <div className="page-content" style={{ animation: 'fadeIn 0.5s ease' }}>
             <style>{fadeIn}</style>
             <div className="dashboard-header" style={{ marginBottom: '2.5rem' }}>
-                <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Welcome Back, {authUser?.username || 'User'}</h1>
+                <h1 style={{ fontSize: '2rem', fontWeight: 800, textTransform: 'capitalize' }}>Welcome Back, {authUser?.username || 'User'}</h1>
                 <p style={{ color: 'var(--text-light)', fontSize: '1.125rem' }}>Sistem Manajemen Aset & Inventori GoKSO</p>
             </div>
 
