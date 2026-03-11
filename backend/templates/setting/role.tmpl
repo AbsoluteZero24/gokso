@@ -20,22 +20,22 @@
         <div class="row">
             {{ range $roleIdx, $roleData := .roles }}
             <div class="col-md-6">
-                <div class="card card-outline {{ if eq $roleData.Role "super_admin" }}card-primary{{ else }}card-info{{ end }} shadow-sm">
+                <div class="card card-outline {{ if eq $roleData.Role "Super Admin" }}card-primary{{ else }}card-info{{ end }} shadow-sm">
                     <div class="card-header border-0 pb-0">
                         <h3 class="card-title text-capitalize fw-bold">
-                            <i class="bi {{ if eq $roleData.Role "super_admin" }}bi-shield-lock{{ else }}bi-person-badge{{ end }} me-2"></i>
+                            <i class="bi {{ if eq $roleData.Role "Super Admin" }}bi-shield-lock{{ else }}bi-person-badge{{ end }} me-2"></i>
                             Role: {{ $roleData.Role }}
                         </h3>
                     </div>
                     <form action="/setting/role/update" method="post">
                         <input type="hidden" name="role" value="{{ $roleData.Role }}">
                         <div class="card-body">
-                            <div class="alert {{ if eq $roleData.Role "super_admin" }}alert-primary{{ else }}alert-info{{ end }} py-2 px-3 mb-4 rounded-3 border-0">
+                            <div class="alert {{ if eq $roleData.Role "Super Admin" }}alert-primary{{ else }}alert-info{{ end }} py-2 px-3 mb-4 rounded-3 border-0">
                                 <small class="d-block">
-                                    {{ if eq $roleData.Role "super_admin" }}
+                                    {{ if eq $roleData.Role "Super Admin" }}
                                     <i class="bi bi-info-circle-fill me-1"></i> Super Admin memiliki akses penuh ke seluruh sistem secara default.
                                     {{ else }}
-                                    <i class="bi bi-info-circle-fill me-1"></i> Atur akses menu untuk role Asset Manager di bawah ini.
+                                    <i class="bi bi-info-circle-fill me-1"></i> Atur akses menu untuk role ini di bawah ini.
                                     {{ end }}
                                 </small>
                             </div>
@@ -52,14 +52,14 @@
                                             id="perm_{{ $roleData.Role }}_{{ $res }}" 
                                             name="perm_{{ $res }}"
                                             {{ if index $roleData.Permissions $res }}checked{{ end }}
-                                            {{ if eq $roleData.Role "super_admin" }}disabled{{ end }}>
+                                            {{ if eq $roleData.Role "Super Admin" }}disabled{{ end }}>
                                     </div>
                                 </div>
                                 {{ end }}
                             </div>
                         </div>
                         <div class="card-footer bg-transparent border-0 pt-0 pb-4">
-                            {{ if ne $roleData.Role "super_admin" }}
+                            {{ if ne $roleData.Role "Super Admin" }}
                             <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm">
                                 <i class="bi bi-save me-1"></i> Simpan Perubahan
                             </button>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import * as XLSX from 'xlsx';
 import * as mammoth from 'mammoth';
 import {
@@ -41,14 +42,25 @@ const GoDMS = () => {
     const { folderId } = useParams();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const section = searchParams.get('section') || 'Sistem Informasi';
+    const { user } = useAuth();
+    
+    // Advanced Role Logic
+    const userDept = user?.department;
+    const dmsScope = user?.dms_filter_scope || 'Department'; // Default to Department for security
+    const allowedSectionsStr = user?.allowed_sections || '';
+    const allowedSections = allowedSectionsStr ? allowedSectionsStr.split(',') : [];
+    
+    const isFullAccess = dmsScope === 'All' || user?.role === 'Super Admin';
+    
+    // If not full access, and no section selected, use user's department
+    const section = searchParams.get('section') || (isFullAccess ? 'Sistem Informasi' : (userDept || 'Sistem Informasi'));
 
     const [data, setData] = useState({ folders: [], files: [], breadcrumbs: [], totalStorage: '0 KB' });
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState('grid');
     const [searchTerm, setSearchTerm] = useState('');
 
-    const sections = [
+    const allSections = [
         { label: 'Operasi Luar Negeri', icon: <FileText size={16} /> },
         { label: 'Keuangan & Administrasi', icon: <Database size={16} /> },
         { label: 'Sistem Kepatuhan', icon: <Shield size={16} /> },
@@ -56,6 +68,12 @@ const GoDMS = () => {
         { label: 'Penjualan & Stakeholder', icon: <Users size={16} /> },
         { label: 'Sistem Informasi', icon: <HardDrive size={16} /> }
     ];
+
+    const availableSections = allSections.filter(s => {
+        if (isFullAccess) return true;
+        if (s.label === userDept) return true;
+        return allowedSections.includes(s.label);
+    });
 
     const [showSectionDropdown, setShowSectionDropdown] = useState(false);
     const [showNewMenu, setShowNewMenu] = useState(false);
@@ -507,6 +525,12 @@ const GoDMS = () => {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
+    const formatDateWithTime = (dateString) => {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB') + ' ' + date.toLocaleTimeString('en-GB', { hour12: false });
+    };
+
     return (
         <div
             className={`page-content ${isDragging ? 'dragging-over' : ''}`}
@@ -550,7 +574,8 @@ const GoDMS = () => {
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                     <div className="custom-select-container" ref={sectionRef}>
                         <button
-                            onClick={() => setShowSectionDropdown(!showSectionDropdown)}
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); setShowSectionDropdown(!showSectionDropdown); }}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -567,15 +592,15 @@ const GoDMS = () => {
                             }}
                         >
                             <span style={{ color: 'var(--primary)', display: 'flex' }}>
-                                {sections.find(s => s.label === section)?.icon || <HardDrive size={16} />}
+                                {allSections.find(s => s.label === section)?.icon || <HardDrive size={16} />}
                             </span>
                             {section}
-                            <ChevronDown size={16} style={{ transform: showSectionDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                            {availableSections.length > 1 && <ChevronDown size={16} style={{ transform: showSectionDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />}
                         </button>
 
-                        {showSectionDropdown && (
+                        {availableSections.length > 1 && showSectionDropdown && (
                             <div className="custom-select-dropdown" style={{ right: 0, minWidth: '320px', borderRadius: '20px', padding: '0.75rem' }}>
-                                {sections.map(s => (
+                                {availableSections.map(s => (
                                     <button
                                         key={s.label}
                                         onClick={() => {
@@ -870,7 +895,7 @@ const GoDMS = () => {
                                             </div>
                                             <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
                                                 <span>{formatSize(file.Size)}</span>
-                                                <span>{new Date(file.CreatedAt).toLocaleDateString()}</span>
+                                                <span>{formatDateWithTime(file.UpdatedAt)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -982,7 +1007,7 @@ const GoDMS = () => {
                                                     </div>
                                                 </td>
                                                 <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>{formatSize(file.Size)}</td>
-                                                <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>{new Date(file.CreatedAt).toLocaleDateString()}</td>
+                                                <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>{formatDateWithTime(file.UpdatedAt)}</td>
                                                 <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                                                         <button onClick={() => setPreviewFile(file)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', border: 'none', cursor: 'pointer' }}>
@@ -1179,7 +1204,7 @@ const GoDMS = () => {
                     <div style={{ padding: '1.25rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' }}>
                         <div>
                             <h2 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>{previewFile.Name}</h2>
-                            <p style={{ fontSize: '0.8125rem', opacity: 0.7, margin: 0 }}>{formatSize(previewFile.Size)} • Uploaded {new Date(previewFile.CreatedAt).toLocaleDateString()}</p>
+                            <p style={{ fontSize: '0.8125rem', opacity: 0.7, margin: 0 }}>{formatSize(previewFile.Size)} • Modified {formatDateWithTime(previewFile.UpdatedAt)}</p>
                         </div>
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
                             <button

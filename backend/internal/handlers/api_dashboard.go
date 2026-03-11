@@ -11,12 +11,12 @@ func (server *Server) ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	var totalAssets int64
 	var readyAssets int64
 	var brokenAssets int64
-	var totalEmployees int64
+	var totalUsers int64
 
 	server.DB.Model(&models.AssetKSO{}).Count(&totalAssets)
 	server.DB.Model(&models.AssetKSO{}).Where("status = ?", "Ready").Count(&readyAssets)
 	server.DB.Model(&models.AssetKSO{}).Where("status = ?", "Rusak").Count(&brokenAssets)
-	server.DB.Model(&models.User{}).Count(&totalEmployees)
+	server.DB.Model(&models.User{}).Count(&totalUsers)
 
 	// Get assets by category for chart
 	type CategoryStat struct {
@@ -43,12 +43,12 @@ func (server *Server) ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := map[string]interface{}{
-		"totalAssets":    totalAssets,
-		"readyAssets":    readyAssets,
-		"brokenAssets":   brokenAssets,
-		"totalEmployees": totalEmployees,
-		"categoryStats":  categoryStats,
-		"statusStats":    statusStats,
+		"totalAssets":  totalAssets,
+		"readyAssets":  readyAssets,
+		"brokenAssets": brokenAssets,
+		"totalUsers":   totalUsers,
+		"categoryStats": categoryStats,
+		"statusStats":   statusStats,
 	}
 
 	server.Renderer.JSON(w, http.StatusOK, data)

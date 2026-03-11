@@ -1,4 +1,4 @@
-{{ define "administration/employee" }}
+{{ define "administration/user" }}
 <style>
   /* Custom DataTables Styling */
   .datatable-wrapper .datatable-top {
@@ -53,7 +53,7 @@
   }
 
   /* Premium Table Styling */
-  #table-employee {
+  #table-user {
     border-collapse: separate !important;
     border-spacing: 0 !important;
     border: 1px solid #dee2e6 !important;
@@ -61,7 +61,7 @@
     overflow: hidden !important;
   }
 
-  #table-employee thead th {
+  #table-user thead th {
     background-color: #f8f9fa;
     border-bottom: 2px solid #0d6efd !important;
     font-weight: 600;
@@ -69,13 +69,13 @@
     padding: 12px;
   }
 
-  #table-employee tbody td {
+  #table-user tbody td {
     border: 1px solid #dee2e6 !important;
     padding: 12px;
     vertical-align: middle;
   }
 
-  #table-employee tbody tr:hover {
+  #table-user tbody tr:hover {
     background-color: #f1f7ff;
     transition: background-color 0.2s;
   }
@@ -87,13 +87,13 @@
   }
 
   /* Fixed Sequential Row Numbering */
-  #table-employee {
+  #table-user {
     counter-reset: rowNumber;
   }
-  #table-employee tbody tr {
+  #table-user tbody tr {
     counter-increment: rowNumber;
   }
-  #table-employee tbody tr td:first-child::before {
+  #table-user tbody tr td:first-child::before {
     content: counter(rowNumber) ".";
   }
 </style>
@@ -104,11 +104,11 @@
           <div class="container-fluid">
             <!--begin::Row-->
             <div class="row">
-              <div class="col-sm-6"><h3 class="mb-0">Daftar Karyawan</h3></div>
+              <div class="col-sm-6"><h3 class="mb-0">Daftar User</h3></div>
               <div class="col-sm-6">
                 <ol class="breadcrumb float-sm-end">
                   <li class="breadcrumb-item"><a href="/">Home</a></li>
-                  <li class="breadcrumb-item active" aria-current="page">Employee</li>
+                  <li class="breadcrumb-item active" aria-current="page">User</li>
                 </ol>
               </div>
             </div>
@@ -142,16 +142,16 @@
               <div class="col-12">
                 <div class="card shadow-sm">
                   <div class="card-header d-flex align-items-center justify-content-between">
-                    <h3 class="card-title">Data Karyawan</h3>
+                    <h3 class="card-title">Data User</h3>
                     <div class="card-tools ms-auto">
-                      <a href="/administration/employee/create" class="btn btn-primary btn-sm">
-                        <i class="bi bi-plus"></i> Tambah Karyawan
+                      <a href="/administration/user/create" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus"></i> Tambah User
                       </a>
                     </div>
                   </div>
                   <!-- /.card-header -->
                   <div class="card-body">
-                    <table class="table table-bordered" id="table-employee">
+                    <table class="table table-bordered" id="table-user">
                       <thead>
                         <tr>
                           <th style="width: 10px">No</th>
@@ -186,10 +186,10 @@
                           </td>
                           <td>
                             <div class="btn-group">
-                              <a href="/administration/employee/edit/{{ $user.ID }}" class="btn btn-warning btn-sm">
+                              <a href="/administration/user/edit/{{ $user.ID }}" class="btn btn-warning btn-sm">
                                 <i class="bi bi-pencil"></i>
                               </a>
-                              <a href="/administration/employee/delete/{{ $user.ID }}" class="btn btn-danger btn-sm" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
+                              <a href="/administration/user/delete/{{ $user.ID }}" class="btn btn-danger btn-sm" onclick="return confirm('Apakah Anda yakin ingin menghapus data ini?')">
                                 <i class="bi bi-trash"></i>
                               </a>
                             </div>
@@ -212,14 +212,14 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const tableElement = document.getElementById('table-employee');
+        const tableElement = document.getElementById('table-user');
         if (tableElement) {
             const dataTable = new simpleDatatables.DataTable(tableElement, {
                 searchable: true,
                 fixedHeight: false,
                 perPage: 10,
                 labels: {
-                    placeholder: "Cari karyawan...",
+                    placeholder: "Cari user...",
                     perPage: "{select}",
                     noRows: "Data tidak ditemukan",
                     info: "Menampilkan {start} sampai {end} dari {rows} data",

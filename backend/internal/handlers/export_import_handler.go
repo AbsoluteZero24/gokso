@@ -11,8 +11,8 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-// ApiExportEmployees exports employee data to Excel
-func (server *Server) ApiExportEmployees(w http.ResponseWriter, r *http.Request) {
+// ApiExportUsers exports user data to Excel
+func (server *Server) ApiExportUsers(w http.ResponseWriter, r *http.Request) {
 	var users []models.User
 	if err := server.DB.Order("name asc").Find(&users).Error; err != nil {
 		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -22,7 +22,7 @@ func (server *Server) ApiExportEmployees(w http.ResponseWriter, r *http.Request)
 	f := excelize.NewFile()
 	defer f.Close()
 
-	sheetName := "Employees"
+	sheetName := "Users"
 	f.SetSheetName("Sheet1", sheetName)
 
 	// Headers
@@ -47,15 +47,15 @@ func (server *Server) ApiExportEmployees(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	w.Header().Set("Content-Disposition", "attachment; filename=employees_"+time.Now().Format("20060102")+".xlsx")
+	w.Header().Set("Content-Disposition", "attachment; filename=users_"+time.Now().Format("20060102")+".xlsx")
 
 	if err := f.Write(w); err != nil {
 		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 }
 
-// ApiImportEmployees handles employee import from CSV/Excel
-func (server *Server) ApiImportEmployees(w http.ResponseWriter, r *http.Request) {
+// ApiImportUsers handles user import from CSV/Excel
+func (server *Server) ApiImportUsers(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(10 << 20) // 10MB limit
 	if err != nil {
 		server.Renderer.JSON(w, http.StatusBadRequest, map[string]string{"error": "File too large"})
@@ -69,7 +69,7 @@ func (server *Server) ApiImportEmployees(w http.ResponseWriter, r *http.Request)
 	}
 	defer file.Close()
 
-	var employees []models.User
+	var users []models.User
 	ext := header.Filename[len(header.Filename)-4:]
 
 	if ext == ".csv" {
@@ -85,7 +85,7 @@ func (server *Server) ApiImportEmployees(w http.ResponseWriter, r *http.Request)
 			if i == 0 || len(record) < 4 {
 				continue
 			}
-			emp := models.User{
+			userObj := models.User{
 				ID:             uuid.New().String(),
 				NIK:            record[0],
 				Name:           record[1],
@@ -98,7 +98,7 @@ func (server *Server) ApiImportEmployees(w http.ResponseWriter, r *http.Request)
 				StatusKaryawan: getSafe(record, 8),
 				Password:       "password123",
 			}
-			employees = append(employees, emp)
+			users = append(users, userObj)
 		}
 	} else {
 		f, err := excelize.OpenReader(file)
@@ -118,7 +118,7 @@ func (server *Server) ApiImportEmployees(w http.ResponseWriter, r *http.Request)
 			if i == 0 || len(row) < 4 {
 				continue
 			}
-			emp := models.User{
+			userObj := models.User{
 				ID:             uuid.New().String(),
 				NIK:            row[0],
 				Name:           row[1],
@@ -131,19 +131,19 @@ func (server *Server) ApiImportEmployees(w http.ResponseWriter, r *http.Request)
 				StatusKaryawan: getSafe(row, 8),
 				Password:       "password123",
 			}
-			employees = append(employees, emp)
+			users = append(users, userObj)
 		}
 	}
 
-	if len(employees) > 0 {
-		if err := server.DB.Create(&employees).Error; err != nil {
+	if len(users) > 0 {
+		if err := server.DB.Create(&users).Error; err != nil {
 			server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to save data: " + err.Error()})
 			return
 		}
 	}
 
 	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
-		"message": fmt.Sprintf("Successfully imported %d employees", len(employees)),
+		"message": fmt.Sprintf("Successfully imported %d users", len(users)),
 	})
 }
 

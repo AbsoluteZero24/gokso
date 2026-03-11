@@ -76,7 +76,7 @@
                 </a>
               </li>
 
-              <li class="nav-item {{ if or .Permissions.inventori .Permissions.asset_management .Permissions.maintenance (eq .AdminRole "super_admin") }}has-treeview{{ end }}">
+              <li class="nav-item {{ if or .Permissions.inventori .Permissions.asset_management .Permissions.maintenance (eq .AdminRole "Super Admin") }}has-treeview{{ end }}">
                 <a href="javascript:void(0)" class="nav-link">
                   <i class="nav-icon bi bi-box"></i>
                   <p>
@@ -85,7 +85,7 @@
                   </p>
                 </a>
                 <ul class="nav nav-treeview">
-                  {{ if or .Permissions.inventori (eq .AdminRole "super_admin") }}
+                  {{ if or .Permissions.inventori (eq .AdminRole "Super Admin") }}
                   <li class="nav-item">
                     <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-archive"></i>
@@ -121,7 +121,7 @@
                     </ul>
                   </li>
                   {{ end }}
-                  {{ if or .Permissions.asset_management (eq .AdminRole "super_admin") }}
+                  {{ if or .Permissions.asset_management (eq .AdminRole "Super Admin") }}
                   <li class="nav-item">
                     <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-file-earmark-text"></i>
@@ -146,7 +146,7 @@
                     </ul>
                   </li>
                   {{ end }}
-                  {{ if or .Permissions.maintenance (eq .AdminRole "super_admin") }}
+                  {{ if or .Permissions.maintenance (eq .AdminRole "Super Admin") }}
                   <li class="nav-item">
                     <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-tools"></i>
@@ -366,16 +366,16 @@
                 </a>
                 <ul class="nav nav-treeview">
                   <li class="nav-item">
-                    <a href="/administration/employee" class="nav-link">
+                    <a href="/administration/user" class="nav-link">
                       <i class="nav-icon bi bi-person"></i>
-                      <p>Employee List</p>
+                      <p>User List</p>
                     </a>
                   </li>
                   <li class="nav-item">
                     <a href="javascript:void(0)" class="nav-link">
                       <i class="nav-icon bi bi-database"></i>
                       <p>
-                        Master Data Employee
+                        Master Data User
                         <i class="nav-arrow bi bi-chevron-right"></i>
                       </p>
                     </a>
@@ -409,7 +409,7 @@
                 </ul>
               </li>
               {{ end }}
-              {{ if eq .AdminRole "super_admin" }}
+              {{ if eq .AdminRole "Super Admin" }}
               <li class="nav-item">
                 <a href="javascript:void(0)" class="nav-link">
                   <i class="nav-icon bi bi-gear"></i>

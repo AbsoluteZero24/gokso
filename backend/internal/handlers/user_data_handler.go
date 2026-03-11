@@ -7,23 +7,24 @@ import (
 	"github.com/AbsoluteZero24/gokso/internal/models"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"golang.org/x/crypto/bcrypt"
 )
 
-// ListEmployees menampilkan daftar semua karyawan
-func (server *Server) ListEmployees(w http.ResponseWriter, r *http.Request) {
+// ListUsers menampilkan daftar semua user
+func (server *Server) ListUsers(w http.ResponseWriter, r *http.Request) {
 	var users []models.User
 	server.DB.Find(&users)
 
-	server.RenderHTML(w, r, http.StatusOK, "administration/employee", map[string]interface{}{
-		"title": "Daftar Karyawan",
+	server.RenderHTML(w, r, http.StatusOK, "administration/user", map[string]interface{}{
+		"title": "Daftar User",
 		"users": users,
 		"msg":   r.URL.Query().Get("msg"),
 		"error": r.URL.Query().Get("error"),
 	})
 }
 
-// ApiListEmployees returns JSON list of employees
-func (server *Server) ApiListEmployees(w http.ResponseWriter, r *http.Request) {
+// ApiListUsers returns JSON list of users
+func (server *Server) ApiListUsers(w http.ResponseWriter, r *http.Request) {
 	var users []models.User
 	if err := server.DB.Find(&users).Error; err != nil {
 		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -35,12 +36,12 @@ func (server *Server) ApiListEmployees(w http.ResponseWriter, r *http.Request) {
 	}
 
 	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
-		"employees": users,
+		"users": users,
 	})
 }
 
-// ApiDeleteEmployee handles JSON delete request
-func (server *Server) ApiDeleteEmployee(w http.ResponseWriter, r *http.Request) {
+// ApiDeleteUser handles JSON delete request
+func (server *Server) ApiDeleteUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -49,26 +50,26 @@ func (server *Server) ApiDeleteEmployee(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Employee deleted successfully"})
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "User deleted successfully"})
 }
 
-// CreateEmployeeForm menampilkan form untuk menambah karyawan baru
-func (server *Server) CreateEmployeeForm(w http.ResponseWriter, r *http.Request) {
+// CreateUserForm menampilkan form untuk menambah user baru
+func (server *Server) CreateUserForm(w http.ResponseWriter, r *http.Request) {
 	var branches []models.MasterBranch
 	var positions []models.MasterPosition
 
 	server.DB.Preload("Departments.SubDepartments").Find(&branches)
 	server.DB.Find(&positions)
 
-	server.RenderHTML(w, r, http.StatusOK, "administration/employee_form", map[string]interface{}{
-		"title":     "Tambah Karyawan",
+	server.RenderHTML(w, r, http.StatusOK, "administration/user_form", map[string]interface{}{
+		"title":     "Tambah User",
 		"branches":  branches,
 		"positions": positions,
 	})
 }
 
-// StoreEmployee menyimpan data karyawan baru ke database
-func (server *Server) StoreEmployee(w http.ResponseWriter, r *http.Request) {
+// StoreUser menyimpan data user baru ke database
+func (server *Server) StoreUser(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -90,15 +91,21 @@ func (server *Server) StoreEmployee(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := server.DB.Create(&user).Error; err != nil {
-		http.Redirect(w, r, "/administration/employee?error=Gagal menambah karyawan: "+err.Error(), http.StatusSeeOther)
+		http.Redirect(w, r, "/administration/user?error=Gagal menambah user: "+err.Error(), http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, "/administration/employee?msg=Karyawan berhasil ditambahkan", http.StatusSeeOther)
+	http.Redirect(w, r, "/administration/user?msg=User berhasil ditambahkan", http.StatusSeeOther)
 }
 
-// ApiStoreEmployee handles JSON request to add new employee
-func (server *Server) ApiStoreEmployee(w http.ResponseWriter, r *http.Request) {
+// ApiStoreUser handles JSON request to add new user
+func (server *Server) ApiStoreUser(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
+
+	password := r.FormValue("password")
+	if password == "" {
+		password = "password123" // Default password
+	}
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 
 	user := models.User{
 		ID:             uuid.New().String(),
@@ -111,7 +118,8 @@ func (server *Server) ApiStoreEmployee(w http.ResponseWriter, r *http.Request) {
 		Position:       r.FormValue("position"),
 		StatusKaryawan: r.FormValue("status_karyawan"),
 		PhoneNumber:    r.FormValue("phone_number"),
-		Password:       "password123", // Default password
+		Password:       string(hashedPassword),
+		Role:           r.FormValue("role"),
 	}
 
 	if err := server.DB.Create(&user).Error; err != nil {
@@ -119,17 +127,17 @@ func (server *Server) ApiStoreEmployee(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{"message": "Karyawan berhasil ditambahkan", "user": user})
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{"message": "User berhasil ditambahkan", "user": user})
 }
 
-// EditEmployeeForm menampilkan form untuk mengubah data karyawan yang sudah ada
-func (server *Server) EditEmployeeForm(w http.ResponseWriter, r *http.Request) {
+// EditUserForm menampilkan form untuk mengubah data user yang sudah ada
+func (server *Server) EditUserForm(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
 	var user models.User
 	if err := server.DB.Where("id = ?", id).First(&user).Error; err != nil {
-		http.Redirect(w, r, "/administration/employee", http.StatusSeeOther)
+		http.Redirect(w, r, "/administration/user", http.StatusSeeOther)
 		return
 	}
 
@@ -139,23 +147,23 @@ func (server *Server) EditEmployeeForm(w http.ResponseWriter, r *http.Request) {
 	server.DB.Preload("Departments.SubDepartments").Find(&branches)
 	server.DB.Find(&positions)
 
-	server.RenderHTML(w, r, http.StatusOK, "administration/employee_form", map[string]interface{}{
-		"title":     "Edit Karyawan",
+	server.RenderHTML(w, r, http.StatusOK, "administration/user_form", map[string]interface{}{
+		"title":     "Edit User",
 		"user":      user,
 		"branches":  branches,
 		"positions": positions,
 	})
 }
 
-// UpdateEmployee menangani proses pembaruan data karyawan di database
-func (server *Server) UpdateEmployee(w http.ResponseWriter, r *http.Request) {
+// UpdateUser menangani proses pembaruan data user di database
+func (server *Server) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
-	fmt.Printf("[UpdateEmployee] START - ID: %s\n", id)
+	fmt.Printf("[UpdateUser] START - ID: %s\n", id)
 
 	err := r.ParseForm()
 	if err != nil {
-		fmt.Printf("[UpdateEmployee] ParseForm Error: %v\n", err)
+		fmt.Printf("[UpdateUser] ParseForm Error: %v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -173,27 +181,27 @@ func (server *Server) UpdateEmployee(w http.ResponseWriter, r *http.Request) {
 		"phone_number":    r.FormValue("phone_number"),
 	}
 
-	fmt.Printf("[UpdateEmployee] New Data: %+v\n", newData)
+	fmt.Printf("[UpdateUser] New Data: %+v\n", newData)
 
 	// Perform update
 	result := server.DB.Model(&models.User{}).Where("id = ?", id).Updates(newData)
 	if result.Error != nil {
-		fmt.Printf("[UpdateEmployee] DB ERROR: %v\n", result.Error)
-		http.Redirect(w, r, "/administration/employee?error=Gagal simpan: "+result.Error.Error(), http.StatusSeeOther)
+		fmt.Printf("[UpdateUser] DB ERROR: %v\n", result.Error)
+		http.Redirect(w, r, "/administration/user?error=Gagal simpan: "+result.Error.Error(), http.StatusSeeOther)
 		return
 	}
 
-	fmt.Printf("[UpdateEmployee] SUCCESS - Rows affected: %d\n", result.RowsAffected)
+	fmt.Printf("[UpdateUser] SUCCESS - Rows affected: %d\n", result.RowsAffected)
 
 	if result.RowsAffected == 0 {
-		fmt.Printf("[UpdateEmployee] WARNING - No rows affected. Check if ID %s exists.\n", id)
+		fmt.Printf("[UpdateUser] WARNING - No rows affected. Check if ID %s exists.\n", id)
 	}
 
-	http.Redirect(w, r, "/administration/employee?msg=Data karyawan berhasil diperbarui", http.StatusSeeOther)
+	http.Redirect(w, r, "/administration/user?msg=Data user berhasil diperbarui", http.StatusSeeOther)
 }
 
-// ApiUpdateEmployee handles JSON update request for an employee
-func (server *Server) ApiUpdateEmployee(w http.ResponseWriter, r *http.Request) {
+// ApiUpdateUser handles JSON update request for a user
+func (server *Server) ApiUpdateUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -209,6 +217,13 @@ func (server *Server) ApiUpdateEmployee(w http.ResponseWriter, r *http.Request) 
 		"position":        r.FormValue("position"),
 		"status_karyawan": r.FormValue("status_karyawan"),
 		"phone_number":    r.FormValue("phone_number"),
+		"role":            r.FormValue("role"),
+	}
+
+	password := r.FormValue("password")
+	if password != "" {
+		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		newData["password"] = string(hashedPassword)
 	}
 
 	result := server.DB.Model(&models.User{}).Where("id = ?", id).Updates(newData)
@@ -218,18 +233,18 @@ func (server *Server) ApiUpdateEmployee(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if result.RowsAffected == 0 {
-		server.Renderer.JSON(w, http.StatusNotFound, map[string]string{"error": "Karyawan tidak ditemukan"})
+		server.Renderer.JSON(w, http.StatusNotFound, map[string]string{"error": "User tidak ditemukan"})
 		return
 	}
 
-	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Data karyawan berhasil diperbarui"})
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Data user berhasil diperbarui"})
 }
 
-// DeleteEmployee menghapus data karyawan dari database
-func (server *Server) DeleteEmployee(w http.ResponseWriter, r *http.Request) {
+// DeleteUser menghapus data user dari database
+func (server *Server) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
 	server.DB.Where("id = ?", id).Delete(&models.User{})
-	http.Redirect(w, r, "/administration/employee", http.StatusSeeOther)
+	http.Redirect(w, r, "/administration/user", http.StatusSeeOther)
 }

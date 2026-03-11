@@ -187,41 +187,43 @@ const MasterPosition = () => {
 
             {/* Modal Form */}
             {isModalOpen && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
-                    <div className="chart-container" style={{ width: '100%', maxWidth: '450px', margin: '1rem', position: 'relative' }}>
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{editingPosition ? 'Edit Jabatan' : 'Tambah Jabatan'}</h2>
-                            <p style={{ color: 'var(--text-light)', fontSize: '0.875rem' }}>Masukkan nama jabatan baru perusahaan</p>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)', padding: '2rem' }}>
+                    <div style={{ background: 'white', borderRadius: '20px', width: '100%', maxWidth: '600px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+                        <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
+                            <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1.25rem' }}>{editingPosition ? 'Edit Jabatan' : 'Tambah Jabatan'}</h3>
+                            <button onClick={() => setIsModalOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
                         </div>
 
-                        <form onSubmit={handleSubmit}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#64748b' }}>Nama Jabatan</label>
+                        <form onSubmit={handleSubmit} style={{ padding: '2.5rem' }}>
+                            <div style={{ marginBottom: '2.5rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>Nama Jabatan</label>
                                 <input
                                     type="text"
                                     required
+                                    placeholder="Masukkan nama jabatan..."
                                     className="search-input"
-                                    style={{ width: '100%', padding: '0.75rem 1rem' }}
+                                    style={{ width: '100%', padding: '0.875rem 1.125rem', fontSize: '1rem' }}
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 />
+                                <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.625rem' }}>* Contoh: Supervisor, Manager, Staf, Operator, dsb.</p>
                             </div>
 
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white', fontWeight: 700, cursor: 'pointer' }}
+                                    style={{ padding: '0.75rem 1.75rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white', fontWeight: 700, cursor: 'pointer', color: '#64748b' }}
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                    style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0.75rem 2.5rem', borderRadius: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 6px -1px rgba(30, 89, 197, 0.2)' }}
                                 >
-                                    {isSubmitting && <Loader2 className="animate-spin" size={18} />}
-                                    Simpan
+                                    {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <Check size={20} />}
+                                    Simpan Jabatan
                                 </button>
                             </div>
                         </form>

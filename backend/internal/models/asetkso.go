@@ -18,8 +18,8 @@ type AssetKSO struct {
 	Specification   string  `gorm:"type:text"`         // Added for "Spesifikasi"
 	Color           string  `gorm:"size:50"`           // Added for "Warna"
 	Location        string  `gorm:"size:100"`          // Added for "Lokasi"
-	UserID          *string `gorm:"size:36"`           // Added for link to User
-	User            User    `gorm:"foreignKey:UserID"` // Added relationship
+	UserID          *string `gorm:"size:36"`               // link to User
+	User            User    `gorm:"foreignKey:UserID"`    // relationship
 	PurchaseDate    time.Time
 	Status          string `gorm:"size:50;not null"` // Ready, Rusak, etc.
 	CreatedAt       time.Time

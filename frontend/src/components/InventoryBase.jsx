@@ -432,7 +432,7 @@ const InventoryBase = ({ title, description, status }) => {
                     </div>
 
                     <div className="custom-select-container" ref={dropdownRef}>
-                        <button onClick={() => setShowYearDropdown(!showYearDropdown)} className="custom-select-trigger">
+                        <button type="button" onClick={() => setShowYearDropdown(!showYearDropdown)} className="custom-select-trigger">
                             <Filter size={16} color={showYearDropdown ? 'var(--primary)' : 'var(--text-light)'} />
                             {filterYear}
                             <ChevronDown size={14} style={{ transform: showYearDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
@@ -447,7 +447,7 @@ const InventoryBase = ({ title, description, status }) => {
                     </div>
 
                     <div className="custom-select-container" ref={categoryDropdownRef}>
-                        <button onClick={() => setShowCategoryDropdown(!showCategoryDropdown)} className="custom-select-trigger">
+                        <button type="button" onClick={() => setShowCategoryDropdown(!showCategoryDropdown)} className="custom-select-trigger">
                             <Filter size={16} color={showCategoryDropdown ? 'var(--primary)' : 'var(--text-light)'} />
                             {filterCategory}
                             <ChevronDown size={14} style={{ transform: showCategoryDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
@@ -556,25 +556,25 @@ const InventoryBase = ({ title, description, status }) => {
 
             {/* Modals - Simplified for content brevity */}
             {showModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
-                    <div style={{ background: 'white', borderRadius: '24px', width: '100%', maxWidth: '750px', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-                            <h3 style={{ margin: 0, fontWeight: 800 }}>{isEdit ? 'Edit Aset' : 'Tambah Aset'}</h3>
-                            <button onClick={() => setShowModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={24} /></button>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)', padding: '2rem' }}>
+                    <div style={{ background: 'white', borderRadius: '24px', width: '100%', maxWidth: '900px', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+                        <div style={{ padding: '1.5rem 2.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
+                            <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1.25rem' }}>{isEdit ? 'Edit Aset' : 'Tambah Aset'}</h3>
+                            <button onClick={() => setShowModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
                         </div>
-                        <div style={{ padding: '2rem', overflowY: 'auto' }}>
+                        <div style={{ padding: '2.5rem', overflowY: 'auto' }}>
                             <form onSubmit={handleStore}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '1.25rem' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.5rem' }}>No. Inventaris</label>
-                                        <input type="text" required value={newAsset.inventory_number} onChange={(e) => setNewAsset({ ...newAsset, inventory_number: e.target.value })} style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid var(--border)' }} />
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>No. Inventaris</label>
+                                        <input type="text" required placeholder="Contoh: KSO/2026/001" value={newAsset.inventory_number} onChange={(e) => setNewAsset({ ...newAsset, inventory_number: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem' }} />
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.5rem' }}>Nama Aset</label>
-                                        <input type="text" required value={newAsset.asset_name} onChange={(e) => setNewAsset({ ...newAsset, asset_name: e.target.value })} style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid var(--border)' }} />
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>Nama Aset</label>
+                                        <input type="text" required placeholder="Nama aset lengkap..." value={newAsset.asset_name} onChange={(e) => setNewAsset({ ...newAsset, asset_name: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem' }} />
                                     </div>
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '1.25rem' }}>
                                     <SearchableSelect
                                         label="Kategori"
                                         required
@@ -584,16 +584,17 @@ const InventoryBase = ({ title, description, status }) => {
                                         placeholder="Pilih Kategori"
                                     />
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.5rem' }}>Merk</label>
-                                        <input type="text" value={newAsset.brand} onChange={(e) => setNewAsset({ ...newAsset, brand: e.target.value })} style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid var(--border)' }} />
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>Merk / Brand</label>
+                                        <input type="text" placeholder="Asus, Dell, HP..." value={newAsset.brand} onChange={(e) => setNewAsset({ ...newAsset, brand: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem' }} />
                                     </div>
                                 </div>
-                                {/* Simplified specs for brevity in this refactor */}
+                                
                                 <div style={{ marginBottom: '1.5rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.5rem' }}>Spesifikasi</label>
-                                    <textarea rows="3" value={newAsset.specification} onChange={(e) => setNewAsset({ ...newAsset, specification: e.target.value })} style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid var(--border)' }}></textarea>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>Spesifikasi Teknis</label>
+                                    <textarea rows="4" placeholder="Detail spesifikasi aset..." value={newAsset.specification} onChange={(e) => setNewAsset({ ...newAsset, specification: e.target.value })} style={{ width: '100%', padding: '1rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem', resize: 'vertical' }}></textarea>
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                                
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2.5rem' }}>
                                     <SearchableSelect
                                         label="Status"
                                         value={newAsset.status}
@@ -606,13 +607,16 @@ const InventoryBase = ({ title, description, status }) => {
                                         ]}
                                     />
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.5rem' }}>Lokasi</label>
-                                        <input type="text" value={newAsset.location} onChange={(e) => setNewAsset({ ...newAsset, location: e.target.value })} style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid var(--border)' }} />
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>Lokasi Penempatan</label>
+                                        <input type="text" placeholder="Ruang IT, Gudang, etc..." value={newAsset.location} onChange={(e) => setNewAsset({ ...newAsset, location: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem' }} />
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                                    <button type="button" onClick={() => setShowModal(false)} style={{ padding: '0.75rem 1.75rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'white' }}>Batal</button>
-                                    <button type="submit" disabled={modalLoading} style={{ padding: '0.75rem 2rem', borderRadius: '12px', border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800 }}>Simpan</button>
+                                
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
+                                    <button type="button" onClick={() => setShowModal(false)} style={{ padding: '0.75rem 1.75rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'white', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Batal</button>
+                                    <button type="submit" disabled={modalLoading} style={{ padding: '0.75rem 2.5rem', borderRadius: '12px', border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(30, 89, 197, 0.2)' }}>
+                                        {modalLoading ? <Loader2 className="animate-spin" size={20} /> : 'Simpan Aset'}
+                                    </button>
                                 </div>
                             </form>
                         </div>

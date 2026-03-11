@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/AbsoluteZero24/gokso/internal/models"
 )
 
@@ -10,7 +11,7 @@ import (
 
 // ListSettingRole menampilkan halaman pengaturan izin akses (permission) untuk setiap peran
 func (server *Server) ListSettingRole(w http.ResponseWriter, r *http.Request) {
-	roles := []string{"super_admin", "asset_manager", "staf_it", "support"}
+	roles := []string{"Super Admin", "Koordinator", "Top Management", "staf"}
 
 	type RoleWithPerms struct {
 		Role        string
@@ -61,4 +62,111 @@ func (server *Server) UpdateSettingRole(w http.ResponseWriter, r *http.Request) 
 	}
 
 	http.Redirect(w, r, "/setting/role", http.StatusSeeOther)
+}
+
+// ApiListRoles returns JSON list of roles
+func (server *Server) ApiListRoles(w http.ResponseWriter, r *http.Request) {
+	var roles []models.Role
+	server.DB.Find(&roles)
+	for i := range roles {
+		var count int64
+		server.DB.Model(&models.User{}).Where("role = ?", roles[i].Name).Count(&count)
+		roles[i].UserCount = count
+	}
+
+	if roles == nil {
+		roles = []models.Role{}
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"roles": roles,
+	})
+}
+
+// ApiStoreRole handles JSON request to create a role
+func (server *Server) ApiStoreRole(w http.ResponseWriter, r *http.Request) {
+	_ = r.ParseForm()
+	name := r.FormValue("name")
+	description := r.FormValue("description")
+	permissions := r.FormValue("permissions")
+	dmsFilterScope := r.FormValue("dms_filter_scope")
+	allowedSections := r.FormValue("allowed_sections")
+
+	role := models.Role{
+		Name:            name,
+		Description:     description,
+		Permissions:     permissions,
+		DMSFilterScope:  dmsFilterScope,
+		AllowedSections: allowedSections,
+	}
+
+	if err := server.DB.Create(&role).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, role)
+}
+
+// ApiUpdateRole handles JSON request to update a role
+func (server *Server) ApiUpdateRole(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	_ = r.ParseForm()
+	name := r.FormValue("name")
+	description := r.FormValue("description")
+	permissions := r.FormValue("permissions")
+
+	var role models.Role
+	if err := server.DB.First(&role, id).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusNotFound, map[string]string{"error": "Role not found"})
+		return
+	}
+
+	oldName := role.Name
+
+	// Prevent renaming Super Admin
+	if oldName == "Super Admin" && name != "Super Admin" {
+		server.Renderer.JSON(w, http.StatusBadRequest, map[string]string{"error": "Role Super Admin tidak boleh diubah namanya"})
+		return
+	}
+
+	role.Name = name
+	role.Description = description
+	role.Permissions = permissions
+	role.DMSFilterScope = r.FormValue("dms_filter_scope")
+	role.AllowedSections = r.FormValue("allowed_sections")
+
+	if err := server.DB.Save(&role).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	// Sync to users if role name changed
+	if oldName != name && oldName != "" {
+		server.DB.Model(&models.User{}).Where("role = ?", oldName).Update("role", name)
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, role)
+}
+
+// ApiDeleteRole handles JSON request to delete a role
+func (server *Server) ApiDeleteRole(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var role models.Role
+	if err := server.DB.First(&role, id).Error; err == nil {
+		if role.Name == "Super Admin" {
+			server.Renderer.JSON(w, http.StatusBadRequest, map[string]string{"error": "Role Super Admin tidak boleh dihapus"})
+			return
+		}
+		roleName := role.Name
+		server.DB.Delete(&role)
+		// Clear from users
+		server.DB.Model(&models.User{}).Where("role = ?", roleName).Update("role", "")
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Role deleted successfully"})
 }

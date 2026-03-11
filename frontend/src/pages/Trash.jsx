@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import {
     Folder,
     File,
@@ -34,7 +35,17 @@ import ConfirmModal from '../components/ConfirmModal';
 const Trash = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const section = searchParams.get('section') || 'Sistem Informasi';
+    const { user } = useAuth();
+    
+    // Advanced Role Logic
+    const userDept = user?.department;
+    const dmsScope = user?.dms_filter_scope || 'Department'; 
+    const allowedSectionsStr = user?.allowed_sections || '';
+    const allowedSections = allowedSectionsStr ? allowedSectionsStr.split(',').map(s => s.trim()) : [];
+    
+    const isFullAccess = dmsScope === 'All' || user?.role === 'Super Admin';
+    
+    const section = searchParams.get('section') || (isFullAccess ? 'Sistem Informasi' : (userDept || 'Sistem Informasi'));
 
     const [data, setData] = useState({ folders: [], files: [] });
     const [loading, setLoading] = useState(true);
@@ -200,7 +211,7 @@ const Trash = () => {
         }
     };
 
-    const sections = [
+    const allSections = [
         { label: 'Operasi Luar Negeri', icon: <FileText size={16} /> },
         { label: 'Keuangan & Administrasi', icon: <Database size={16} /> },
         { label: 'Sistem Kepatuhan', icon: <Shield size={16} /> },
@@ -208,6 +219,12 @@ const Trash = () => {
         { label: 'Penjualan & Stakeholder', icon: <Users size={16} /> },
         { label: 'Sistem Informasi', icon: <HardDrive size={16} /> }
     ];
+
+    const availableSections = allSections.filter(s => {
+        if (isFullAccess) return true;
+        if (s.label === userDept) return true;
+        return allowedSections.includes(s.label);
+    });
 
     const fetchData = async () => {
         setLoading(true);
@@ -342,15 +359,15 @@ const Trash = () => {
                         }}
                     >
                         <span style={{ color: 'var(--primary)', display: 'flex' }}>
-                            {sections.find(s => s.label === section)?.icon || <StorageIcon size={16} />}
+                            {allSections.find(s => s.label === section)?.icon || <StorageIcon size={16} />}
                         </span>
                         {section}
-                        <ChevronDown size={16} style={{ transform: showSectionDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                        {availableSections.length > 1 && <ChevronDown size={16} style={{ transform: showSectionDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />}
                     </button>
 
-                    {showSectionDropdown && (
+                    {availableSections.length > 1 && showSectionDropdown && (
                         <div className="custom-select-dropdown" style={{ right: 0, minWidth: '320px', borderRadius: '20px', padding: '0.75rem' }}>
-                            {sections.map(s => (
+                            {availableSections.map(s => (
                                 <button
                                     key={s.label}
                                     onClick={() => {

@@ -59,9 +59,10 @@ func Run() {
 
 			log.Println("Seeding database...")
 			// We can call specific seeders or the main DBSeed
+			seeders.SeedRoles(server.DB)
 			seeders.SeedAdmin(server.DB)
 			seeders.SeedPermissions(server.DB)
-			seeders.SeedMasterDataEmployee(server.DB)
+			seeders.SeedMasterDataUser(server.DB)
 			seeders.SeedMasterDataAsset(server.DB)
 			seeders.SeedDMS(server.DB)
 			seeders.SeedNotifications(server.DB)

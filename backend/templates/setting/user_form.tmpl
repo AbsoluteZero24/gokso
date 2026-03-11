@@ -30,17 +30,17 @@
                     <form action="{{ if .admin }}/setting/user/update/{{ .admin.ID }}{{ else }}/setting/user/store{{ end }}" method="post">
                         <div class="card-body p-4">
                             <div class="mb-4">
-                                <label for="user_id" class="form-label fw-semibold">Pilih Karyawan</label>
+                                <label for="user_id" class="form-label fw-semibold">Pilih User</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-light text-muted"><i class="bi bi-people"></i></span>
                                     <select class="form-select" id="user_id" name="user_id" required>
-                                        <option value="">-- Pilih Karyawan --</option>
-                                        {{ range .employees }}
+                                        <option value="">-- Pilih User --</option>
+                                        {{ range .users }}
                                         <option value="{{ .ID }}" {{ if $.admin }}{{ if eq $.admin.UserID .ID }}selected{{ end }}{{ end }}>{{ .Name }} ({{ .NIK }})</option>
                                         {{ end }}
                                     </select>
                                 </div>
-                                <div class="form-text mt-2"><i class="bi bi-info-circle me-1"></i> Hubungkan akun login dengan data karyawan.</div>
+                                <div class="form-text mt-2"><i class="bi bi-info-circle me-1"></i> Hubungkan akun login dengan data user.</div>
                             </div>
 
                             <div class="mb-4">
@@ -56,10 +56,10 @@
                                 <div class="input-group">
                                     <span class="input-group-text bg-light text-muted"><i class="bi bi-shield-check"></i></span>
                                     <select class="form-select" id="role" name="role" required>
-                                        <option value="super_admin" {{ if .admin }}{{ if eq .admin.Role "super_admin" }}selected{{ end }}{{ end }}>Super Admin (Akses Penuh)</option>
-                                        <option value="asset_manager" {{ if .admin }}{{ if eq .admin.Role "asset_manager" }}selected{{ end }}{{ end }}>Asset Manager</option>
-                                        <option value="staf_it" {{ if .admin }}{{ if eq .admin.Role "staf_it" }}selected{{ end }}{{ end }}>Staf IT (Asset & Maintenance)</option>
-                                        <option value="support" {{ if .admin }}{{ if eq .admin.Role "support" }}selected{{ end }}{{ end }}>Support (Dashboard Only)</option>
+                                        <option value="Super Admin" {{ if .admin }}{{ if eq .admin.Role "Super Admin" }}selected{{ end }}{{ end }}>Super Admin (Akses Penuh)</option>
+                                        <option value="Koordinator" {{ if .admin }}{{ if eq .admin.Role "Koordinator" }}selected{{ end }}{{ end }}>Koordinator</option>
+                                        <option value="Top Management" {{ if .admin }}{{ if eq .admin.Role "Top Management" }}selected{{ end }}{{ end }}>Top Management</option>
+                                        <option value="staf" {{ if .admin }}{{ if eq .admin.Role "staf" }}selected{{ end }}{{ end }}>Staf Operasional</option>
                                     </select>
                                 </div>
                                 <div class="form-text mt-2"><i class="bi bi-info-circle me-1"></i> Tentukan level izin untuk akun ini.</div>

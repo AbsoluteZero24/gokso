@@ -7,11 +7,13 @@ import Dashboard from './pages/Dashboard';
 import Aset from './pages/Aset';
 import Service from './pages/Service';
 import Gudang from './pages/Gudang';
-import Employee from './pages/Employee';
+import Inactive from './pages/Inactive';
 import GoDMS from './pages/GoDMS';
 import User from './pages/User';
+import Roles from './pages/Roles';
 import AssetManagement from './pages/AssetManagement';
 import GoForm from './pages/GoForm';
+import GoSign from './pages/GoSign';
 import MasterBranch from './pages/MasterBranch';
 import MasterDepartment from './pages/MasterDepartment';
 import MasterPosition from './pages/MasterPosition';
@@ -84,7 +86,7 @@ const MainLayout = ({ children }) => {
 
   return (
     <div className={`app-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <Sidebar collapsed={isSidebarCollapsed} />
+      <Sidebar collapsed={isSidebarCollapsed} onExpand={() => setIsSidebarCollapsed(false)} />
       <div className="main-content">
         <Navbar onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
         {children}
@@ -134,6 +136,12 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="/inventori/inactive" element={
+              <ProtectedRoute>
+                <MainLayout><Inactive /></MainLayout>
+              </ProtectedRoute>
+            } />
+
             <Route path="/inventori/master-data/asset-category" element={
               <ProtectedRoute>
                 <MainLayout><MasterAssetCategory /></MainLayout>
@@ -149,7 +157,7 @@ function App() {
 
             <Route path="/administration/employee" element={
               <ProtectedRoute>
-                <MainLayout><Employee /></MainLayout>
+                <MainLayout><User /></MainLayout>
               </ProtectedRoute>
             } />
 
@@ -177,6 +185,12 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="/gosign" element={
+              <ProtectedRoute>
+                <MainLayout><GoSign /></MainLayout>
+              </ProtectedRoute>
+            } />
+
             <Route path="/goform/fill/form-bast-laptop" element={
               <ProtectedRoute>
                 <MainLayout><FormBASTLaptop /></MainLayout>
@@ -188,6 +202,8 @@ function App() {
                 <MainLayout><FormBASTLaptop /></MainLayout>
               </ProtectedRoute>
             } />
+
+            <Route path="/godms" element={<Navigate to="/godms/edoc" replace />} />
 
             <Route path="/godms/edoc" element={
               <ProtectedRoute>
@@ -210,6 +226,12 @@ function App() {
             <Route path="/setting/user" element={
               <ProtectedRoute>
                 <MainLayout><User /></MainLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/setting/role" element={
+              <ProtectedRoute>
+                <MainLayout><Roles /></MainLayout>
               </ProtectedRoute>
             } />
 

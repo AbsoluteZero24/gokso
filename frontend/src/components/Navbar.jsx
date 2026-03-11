@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Search, Bell, Maximize, Minimize, User as UserIcon, LogOut, X, Info } from 'lucide-react';
+import { Menu, Search, Bell, Maximize, Minimize, User as UserIcon, LogOut, X, Info, ArrowUpRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const Navbar = ({ onToggleSidebar }) => {
@@ -14,6 +14,7 @@ const Navbar = ({ onToggleSidebar }) => {
     const profileRef = useRef(null);
     const notificationRef = useRef(null);
     const location = useLocation();
+    const navigate = useNavigate();
 
     // Fetch notifications
     const fetchNotifications = async () => {
@@ -42,6 +43,36 @@ const Navbar = ({ onToggleSidebar }) => {
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
         } catch (error) {
             console.error('Error marking as read:', error);
+        }
+    };
+
+    const clearNotifications = async (e) => {
+        e.stopPropagation();
+        if (!window.confirm('Hapus semua notifikasi?')) return;
+        try {
+            await axios.post('/api/notifications/clear');
+            setNotifications([]);
+        } catch (error) {
+            console.error('Error clearing notifications:', error);
+        }
+    };
+
+    const handleNotificationClick = async (notif) => {
+        // Mark as read first
+        if (!notif.is_read) {
+            try {
+                // We'd need a backend endpoint for marking single notif as read if we want to be precise
+                // For now, let's just update local state or mark all if needed.
+                // Assuming we might have a single read endpoint or just update local
+                setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+            } catch (error) {
+                console.error('Error marking notification as read:', error);
+            }
+        }
+
+        if (notif.link) {
+            navigate(notif.link);
+            setShowNotifications(false);
         }
     };
 
@@ -113,7 +144,7 @@ const Navbar = ({ onToggleSidebar }) => {
     return (
         <nav className="navbar">
             <div className="navbar-left">
-                <button onClick={onToggleSidebar} style={{ padding: '0.5rem', borderRadius: '8px', transition: 'background 0.2s' }}>
+                <button type="button" onClick={(e) => { e.preventDefault(); onToggleSidebar(); }} style={{ padding: '0.5rem', borderRadius: '8px', transition: 'background 0.2s' }}>
                     <Menu size={20} color="#64748b" />
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#64748b' }}>
@@ -146,13 +177,13 @@ const Navbar = ({ onToggleSidebar }) => {
                             <button onClick={() => setShowSearch(false)} style={{ padding: '0.25rem' }}><X size={14} color="#ef4444" /></button>
                         </div>
                     ) : (
-                        <button onClick={() => setShowSearch(true)}><Search size={20} color="#64748b" /></button>
+                        <button type="button" onClick={(e) => { e.preventDefault(); setShowSearch(true); }}><Search size={20} color="#64748b" /></button>
                     )}
                 </div>
 
                 {/* Notifications */}
                 <div style={{ position: 'relative' }} ref={notificationRef}>
-                    <button onClick={() => setShowNotifications(!showNotifications)} style={{ position: 'relative' }}>
+                    <button type="button" onClick={(e) => { e.preventDefault(); setShowNotifications(!showNotifications); }} style={{ position: 'relative' }}>
                         <Bell size={20} color="#64748b" />
                         {hasUnread && (
                             <span style={{ position: 'absolute', top: '2px', right: '2px', width: '8px', height: '8px', background: '#ef4444', borderRadius: '50%', border: '2px solid white' }}></span>
@@ -175,38 +206,69 @@ const Navbar = ({ onToggleSidebar }) => {
                         }}>
                             <div style={{ padding: '1.25rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span style={{ fontWeight: 800, fontSize: '1rem' }}>Notifications</span>
-                                <span
-                                    onClick={markAllRead}
-                                    style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.2s' }}
-                                    className="hover-opacity"
-                                >
-                                    Mark all read
-                                </span>
+                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                    <span
+                                        onClick={markAllRead}
+                                        style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.2s' }}
+                                        className="hover-opacity"
+                                    >
+                                        Mark all read
+                                    </span>
+                                    <span
+                                        onClick={clearNotifications}
+                                        style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.2s' }}
+                                        className="hover-opacity"
+                                    >
+                                        Clear
+                                    </span>
+                                </div>
                             </div>
                             <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
                                 {notifications.length > 0 ? (
                                     notifications.map(notif => (
-                                        <div key={notif.id} style={{
-                                            padding: '1.25rem 1rem',
-                                            borderBottom: '1px solid #f1f5f9',
-                                            display: 'flex',
-                                            gap: '1rem',
-                                            cursor: 'pointer',
-                                            transition: 'background 0.2s',
-                                            background: notif.is_read ? 'white' : 'rgba(30, 89, 197, 0.03)'
-                                        }} className="profile-menu-item">
-                                            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(30, 89, 197, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                <Info size={20} color="var(--primary)" />
+                                        <div 
+                                            key={notif.id} 
+                                            onClick={() => handleNotificationClick(notif)}
+                                            style={{
+                                                padding: '1.25rem 1rem',
+                                                borderBottom: '1px solid #f1f5f9',
+                                                display: 'flex',
+                                                gap: '1rem',
+                                                cursor: 'pointer',
+                                                transition: 'background 0.2s',
+                                                background: notif.is_read ? 'white' : 'rgba(30, 89, 197, 0.03)',
+                                                position: 'relative'
+                                            }} 
+                                            className="profile-menu-item"
+                                        >
+                                            <div style={{ 
+                                                width: '40px', 
+                                                height: '40px', 
+                                                borderRadius: '12px', 
+                                                background: notif.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(30, 89, 197, 0.1)', 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'center', 
+                                                flexShrink: 0 
+                                            }}>
+                                                <Info size={20} color={notif.type === 'success' ? '#10b981' : 'var(--primary)'} />
                                             </div>
                                             <div style={{ flex: 1 }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                                                    <p style={{ fontSize: '0.8125rem', fontWeight: 700, margin: 0 }}>{notif.title}</p>
+                                                    <p style={{ fontSize: '0.8125rem', fontWeight: 700, margin: 0, color: notif.is_read ? '#475569' : '#1e293b' }}>{notif.title}</p>
                                                     {!notif.is_read && <div style={{ width: '6px', height: '6px', background: 'var(--primary)', borderRadius: '50%' }}></div>}
                                                 </div>
                                                 <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0, lineHeight: 1.4 }}>{notif.message}</p>
-                                                <p style={{ fontSize: '0.625rem', color: '#94a3b8', marginTop: '0.5rem', fontWeight: 600 }}>
-                                                    {new Date(notif.created_at).toLocaleDateString()} {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </p>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                                                    <p style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 600 }}>
+                                                        {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
+                                                    {notif.link && (
+                                                        <span style={{ fontSize: '0.625rem', color: 'var(--primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                                            Buka <ArrowUpRight size={10} />
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     ))
@@ -229,7 +291,7 @@ const Navbar = ({ onToggleSidebar }) => {
                 </div>
 
                 {/* Fullscreen Toggle */}
-                <button onClick={toggleFullscreen}>
+                <button type="button" onClick={(e) => { e.preventDefault(); toggleFullscreen(); }}>
                     {isFullscreen ? <Minimize size={20} color="#64748b" /> : <Maximize size={20} color="#64748b" />}
                 </button>
 

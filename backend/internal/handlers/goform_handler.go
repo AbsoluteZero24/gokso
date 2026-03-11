@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/AbsoluteZero24/gokso/internal/models"
@@ -35,20 +37,108 @@ func (server *Server) ListGoForm(w http.ResponseWriter, r *http.Request) {
 
 // ApiListGoForm returns JSON for form catalogue
 func (server *Server) ApiListGoForm(w http.ResponseWriter, r *http.Request) {
-	forms := []map[string]interface{}{
-		{
-			"id":          "form-bast-laptop",
-			"name":        "BA Serah Terima Laptop/Komputer",
-			"description": "Berita acara bukti penyerahan khusus aset IT (Laptop/Komputer).",
-			"icon":        "Laptop",
-			"color":       "#ec4899",
-			"category":    "Asset Control",
-		},
+	// Seed if empty
+	var count int64
+	server.DB.Model(&models.GoForm{}).Count(&count)
+	if count == 0 {
+		initial := models.GoForm{
+			FormID:      "form-bast-laptop",
+			Name:        "BA Serah Terima Laptop/Komputer",
+			Description: "Berita acara bukti penyerahan khusus aset IT (Laptop/Komputer).",
+			Icon:        "Laptop",
+			Color:       "#ec4899",
+			Category:    "Asset Control",
+			Section:     "Sistem Informasi", // Default to IT
+		}
+		server.DB.Create(&initial)
+	}
+
+	var forms []models.GoForm
+	server.DB.Where("status = ?", "Active").Find(&forms)
+
+	_, _, roleName, _ := GetCurrentAdmin(r)
+	dept := GetCurrentAdminDept(r)
+
+	// Fetch Role Config
+	var role models.Role
+	server.DB.Where("name = ?", roleName).First(&role)
+
+	isFullAccess := roleName == "Super Admin" || role.DMSFilterScope == "All"
+	roleAllowedDepts := strings.Split(role.AllowedSections, ",")
+
+	var filteredForms []models.GoForm
+	for _, f := range forms {
+		if isFullAccess {
+			filteredForms = append(filteredForms, f)
+			continue
+		}
+
+		// Check Form Visibility
+		if f.Section == "" {
+			filteredForms = append(filteredForms, f)
+			continue
+		}
+
+		formAllowedDepts := strings.Split(f.Section, ",")
+		isVisible := false
+
+		for _, fd := range formAllowedDepts {
+			fd = strings.TrimSpace(fd)
+			if fd == "" {
+				continue
+			}
+
+			// If it matches user's primary dept
+			if fd == dept {
+				isVisible = true
+				break
+			}
+
+			// If it's in role's specifically allowed sections
+			for _, rd := range roleAllowedDepts {
+				if strings.TrimSpace(rd) == fd {
+					isVisible = true
+					break
+				}
+			}
+			if isVisible {
+				break
+			}
+		}
+
+		if isVisible {
+			filteredForms = append(filteredForms, f)
+		}
 	}
 
 	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
-		"forms": forms,
+		"forms": filteredForms,
 	})
+}
+
+// ApiUpdateGoFormVisibility updates which sections can see the form
+func (server *Server) ApiUpdateGoFormVisibility(w http.ResponseWriter, r *http.Request) {
+	_, _, role, _ := GetCurrentAdmin(r)
+	if role != "Super Admin" {
+		server.Renderer.JSON(w, http.StatusForbidden, map[string]string{"error": "Forbidden"})
+		return
+	}
+
+	formID := r.FormValue("form_id")
+	sections := r.FormValue("sections")
+
+	if formID == "" {
+		server.Renderer.JSON(w, http.StatusBadRequest, map[string]string{"error": "Form ID required"})
+		return
+	}
+
+	err := server.DB.Model(&models.GoForm{}).Where("form_id = ?", formID).Update("section", sections).Error
+	if err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Visibility updated"})
 }
 
 // FillGoForm menampilkan formulir untuk diisi
@@ -60,8 +150,8 @@ func (server *Server) FillGoForm(w http.ResponseWriter, r *http.Request) {
 	templateName := "goform/fill"
 	formName := ""
 
-	var employees []models.User
-	server.DB.Order("name asc").Find(&employees)
+	var users []models.User
+	server.DB.Order("name asc").Find(&users)
 
 	var assets []models.AssetKSO
 	query := server.DB.Preload("User").Order("inventory_number asc")
@@ -92,7 +182,7 @@ func (server *Server) FillGoForm(w http.ResponseWriter, r *http.Request) {
 		"title":     "Isi " + formName,
 		"formID":    id,
 		"formName":  formName,
-		"employees": employees,
+		"employees": users,
 		"assets":    assets,
 	})
 }
@@ -102,8 +192,8 @@ func (server *Server) ApiGetGoFormInitData(w http.ResponseWriter, r *http.Reques
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	var employees []models.User
-	server.DB.Order("name asc").Find(&employees)
+	var users []models.User
+	server.DB.Order("name asc").Find(&users)
 
 	var assets []models.AssetKSO
 	query := server.DB.Preload("User").Order("inventory_number asc")
@@ -112,14 +202,14 @@ func (server *Server) ApiGetGoFormInitData(w http.ResponseWriter, r *http.Reques
 	}
 	query.Find(&assets)
 
-	if employees == nil {
-		employees = []models.User{}
+	if users == nil {
+		users = []models.User{}
 	}
 	if assets == nil {
 		assets = []models.AssetKSO{}
 	}
 	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
-		"employees": employees,
+		"employees": users,
 		"assets":    assets,
 	})
 }
@@ -138,7 +228,9 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 	// 1. Dapatkan atau Buat Folder "Digital Reports" di eDoc
 	var folder models.DMSFolder
 	folderName := "Laporan Digital"
-	section := "Sistem Informasi" // Default section for forms
+	section := "Sistem Informasi"            // Default section for forms
+	submitType := r.FormValue("submit_type") // "direct" or "request"
+	adminID, adminName, _, _ := GetCurrentAdmin(r)
 
 	var folders []models.DMSFolder
 	server.DB.Where("name = ? AND parent_id IS NULL", folderName).Limit(1).Find(&folders)
@@ -173,8 +265,8 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 		// Collect BAST Data
 		var data BASTData
 
-		p1ID := r.FormValue("p1_employee_id")
-		p2ID := r.FormValue("p2_employee_id")
+		p1ID := r.FormValue("p1_user_id")
+		p2ID := r.FormValue("p2_user_id")
 		dateStr := r.FormValue("handover_date")
 		data.Notes = r.FormValue("notes")
 		data.Category = r.FormValue("document_category")
@@ -254,6 +346,79 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 			personName = data.P1.Name
 		}
 		fileName = fmt.Sprintf("%s_%s_%s.pdf", prefix, personName, time.Now().Format("20060102_150405"))
+
+		// Handle "Ajukan Tanda Tangan" (GoSign)
+		if submitType == "request" {
+			taskID := uuid.New().String()
+			dataJSON, _ := json.Marshal(data)
+
+			// 1. Generate Draft PDF in Temporary Folder
+			tempDir := "./public/temp/previews"
+			if _, err := os.Stat(tempDir); os.IsNotExist(err) {
+				os.MkdirAll(tempDir, 0755)
+			}
+			draftPath := filepath.Join(tempDir, "draft_"+taskID+".pdf")
+
+			// Generate without signatures
+			if err := server.GenerateBASTPDF(data, pdfTitle, draftPath); err != nil {
+				http.Error(w, "Gagal membuat draft PDF: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			task := models.GoSignTask{
+				ID:             taskID,
+				FormID:         id,
+				FormName:       pdfTitle,
+				FileName:       fileName,
+				FilePath:       "/" + filepath.ToSlash(draftPath), // Web accessible path
+				DataJSON:       string(dataJSON),
+				CreatorID:      adminID,
+				CreatorName:    adminName,
+				Section:        section,
+				TargetFolderID: folder.ID,
+				Status:         "Pending",
+			}
+
+			if err := server.DB.Create(&task).Error; err != nil {
+				// Cleanup draft if DB fails
+				os.Remove(draftPath)
+				http.Error(w, "Gagal membuat permohonan tanda tangan", http.StatusInternalServerError)
+				return
+			}
+
+			// Add Signers
+			signers := []string{p1ID, p2ID}
+			for _, sid := range signers {
+				if sid == "" {
+					continue
+				}
+				var e models.User
+				server.DB.Where("id = ?", sid).First(&e)
+
+				signer := models.GoSignSigner{
+					ID:       uuid.New().String(),
+					TaskID:   taskID,
+					UserID:   sid,
+					UserName: e.Name,
+					Role:     "Signer",
+				}
+				server.DB.Create(&signer)
+
+				// Notify
+				server.AddNotification(sid, "Permohonan Tanda Tangan", fmt.Sprintf("%s membutuhkan tanda tangan Anda untuk dokumen %s.", adminName, pdfTitle), "info", "/gosign")
+			}
+
+			if r.Header.Get("Accept") == "application/json" {
+				server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+					"message": "Permohonan tanda tangan berhasil diajukan.",
+					"taskID":  taskID,
+				})
+				return
+			}
+			http.Redirect(w, r, "/goform?msg=Permohonan berhasil diajukan", http.StatusSeeOther)
+			return
+		}
+
 		msg = "Berita Acara Serah Terima (BAST) berhasil dibuat dan disimpan ke eDoc."
 
 		// Generate PDF

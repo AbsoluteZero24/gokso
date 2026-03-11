@@ -8,7 +8,6 @@ type Model struct {
 func RegisterModels() []Model {
 	return []Model{
 		{Model: User{}},
-		{Model: Admin{}},
 		{Model: AssetKSO{}},
 		{Model: MasterBranch{}},
 		{Model: MasterDepartment{}},
@@ -18,8 +17,12 @@ func RegisterModels() []Model {
 		{Model: MasterRamType{}},
 		{Model: MasterStorageType{}},
 		{Model: RolePermission{}},
+		{Model: Role{}},
 		{Model: DMSFolder{}},
 		{Model: DMSFile{}},
 		{Model: Notification{}},
+		{Model: GoSignTask{}},
+		{Model: GoSignSigner{}},
+		{Model: GoForm{}},
 	}
 }

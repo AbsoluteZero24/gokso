@@ -146,7 +146,7 @@
                     <thead>
                         <tr>
                             <th style="width: 50px">No</th>
-                            <th>Nama Karyawan</th>
+                            <th>Nama User</th>
                             <th>Username</th>
                             <th>Role</th>
                             <th>Created At</th>
@@ -158,19 +158,21 @@
                         <tr>
                             <td class="text-center fw-medium"></td>
                             <td>
-                                <div><strong>{{ $admin.EmployeeName }}</strong></div>
+                                <div><strong>{{ $admin.UserName }}</strong></div>
                                 <small class="text-muted">{{ $admin.NIK }}</small>
                             </td>
                             <td><code>{{ $admin.Username }}</code></td>
                             <td>
-                                {{ if eq $admin.Role "super_admin" }}
+                                {{ if eq $admin.Role "Super Admin" }}
                                 <span class="badge bg-primary">Super Admin</span>
-                                {{ else if eq $admin.Role "asset_manager" }}
-                                <span class="badge bg-info">Asset Manager</span>
-                                {{ else if eq $admin.Role "staf_it" }}
-                                <span class="badge bg-success">Staf IT</span>
+                                {{ else if eq $admin.Role "Koordinator" }}
+                                <span class="badge bg-info">Koordinator</span>
+                                {{ else if eq $admin.Role "Top Management" }}
+                                <span class="badge bg-warning text-dark">Top Management</span>
+                                {{ else if eq $admin.Role "staf" }}
+                                <span class="badge bg-success">staf</span>
                                 {{ else }}
-                                <span class="badge bg-secondary">Support</span>
+                                <span class="badge bg-secondary">{{ $admin.Role }}</span>
                                 {{ end }}
                             </td>
                             <td>{{ $admin.CreatedAt.Format "02/01/2006 15:04" }}</td>

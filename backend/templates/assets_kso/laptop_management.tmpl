@@ -249,7 +249,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="modalAssignLabel">Assign Employee to Asset</h5>
+        <h5 class="modal-title" id="modalAssignLabel">Assign User to Asset</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="/asset-management/laptop/assign" method="POST">
@@ -260,7 +260,7 @@
             <input type="text" class="form-control" id="modal_asset_info" readonly>
           </div>
           <div class="mb-3">
-            <label for="user_id" class="form-label">Employee List</label>
+            <label for="user_id" class="form-label">User List</label>
             <select name="user_id" id="modal_user_id" class="form-control select2" style="width: 100%;">
               <option value="">-- Unassign / Kosongkan --</option>
               {{ range .users }}
@@ -448,7 +448,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 2. Initialize TomSelect for Employee Search
+    // 2. Initialize TomSelect for User Search
     let tomSelectInstance = null;
     const modalSelect = document.getElementById('modal_user_id');
     if (modalSelect) {
@@ -459,7 +459,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 field: "text",
                 direction: "asc"
             },
-            placeholder: "-- Cari & Pilih Karyawan --",
+            placeholder: "-- Cari & Pilih User --",
             allowEmptyOption: true,
             maxOptions: 1000,
             render: {
@@ -470,9 +470,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     const meta = parts.slice(1).join(' - ');
                     return `
                         <div class="option">
-                            <div class="employee-option">
-                                <span class="employee-name">${escape(name)}</span>
-                                <span class="employee-meta">${escape(meta)}</span>
+                            <div class="user-option">
+                                <span class="user-name">${escape(name)}</span>
+                                <span class="user-meta">${escape(meta)}</span>
                             </div>
                         </div>`;
                 },

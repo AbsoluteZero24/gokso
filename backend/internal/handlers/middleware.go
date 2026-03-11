@@ -55,7 +55,7 @@ func (server *Server) PermissionRequired(resource string, next http.HandlerFunc)
 		}
 
 		// Super Admin always has access to everything
-		if userRole == "super_admin" {
+		if userRole == "Super Admin" {
 			next(w, r)
 			return
 		}

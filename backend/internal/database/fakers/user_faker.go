@@ -1,31 +1,26 @@
 package fakers
 
 import (
-	"time"
-
-	"github.com/bxcodec/faker/v3"
-
 	"github.com/AbsoluteZero24/gokso/internal/models"
+	"github.com/bxcodec/faker/v3"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"golang.org/x/crypto/bcrypt"
 )
 
-// UserFaker menghasilkan data karyawan buatan (dummy) untuk keperluan testing atau seeding
+// UserFaker creates a fake user
 func UserFaker(db *gorm.DB) *models.User {
-
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+	
 	return &models.User{
 		ID:             uuid.New().String(),
-		NIK:            faker.Phonenumber(), // Use phonenumber or similar for NIK faker
+		NIK:            faker.UUIDDigit()[:10],
 		Name:           faker.Name(),
 		Email:          faker.Email(),
-		Branch:         faker.Word(),
-		Department:     faker.Word(),
-		SubDepartment:  faker.Word(),
-		Position:       faker.Word(),
-		StatusKaryawan: "Tetap",                                // or faker word
-		Password:       "dfasfsadgfreagfeawfasdfasfsadfsdafas", //password
-		CreatedAt:      time.Time{},
-		UpdatedAt:      time.Time{},
-		DeletedAt:      gorm.DeletedAt{},
+		Branch:         "KSO PUSAT",
+		Department:     "Sistem Informasi",
+		Position:       "Staff",
+		StatusKaryawan: "Tetap",
+		Password:       string(hashedPassword),
 	}
 }

@@ -25,15 +25,12 @@ func Initialize(dbConfig config.DBConfig) (*gorm.DB, error) {
 
 // Migrate melakukan migrasi skema database untuk semua model yang terdaftar
 func Migrate(db *gorm.DB) {
-	// Cek apakah database sudah diinisialisasi (dengan mengecek tabel admins)
-	if db.Migrator().HasTable("admins") {
+	// Cek apakah database sudah diinisialisasi (dengan mengecek tabel users)
+	if db.Migrator().HasTable("users") {
 		var count int64
-		db.Table("admins").Count(&count)
+		db.Table("users").Count(&count)
 		if count > 0 {
 			fmt.Println("Database already initialized. Ensuring new tables exist...")
-			// Always ensure Notification table exists
-			// db.AutoMigrate(&models.Notification{})
-			// Let it continue to migrate all models
 		}
 	}
 
@@ -50,6 +47,33 @@ func Migrate(db *gorm.DB) {
 	db.Exec("UPDATE dms_files SET folder_id = NULL WHERE folder_id = ''")
 	db.Exec("ALTER TABLE dms_folders ALTER COLUMN parent_id DROP NOT NULL")
 	db.Exec("UPDATE dms_folders SET parent_id = NULL WHERE parent_id = ''")
+
+	// 1. Migrate Admin table to User table before dropping it
+	if db.Migrator().HasTable("admins") {
+		fmt.Println("Migrating legacy 'admins' table data to 'users' table...")
+		
+		// Move system accounts (no UserID)
+		db.Exec(`
+			INSERT INTO users (id, nik, name, email, password, role, position, created_at, updated_at)
+			SELECT id, 'SYS' || substr(id, 1, 8), username, username || '@system.local', password, role, 'System Account', created_at, updated_at
+			FROM admins
+			WHERE user_id IS NULL OR user_id = ''
+			ON CONFLICT (id) DO NOTHING
+		`)
+
+		// Update existing users from linked admin accounts
+		db.Exec(`
+			UPDATE users
+			SET role = admins.role,
+			    password = admins.password
+			FROM admins
+			WHERE users.id = admins.user_id
+			AND (users.role IS NULL OR users.role = '')
+		`)
+
+		fmt.Println("Dropping legacy 'admins' table...")
+		db.Migrator().DropTable("admins")
+	}
 
 	for _, model := range models.RegisterModels() {
 		err := db.Debug().AutoMigrate(model.Model)

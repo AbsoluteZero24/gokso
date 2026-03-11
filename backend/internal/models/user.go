@@ -17,8 +17,16 @@ type User struct {
 	Position       string `gorm:"size:50;not null"` // Jabatan
 	StatusKaryawan string `gorm:"size:50"`
 	PhoneNumber    string `gorm:"size:20"`
-	Password       string `gorm:"size:100;not null"`
+	Password       string `gorm:"size:255;not null"`
+	Role           string `gorm:"size:50"` // Super Admin, Koordinator, staf, etc.
+	Avatar         string `gorm:"size:255"`
+	Signature      string `gorm:"size:255"`
+	Paraf          string `gorm:"size:255"`
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      gorm.DeletedAt
+}
+
+func (User) TableName() string {
+	return "users" // Keep the table name as 'users'
 }

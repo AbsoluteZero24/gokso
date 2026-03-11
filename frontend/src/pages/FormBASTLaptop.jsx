@@ -26,6 +26,7 @@ const FormBASTLaptop = () => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [category, setCategory] = useState('Pengambilan');
+    const [signMethod, setSignMethod] = useState('direct'); // 'direct' or 'request'
 
     // Signature Refs
     const sigRefP1 = useRef(null);
@@ -34,8 +35,8 @@ const FormBASTLaptop = () => {
     // Form State
     const [formData, setFormData] = useState({
         handover_date: new Date().toISOString().split('T')[0],
-        p1_employee_id: '',
-        p2_employee_id: '',
+        p1_user_id: '',
+        p2_user_id: '',
         old_asset_id: '',
         new_asset_id: '',
         asset_condition: 'Ready',
@@ -72,7 +73,7 @@ const FormBASTLaptop = () => {
         fetchData();
     }, [id]);
 
-    const employeeOptions = initData.employees.map(e => ({
+    const userOptions = initData.employees.map(e => ({
         value: e.ID,
         label: `${e.Name} - ${e.Department || 'N/A'}`
     }));
@@ -80,7 +81,7 @@ const FormBASTLaptop = () => {
     const standardAssetOptions = initData.assets
         .filter(a => {
             if (category === 'Pengembalian') return !!a.UserID;
-            if (category === 'Pengambilan') return !a.UserID;
+            if (category === 'Pengambilan') return !a.UserID && a.Status === 'Ready';
             return true;
         })
         .map(a => ({
@@ -98,7 +99,7 @@ const FormBASTLaptop = () => {
         }));
 
     const newAssetOptions = initData.assets
-        .filter(a => !a.UserID)
+        .filter(a => !a.UserID && a.Status === 'Ready')
         .map(a => ({
             value: a.ID,
             label: `${a.InventoryNumber} - ${a.AssetName}`,
@@ -136,10 +137,10 @@ const FormBASTLaptop = () => {
         if (ref.current) ref.current.clear();
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSubmit = async (e, submitType = 'direct') => {
+        if (e) e.preventDefault();
 
-        if (sigRefP1.current.isEmpty() || sigRefP2.current.isEmpty()) {
+        if (submitType === 'direct' && (sigRefP1.current.isEmpty() || sigRefP2.current.isEmpty())) {
             setAlertConfig({
                 isOpen: true,
                 title: 'Tanda Tangan Kosong',
@@ -153,10 +154,11 @@ const FormBASTLaptop = () => {
         setSubmitting(true);
         try {
             const webFormData = new URLSearchParams();
+            webFormData.append('submit_type', submitType);
             webFormData.append('document_category', category);
             webFormData.append('handover_date', formData.handover_date);
-            webFormData.append('p1_employee_id', formData.p1_employee_id);
-            webFormData.append('p2_employee_id', formData.p2_employee_id);
+            webFormData.append('p1_user_id', formData.p1_user_id);
+            webFormData.append('p2_user_id', formData.p2_user_id);
             webFormData.append('notes', formData.notes);
 
             if (category === 'Tukar') {
@@ -169,15 +171,19 @@ const FormBASTLaptop = () => {
                 });
             }
 
-            webFormData.append('sig_p1_data', sigRefP1.current.toDataURL());
-            webFormData.append('sig_p2_data', sigRefP2.current.toDataURL());
+            if (submitType === 'direct') {
+                webFormData.append('sig_p1_data', sigRefP1.current.toDataURL());
+                webFormData.append('sig_p2_data', sigRefP2.current.toDataURL());
+            }
 
             await axios.post(`/api/goform/submit/${currentFormId}`, webFormData);
 
             setAlertConfig({
                 isOpen: true,
                 title: 'Berhasil',
-                message: 'Berita Acara Serah Terima (BAST) berhasil dibuat dan disimpan ke eDoc.',
+                message: submitType === 'request' 
+                    ? 'Permohonan tanda tangan berhasil diajukan. Draft dapat dilihat di GoSign.' 
+                    : 'Berita Acara Serah Terima (BAST) berhasil dibuat dan disimpan ke eDoc.',
                 type: 'success',
                 onConfirm: () => navigate('/goform')
             });
@@ -307,10 +313,10 @@ const FormBASTLaptop = () => {
                                     <div style={{ marginBottom: '1.5rem' }}>
                                         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Nama Pemberi</label>
                                         <SearchableSelect
-                                            options={employeeOptions}
-                                            value={formData.p1_employee_id}
-                                            onChange={(val) => setFormData({ ...formData, p1_employee_id: val })}
-                                            placeholder="Cari Karyawan..."
+                                            options={userOptions}
+                                            value={formData.p1_user_id}
+                                            onChange={(val) => setFormData({ ...formData, p1_user_id: val })}
+                                            placeholder="Cari User..."
                                             required
                                         />
                                     </div>
@@ -334,10 +340,10 @@ const FormBASTLaptop = () => {
                                     <div style={{ marginBottom: '1.5rem' }}>
                                         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Nama Penerima</label>
                                         <SearchableSelect
-                                            options={employeeOptions}
-                                            value={formData.p2_employee_id}
-                                            onChange={(val) => setFormData({ ...formData, p2_employee_id: val })}
-                                            placeholder="Cari Karyawan..."
+                                            options={userOptions}
+                                            value={formData.p2_user_id}
+                                            onChange={(val) => setFormData({ ...formData, p2_user_id: val })}
+                                            placeholder="Cari User..."
                                             required
                                         />
                                     </div>
@@ -397,54 +403,109 @@ const FormBASTLaptop = () => {
                                 </div>
                             )}
 
-                            {/* Signatures */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '3rem', marginBottom: '3rem' }}>
-                                <div style={{ textAlign: 'center' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '1rem' }}>Tanda Tangan PIHAK PERTAMA</label>
-                                    <div style={{ background: '#f8fafc', border: '2px dashed var(--border)', borderRadius: '12px', height: '180px', position: 'relative' }}>
-                                        <SignaturePad
-                                            ref={sigRefP1}
-                                            canvasProps={{ width: 400, height: 180, className: 'signature-canvas' }}
-                                        />
-                                    </div>
-                                    <button type="button" onClick={() => clearSignature(sigRefP1)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, marginTop: '0.5rem', cursor: 'pointer' }}>HAPUS TTD</button>
+                             {/* Signing Method Selection */}
+                             <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f0f9ff', borderRadius: '12px', border: '1px solid #bae6fd' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 800, color: '#0369a1', marginBottom: '0.75rem', textTransform: 'uppercase' }}>Metode Tanda Tangan</label>
+                                <div style={{ maxWidth: '300px' }}>
+                                    <SearchableSelect
+                                        value={signMethod}
+                                        onChange={(val) => setSignMethod(val)}
+                                        options={[
+                                            { value: 'direct', label: 'Tanda Tangan Digital (Langsung)' },
+                                            { value: 'request', label: 'Ajukan Tanda Tangan (GoSign)' }
+                                        ]}
+                                    />
                                 </div>
-                                <div style={{ textAlign: 'center' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '1rem' }}>Tanda Tangan PIHAK KEDUA</label>
-                                    <div style={{ background: '#f8fafc', border: '2px dashed var(--border)', borderRadius: '12px', height: '180px', position: 'relative' }}>
-                                        <SignaturePad
-                                            ref={sigRefP2}
-                                            canvasProps={{ width: 400, height: 180, className: 'signature-canvas' }}
-                                        />
-                                    </div>
-                                    <button type="button" onClick={() => clearSignature(sigRefP2)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, marginTop: '0.5rem', cursor: 'pointer' }}>HAPUS TTD</button>
-                                </div>
-                            </div>
+                                <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#0c4a6e' }}>
+                                    {signMethod === 'direct' 
+                                        ? '* Anda dan penerima melakukan tanda tangan langsung di layar ini.' 
+                                        : '* Kirim permintaan tanda tangan ke akun masing-masing pihak melalui GoSign.'}
+                                </p>
+                             </div>
 
-                            {/* Submit */}
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '2rem', borderTop: '1px solid #f1f5f9' }}>
-                                <Link to="/goform" style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'white', fontWeight: 700, textDecoration: 'none', color: 'var(--text-main)' }}>Batal</Link>
-                                <button
-                                    type="submit"
-                                    disabled={submitting}
-                                    style={{
-                                        padding: '0.75rem 2rem',
-                                        borderRadius: '12px',
-                                        border: 'none',
-                                        background: 'var(--primary)',
-                                        color: 'white',
-                                        fontWeight: 800,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.75rem',
-                                        boxShadow: '0 4px 14px rgba(59, 130, 246, 0.4)',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    {submitting ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />}
-                                    Submit & Simpan ke eDoc
-                                </button>
-                            </div>
+                             {/* Signatures Area - Only if Direct */}
+                             {signMethod === 'direct' && (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '3rem', marginBottom: '3rem' }}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '1rem' }}>Tanda Tangan PIHAK PERTAMA</label>
+                                        <div style={{ background: '#f8fafc', border: '2px dashed var(--border)', borderRadius: '12px', height: '180px', position: 'relative' }}>
+                                            <SignaturePad
+                                                ref={sigRefP1}
+                                                canvasProps={{ width: 400, height: 180, className: 'signature-canvas' }}
+                                            />
+                                        </div>
+                                        <button type="button" onClick={() => clearSignature(sigRefP1)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, marginTop: '0.5rem', cursor: 'pointer' }}>HAPUS TTD</button>
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '1rem' }}>Tanda Tangan PIHAK KEDUA</label>
+                                        <div style={{ background: '#f8fafc', border: '2px dashed var(--border)', borderRadius: '12px', height: '180px', position: 'relative' }}>
+                                            <SignaturePad
+                                                ref={sigRefP2}
+                                                canvasProps={{ width: 400, height: 180, className: 'signature-canvas' }}
+                                            />
+                                        </div>
+                                        <button type="button" onClick={() => clearSignature(sigRefP2)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, marginTop: '0.5rem', cursor: 'pointer' }}>HAPUS TTD</button>
+                                    </div>
+                                </div>
+                             )}
+
+                             {/* Submit Buttons */}
+                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '2rem', borderTop: '1px solid #f1f5f9' }}>
+                                 <Link to="/goform" style={{ padding: '0.75rem 1.5rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'white', fontWeight: 700, textDecoration: 'none', color: 'var(--text-main)' }}>Batal</Link>
+                                 
+                                 {signMethod === 'request' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (!formData.p1_user_id || !formData.p2_user_id) {
+                                                alert('Harap pilih PIHAK PERTAMA dan PIHAK KEDUA sebelum mengajukan!');
+                                                return;
+                                            }
+                                            handleSubmit(null, 'request');
+                                        }}
+                                        disabled={submitting}
+                                        style={{
+                                            padding: '0.75rem 1.5rem',
+                                            borderRadius: '12px',
+                                            border: '1px solid #10b981',
+                                            background: 'white',
+                                            color: '#10b981',
+                                            fontWeight: 700,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            cursor: submitting ? 'not-allowed' : 'pointer',
+                                            opacity: submitting ? 0.7 : 1
+                                        }}
+                                    >
+                                        {submitting ? <Loader2 className="animate-spin" size={20} /> : <Smartphone size={20} />}
+                                        Ajukan Tanda Tangan
+                                    </button>
+                                 )}
+
+                                 {signMethod === 'direct' && (
+                                    <button
+                                        type="submit"
+                                        disabled={submitting}
+                                        style={{
+                                            padding: '0.75rem 2rem',
+                                            borderRadius: '12px',
+                                            border: 'none',
+                                            background: 'var(--primary)',
+                                            color: 'white',
+                                            fontWeight: 800,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.75rem',
+                                            boxShadow: '0 4px 14px rgba(59, 130, 246, 0.4)',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {submitting ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />}
+                                        Submit & Simpan ke eDoc
+                                    </button>
+                                 )}
+                             </div>
                         </form>
                     </div>
                 </div>

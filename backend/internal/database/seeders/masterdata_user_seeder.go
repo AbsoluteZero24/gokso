@@ -5,8 +5,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// SeedMasterDataEmployee mengisi data master organisasi (cabang, bagian, jabatan) ke database
-func SeedMasterDataEmployee(db *gorm.DB) error {
+// SeedMasterDataUser mengisi data master organisasi (cabang, bagian, jabatan) ke database
+func SeedMasterDataUser(db *gorm.DB) error {
 	// 1. KSO PUSAT
 	pusat := models.MasterBranch{Name: "KSO PUSAT"}
 	db.Where(models.MasterBranch{Name: pusat.Name}).FirstOrCreate(&pusat)

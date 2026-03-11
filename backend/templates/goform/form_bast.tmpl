@@ -91,7 +91,7 @@
                                     <h6 class="fw-bold mb-3 border-bottom pb-2">PIHAK PERTAMA (PEMBERI)</h6>
                                     <div class="mb-3">
                                         <label class="form-label">Nama Pemberi</label>
-                                        <select name="p1_employee_id" id="p1_employee_id" class="form-select" required>
+                                        <select name="p1_user_id" id="p1_user_id" class="form-select" required>
                                             <option value="">-- Pilih Pemberi --</option>
                                             {{ range .employees }}
                                             <option value="{{ .ID }}">{{ .Name }} - {{ .Department }}</option>
@@ -105,7 +105,7 @@
                                     <h6 class="fw-bold mb-3 border-bottom pb-2">PIHAK KEDUA (PENERIMA)</h6>
                                     <div class="mb-3">
                                         <label class="form-label">Nama Penerima</label>
-                                        <select name="p2_employee_id" id="p2_employee_id" class="form-select" required>
+                                        <select name="p2_user_id" id="p2_user_id" class="form-select" required>
                                             <option value="">-- Pilih Penerima --</option>
                                             {{ range .employees }}
                                             <option value="{{ .ID }}">{{ .Name }} - {{ .Department }}</option>
@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Initialize TomSelect for Employee Dropdowns
+    // Initialize TomSelect for User Dropdowns
     const tsConfig = {
         create: false,
         allowEmptyOption: false,
@@ -216,8 +216,8 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     if (typeof TomSelect !== 'undefined') {
-        new TomSelect('#p1_employee_id', { ...tsConfig, placeholder: "-- Pilih Pemberi --" });
-        new TomSelect('#p2_employee_id', { ...tsConfig, placeholder: "-- Pilih Penerima --" });
+        new TomSelect('#p1_user_id', { ...tsConfig, placeholder: "-- Pilih Pemberi --" });
+        new TomSelect('#p2_user_id', { ...tsConfig, placeholder: "-- Pilih Penerima --" });
     }
 
     const addRowBtn = document.getElementById('addRow');

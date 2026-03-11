@@ -48,8 +48,8 @@ const Dashboard = () => {
         );
     }
 
-    const { totalAssets, readyAssets, brokenAssets, totalEmployees, categoryStats, statusStats } = data || {
-        totalAssets: 0, readyAssets: 0, brokenAssets: 0, totalEmployees: 0, categoryStats: [], statusStats: []
+    const { totalAssets, readyAssets, brokenAssets, totalUsers, categoryStats, statusStats } = data || {
+        totalAssets: 0, readyAssets: 0, brokenAssets: 0, totalUsers: 0, categoryStats: [], statusStats: []
     };
 
     const categoryStatsData = categoryStats || [];
@@ -81,7 +81,7 @@ const Dashboard = () => {
                 <StatCard color="blue" value={totalAssets} label="Total Aset" footer="Detail Inventory" />
                 <StatCard color="green" value={readyAssets} label="Aset Kondisi Baik" footer="Lihat Stok" />
                 <StatCard color="red" value={brokenAssets} label="Aset Perlu Perbaikan" footer="Review Rusak" />
-                <StatCard color="yellow" value={totalEmployees} label="Total Karyawan" footer="Daftar Karyawan" />
+                <StatCard color="yellow" value={totalUsers} label="Total User" footer="Daftar User" />
             </div>
 
             <div className="charts-grid">

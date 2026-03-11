@@ -1,4 +1,4 @@
-{{ define "administration/employee_form" }}
+{{ define "administration/user_form" }}
 <div class="app-content-header">
   <div class="container-fluid">
     <div class="row">
@@ -8,7 +8,7 @@
       <div class="col-sm-6">
         <ol class="breadcrumb float-sm-end">
           <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item"><a href="/administration/employee">Employee</a></li>
+           <li class="breadcrumb-item"><a href="/administration/user">User</a></li>
           <li class="breadcrumb-item active" aria-current="page">{{ .title }}</li>
         </ol>
       </div>
@@ -23,10 +23,10 @@
           <div class="card-header border-0 pb-0">
             <h3 class="card-title fw-bold">
               <i class="bi {{ if .user }}bi-person-check-fill{{ else }}bi-person-plus-fill{{ end }} me-2"></i>
-              Data Informasi Karyawan
+              Data Informasi User
             </h3>
           </div>
-          <form action="{{ if .user }}/administration/employee/update/{{ .user.ID }}{{ else }}/administration/employee{{ end }}" method="POST">
+          <form action="{{ if .user }}/administration/user/update/{{ .user.ID }}{{ else }}/administration/user/store{{ end }}" method="POST">
             <div class="card-body p-4">
               <div class="row">
                 <!-- Data Personal -->
@@ -124,7 +124,7 @@
               <button type="submit" class="btn btn-primary px-4 fw-semibold shadow-sm">
                 <i class="bi bi-save me-1"></i> Simpan Data
               </button>
-              <a href="/administration/employee" class="btn btn-outline-secondary px-4 fw-semibold">
+              <a href="/administration/user" class="btn btn-outline-secondary px-4 fw-semibold">
                 Batal
               </a>
             </div>

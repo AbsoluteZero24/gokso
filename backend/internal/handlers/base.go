@@ -103,9 +103,9 @@ func (server *Server) InitCommands(appConfig config.AppConfig, dbConfig config.D
 			},
 		},
 		{
-			Name: "db:seed_masterdata_employee",
+			Name: "db:seed_masterdata_user",
 			Action: func(c *cli.Context) error {
-				err := seeders.SeedMasterDataEmployee(server.DB)
+				err := seeders.SeedMasterDataUser(server.DB)
 				if err != nil {
 					log.Fatal(err)
 				}

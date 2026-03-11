@@ -141,7 +141,6 @@ func (server *Server) ListAssetKSO(w http.ResponseWriter, r *http.Request) {
 	if _, ok := r.URL.Query()["year"]; !ok {
 		year = fmt.Sprintf("%d", time.Now().Year())
 	}
-
 	var assets []models.AssetKSO
 	db := server.DB.Model(&models.AssetKSO{}).Preload("User")
 

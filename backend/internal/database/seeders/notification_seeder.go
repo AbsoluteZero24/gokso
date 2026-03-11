@@ -15,37 +15,37 @@ func SeedNotifications(db *gorm.DB) {
 		return
 	}
 
-	// Find an admin user to assign notifications to
-	var admin models.Admin
-	if err := db.First(&admin).Error; err != nil {
-		log.Println("Skipping Notification Seeder: No admin user found")
+	// Find a user to assign notifications to
+	var user models.User
+	if err := db.First(&user).Error; err != nil {
+		log.Println("Skipping Notification Seeder: No user found")
 		return
 	}
 
 	notifications := []models.Notification{
 		{
-			UserID:  admin.ID,
+			UserID:  user.ID,
 			Title:   "New Asset Assigned",
 			Message: "Laptop Dell XPS has been assigned to your department for verification.",
 			Type:    "info",
 			IsRead:  false,
 		},
 		{
-			UserID:  admin.ID,
+			UserID:  user.ID,
 			Title:   "Maintenance Reminder",
 			Message: "Maintenance for Asset LPT-2024-001 is overdue by 3 days.",
 			Type:    "warning",
 			IsRead:  false,
 		},
 		{
-			UserID:  admin.ID,
+			UserID:  user.ID,
 			Title:   "System Update",
 			Message: "GoKSO version 2.4.0 has been deployed successfully.",
 			Type:    "success",
 			IsRead:  true,
 		},
 		{
-			UserID:  admin.ID,
+			UserID:  user.ID,
 			Title:   "Form BAST Approved",
 			Message: "Your request for Form BAST Laptop has been approved by Admin.",
 			Type:    "success",

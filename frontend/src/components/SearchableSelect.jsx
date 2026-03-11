@@ -48,9 +48,19 @@ const SearchableSelect = ({
         }
     };
 
+    const toggleDropdown = (e) => {
+        if (disabled) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!isOpen && triggerRef.current) {
+            updatePosition();
+        }
+        setIsOpen(!isOpen);
+    };
+
     useEffect(() => {
         if (isOpen) {
-            updatePosition();
             window.addEventListener('scroll', updatePosition, true);
             window.addEventListener('resize', updatePosition);
         }
@@ -192,7 +202,7 @@ const SearchableSelect = ({
 
             <div
                 ref={triggerRef}
-                onClick={() => !disabled && setIsOpen(!isOpen)}
+                onClick={toggleDropdown}
                 style={{
                     width: '100%',
                     padding: '0.75rem 1rem',

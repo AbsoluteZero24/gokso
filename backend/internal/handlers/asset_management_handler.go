@@ -13,7 +13,7 @@ import (
 // ListAssetLaptop menampilkan halaman manajemen aset khusus untuk kategori Laptop
 func (server *Server) ListAssetLaptop(w http.ResponseWriter, r *http.Request) {
 	var assets []models.AssetKSO
-	server.DB.Preload("User").Where("category = ?", "Laptop").Order("inventory_number asc").Find(&assets)
+	server.DB.Preload("User").Where("category = ? AND status = ?", "Laptop", "Ready").Order("inventory_number asc").Find(&assets)
 
 	var users []models.User
 	server.DB.Find(&users)
@@ -33,7 +33,7 @@ func (server *Server) ApiListAssetLaptop(w http.ResponseWriter, r *http.Request)
 	}
 
 	var assets []models.AssetKSO
-	server.DB.Preload("User").Where("category = ?", category).Order("inventory_number asc").Find(&assets)
+	server.DB.Preload("User").Where("category = ? AND status = ?", category, "Ready").Order("inventory_number asc").Find(&assets)
 
 	var users []models.User
 	server.DB.Find(&users)
@@ -167,7 +167,7 @@ func (server *Server) AssignAssetLaptop(w http.ResponseWriter, r *http.Request) 
 // ListAssetKomputer menampilkan halaman manajemen aset khusus untuk kategori Komputer
 func (server *Server) ListAssetKomputer(w http.ResponseWriter, r *http.Request) {
 	var assets []models.AssetKSO
-	server.DB.Preload("User").Where("category = ?", "Komputer").Order("inventory_number asc").Find(&assets)
+	server.DB.Preload("User").Where("category = ? AND status = ?", "Komputer", "Ready").Order("inventory_number asc").Find(&assets)
 
 	var users []models.User
 	server.DB.Find(&users)

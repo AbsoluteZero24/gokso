@@ -69,12 +69,13 @@ func (server *Server) ApiClearNotifications(w http.ResponseWriter, r *http.Reque
 }
 
 // AddNotification is a helper to create notifications from backend (not an API)
-func (server *Server) AddNotification(userID string, title string, message string, notifType string) error {
+func (server *Server) AddNotification(userID string, title string, message string, notifType string, link string) error {
 	notif := models.Notification{
 		UserID:  userID,
 		Title:   title,
 		Message: message,
 		Type:    notifType,
+		Link:    link,
 		IsRead:  false,
 	}
 	return server.DB.Create(&notif).Error

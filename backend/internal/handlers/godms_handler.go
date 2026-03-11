@@ -120,26 +120,48 @@ func (server *Server) syncFolderPhysically(folderID string) {
 }
 
 func (server *Server) MigrateDMS(w http.ResponseWriter, r *http.Request) {
-	// 0. Update Section untuk data lama yang kosong
-	server.DB.Model(&models.DMSFolder{}).Where("section = ? OR section IS NULL", "").Update("section", "Sistem Informasi")
-	server.DB.Model(&models.DMSFile{}).Where("section = ? OR section IS NULL", "").Update("section", "Sistem Informasi")
-
-	// 1. Proses semua file yang ada di root (termasuk yang di tempat sampah)
-	var rootFiles []models.DMSFile
-	server.DB.Unscoped().Where("folder_id IS NULL OR folder_id = ''").Find(&rootFiles)
-	for i := range rootFiles {
-		server.moveFilePhysically(&rootFiles[i], nil, rootFiles[i].Name)
-	}
-
-	// 2. Proses semua folder root (termasuk yang di tempat sampah)
-	var rootFolders []models.DMSFolder
-	server.DB.Unscoped().Where("parent_id IS NULL OR parent_id = ''").Find(&rootFolders)
-	for _, folder := range rootFolders {
-		server.syncFolderPhysically(folder.ID)
-	}
-
 	w.Write([]byte("Migrasi selesai. Semua file telah dipindahkan ke folder public/godms/edoc/ atau public/godms/trash/ sesuai statusnya."))
 	w.WriteHeader(http.StatusOK)
+}
+
+func (server *Server) getDMSAccessSettings(r *http.Request) (bool, map[string]bool) {
+	_, _, roleName, _ := GetCurrentAdmin(r)
+	allowedSet := make(map[string]bool)
+
+	if roleName == "Super Admin" {
+		return true, allowedSet
+	}
+
+	var role models.Role
+	if err := server.DB.Where("name = ?", roleName).First(&role).Error; err != nil {
+		return false, allowedSet
+	}
+
+	if role.DMSFilterScope == "All" {
+		return true, allowedSet
+	}
+
+	allowed := strings.Split(role.AllowedSections, ",")
+	for _, a := range allowed {
+		a = strings.TrimSpace(a)
+		if a != "" {
+			allowedSet[a] = true
+		}
+	}
+
+	return false, allowedSet
+}
+
+func (server *Server) isSectionAllowed(r *http.Request, section string) bool {
+	isFull, allowedSet := server.getDMSAccessSettings(r)
+	if isFull {
+		return true
+	}
+	userDept := GetCurrentAdminDept(r)
+	if section == userDept {
+		return true
+	}
+	return allowedSet[section]
 }
 
 // ListEDoc displays the main DMS page (HTML)
@@ -171,8 +193,20 @@ func (server *Server) ListEDoc(w http.ResponseWriter, r *http.Request) {
 // ApiListEDoc returns JSON for DMS main page
 func (server *Server) ApiListEDoc(w http.ResponseWriter, r *http.Request) {
 	section := r.URL.Query().Get("section")
+	isFull, allowedSet := server.getDMSAccessSettings(r)
+	userDept := GetCurrentAdminDept(r)
+
 	if section == "" {
-		section = "Sistem Informasi"
+		if isFull {
+			section = "Sistem Informasi"
+		} else {
+			section = userDept
+		}
+	}
+
+	// Security Check: If not full access, validate section
+	if !isFull && section != userDept && !allowedSet[section] {
+		section = userDept // Force to own department
 	}
 
 	var folders []models.DMSFolder
@@ -433,8 +467,20 @@ func (server *Server) MoveFileToTrash(w http.ResponseWriter, r *http.Request) {
 // ViewTrash menampilkan semua item yang ada di tempat sampah
 func (server *Server) ViewTrash(w http.ResponseWriter, r *http.Request) {
 	section := r.URL.Query().Get("section")
+	isFull, allowedSet := server.getDMSAccessSettings(r)
+	userDept := GetCurrentAdminDept(r)
+
 	if section == "" {
-		section = "Sistem Informasi"
+		if isFull {
+			section = "Sistem Informasi"
+		} else {
+			section = userDept
+		}
+	}
+
+	// Security Check
+	if !isFull && section != userDept && !allowedSet[section] {
+		section = userDept
 	}
 
 	var folders []models.DMSFolder
