@@ -78,23 +78,6 @@ const Navbar = ({ onToggleSidebar }) => {
 
     const hasUnread = notifications.some(n => !n.is_read);
 
-    // Mapping for Breadcrumbs
-    const getBreadcrumbs = () => {
-        const path = location.pathname;
-        if (path === '/') return ['Dashboard'];
-        if (path === '/profile') return ['My Profile'];
-        if (path === '/notifications') return ['Notifications'];
-        if (path === '/inventori/aset-laptop') return ['Aset'];
-        if (path === '/inventori/service') return ['Service'];
-        if (path === '/inventori/gudang') return ['Gudang'];
-        if (path === '/asset-management/laptop') return ['Asset Management'];
-
-        const parts = path.split('/').filter(p => p);
-        return parts.map(part => {
-            // Transform kebab-case to Title Case
-            return part.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-        });
-    };
 
     // Fullscreen Toggle
     const toggleFullscreen = () => {
@@ -139,7 +122,6 @@ const Navbar = ({ onToggleSidebar }) => {
         setShowSearch(false);
     }, [location]);
 
-    const breadcrumbs = getBreadcrumbs();
 
     return (
         <nav className="navbar">
@@ -147,19 +129,6 @@ const Navbar = ({ onToggleSidebar }) => {
                 <button type="button" onClick={(e) => { e.preventDefault(); onToggleSidebar(); }} style={{ padding: '0.5rem', borderRadius: '8px', transition: 'background 0.2s' }}>
                     <Menu size={20} color="#64748b" />
                 </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#64748b' }}>
-                    {breadcrumbs.map((crumb, index) => (
-                        <React.Fragment key={index}>
-                            <span style={{
-                                fontWeight: index === breadcrumbs.length - 1 ? 700 : 500,
-                                color: index === breadcrumbs.length - 1 ? 'var(--primary)' : 'inherit'
-                            }}>
-                                {crumb}
-                            </span>
-                            {index < breadcrumbs.length - 1 && <span style={{ opacity: 0.5 }}>/</span>}
-                        </React.Fragment>
-                    ))}
-                </div>
             </div>
 
             <div className="navbar-right">
