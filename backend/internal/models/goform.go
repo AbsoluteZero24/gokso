@@ -11,7 +11,8 @@ type GoForm struct {
 	Color       string    `gorm:"size:20;default:'#1e59c5'" json:"color"`
 	Category    string    `gorm:"size:100" json:"category"`
 	Section     string    `gorm:"type:text" json:"section"` // Comma separated allowed departments. Empty means ALL.
-	Status      string    `gorm:"size:20;default:'Active'" json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	TargetFolderID *string   `gorm:"size:255" json:"target_folder_id"` // Configurable destination folder
+	Status         string    `gorm:"size:20;default:'Active'" json:"status"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }

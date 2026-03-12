@@ -81,7 +81,7 @@ func (server *Server) initializeRoutes() {
 	api.HandleFunc("/goform/list", server.ApiListGoForm).Methods("GET")
 	api.HandleFunc("/goform/init/{id}", server.ApiGetGoFormInitData).Methods("GET")
 	api.HandleFunc("/goform/submit/{id}", server.SubmitGoForm).Methods("POST")
-	api.HandleFunc("/goform/update-visibility", server.ApiUpdateGoFormVisibility).Methods("POST")
+	api.HandleFunc("/goform/update-visibility", server.ApiUpdateGoFormSettings).Methods("POST")
 
 	// Master Data (Configurations)
 	api.HandleFunc("/master-data/branch", server.ApiListMasterBranch).Methods("GET")
@@ -130,6 +130,7 @@ func (server *Server) initializeRoutes() {
 	api.HandleFunc("/gosign/tasks", server.ApiListGoSignTasks).Methods("GET")
 	api.HandleFunc("/gosign/sign", server.ApiSignTask).Methods("POST")
 	api.HandleFunc("/gosign/preview/{id}", server.ApiPreviewGoSignTask).Methods("GET")
+	api.HandleFunc("/gosign/reject", server.ApiRejectTask).Methods("POST")
 
 	// Notifications
 	api.HandleFunc("/notifications", server.ApiListNotifications).Methods("GET")

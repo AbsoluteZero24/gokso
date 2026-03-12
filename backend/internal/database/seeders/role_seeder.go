@@ -13,7 +13,7 @@ func SeedRoles(db *gorm.DB) error {
 		{
 			Name:            "Super Admin",
 			Description:     "Administrator dengan akses penuh ke seluruh sistem",
-			Permissions:     "view_dashboard,view_goasset,view_inventory,view_asset_list,view_asset_service,view_asset_warehouse,view_asset_inactive,view_asset_management,view_goform,view_gosign,view_godms,view_edoc,view_trash,view_administration,view_user_list,view_setting,view_master_collection,view_master_category,view_master_branch,view_master_department,view_master_position,view_roles",
+			Permissions:     "view_dashboard,view_goasset,view_inventory,view_asset_list,view_asset_service,view_asset_warehouse,view_asset_inactive,view_asset_management,view_goform,view_gosign,view_godms,view_edoc,view_trash,view_administration,view_user_list,view_employee_list,view_local_user,view_setting,view_master_collection,view_master_category,view_master_branch,view_master_department,view_master_position,view_roles",
 			DMSFilterScope:  "All",
 			AllowedSections: "", // All access
 		},
@@ -29,13 +29,6 @@ func SeedRoles(db *gorm.DB) error {
 			Description:     "Akses monitoring manajemen tingkat atas",
 			Permissions:     "view_dashboard,view_goasset,view_godms,view_edoc",
 			DMSFilterScope:  "All",
-			AllowedSections: "",
-		},
-		{
-			Name:            "staf",
-			Description:     "Akses operasional staf standar",
-			Permissions:     "view_dashboard,view_goform,view_gosign",
-			DMSFilterScope:  "Department",
 			AllowedSections: "",
 		},
 	}

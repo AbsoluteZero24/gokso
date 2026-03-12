@@ -238,3 +238,56 @@ func (server *Server) ApiPreviewGoSignTask(w http.ResponseWriter, r *http.Reques
 
 	http.ServeFile(w, r, localPath)
 }
+// ApiRejectTask handles rejecting a signature request
+func (server *Server) ApiRejectTask(w http.ResponseWriter, r *http.Request) {
+	adminID, adminName, _, _ := GetCurrentAdmin(r)
+	taskID := r.FormValue("task_id")
+	reason := r.FormValue("reason") // Optional reason
+
+	var task models.GoSignTask
+	if err := server.DB.Preload("Signers").First(&task, "id = ?", taskID).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusNotFound, map[string]string{"error": "Permohonan tidak ditemukan"})
+		return
+	}
+
+	// Verify if current user is one of the signers
+	isSigner := false
+	for _, s := range task.Signers {
+		if s.UserID == adminID {
+			isSigner = true
+			break
+		}
+	}
+
+	if !isSigner {
+		server.Renderer.JSON(w, http.StatusForbidden, map[string]string{"error": "Anda tidak memiliki akses untuk menolak permohonan ini"})
+		return
+	}
+
+	if task.Status != "Pending" {
+		server.Renderer.JSON(w, http.StatusBadRequest, map[string]string{"error": "Hanya permohonan dengan status Pending yang dapat ditolak"})
+		return
+	}
+
+	// Update Task Status
+	task.Status = "Rejected"
+	server.DB.Save(&task)
+
+	// Cleanup Draft if exists
+	if task.FilePath != "" {
+		relPath := task.FilePath
+		if len(relPath) > 0 && relPath[0] == '/' {
+			relPath = relPath[1:]
+		}
+		os.Remove(relPath)
+	}
+
+	// Notify Creator
+	rejectMsg := fmt.Sprintf("Dokumen %s ditolak oleh %s.", task.FormName, adminName)
+	if reason != "" {
+		rejectMsg += " Alasan: " + reason
+	}
+	server.AddNotification(task.CreatorID, "Permohonan Ditolak", rejectMsg, "danger", "/gosign")
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Permohonan tanda tangan telah ditolak"})
+}

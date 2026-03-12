@@ -116,8 +116,8 @@ func (server *Server) ApiListGoForm(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ApiUpdateGoFormVisibility updates which sections can see the form
-func (server *Server) ApiUpdateGoFormVisibility(w http.ResponseWriter, r *http.Request) {
+// ApiUpdateGoFormSettings updates form configuration like visibility and storage location
+func (server *Server) ApiUpdateGoFormSettings(w http.ResponseWriter, r *http.Request) {
 	_, _, role, _ := GetCurrentAdmin(r)
 	if role != "Super Admin" {
 		server.Renderer.JSON(w, http.StatusForbidden, map[string]string{"error": "Forbidden"})
@@ -126,19 +126,29 @@ func (server *Server) ApiUpdateGoFormVisibility(w http.ResponseWriter, r *http.R
 
 	formID := r.FormValue("form_id")
 	sections := r.FormValue("sections")
+	targetFolderID := r.FormValue("target_folder_id")
 
 	if formID == "" {
 		server.Renderer.JSON(w, http.StatusBadRequest, map[string]string{"error": "Form ID required"})
 		return
 	}
 
-	err := server.DB.Model(&models.GoForm{}).Where("form_id = ?", formID).Update("section", sections).Error
+	updates := map[string]interface{}{
+		"section": sections,
+	}
+	if targetFolderID != "" {
+		updates["target_folder_id"] = targetFolderID
+	} else {
+		updates["target_folder_id"] = nil
+	}
+
+	err := server.DB.Model(&models.GoForm{}).Where("form_id = ?", formID).Updates(updates).Error
 	if err != nil {
 		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
 
-	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Visibility updated"})
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Settings updated"})
 }
 
 // FillGoForm menampilkan formulir untuk diisi
@@ -225,27 +235,56 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. Dapatkan atau Buat Folder "Digital Reports" di eDoc
+	// 1. Dapatkan Folder Penyimpanan Otomatis (Sistem Informasi / Laporan Digital / {FormName} / {Year})
 	var folder models.DMSFolder
-	folderName := "Laporan Digital"
-	section := "Sistem Informasi"            // Default section for forms
-	submitType := r.FormValue("submit_type") // "direct" or "request"
+	section := "Sistem Informasi"
+	rootName := "Laporan Digital"
+	submitType := r.FormValue("submit_type")
 	adminID, adminName, _, _ := GetCurrentAdmin(r)
 
-	var folders []models.DMSFolder
-	server.DB.Where("name = ? AND parent_id IS NULL", folderName).Limit(1).Find(&folders)
-
-	if len(folders) == 0 {
+	// 1.1 Find/Create Root "Laporan Digital"
+	if err := server.DB.Where("name = ? AND parent_id IS NULL", rootName).First(&folder).Error; err != nil {
 		folder = models.DMSFolder{
 			ID:      uuid.New().String(),
-			Name:    folderName,
+			Name:    rootName,
 			Section: section,
-			Color:   "#3b82f6", // Blue
+			Color:   "#3b82f6",
 		}
 		server.DB.Create(&folder)
-	} else {
-		folder = folders[0]
-		section = folder.Section
+	}
+	section = folder.Section // Sync section from existing folder
+
+	// 1.2 If BAST Laptop, go deeper
+	if id == "form-bast-laptop" {
+		subName := "BAST Laptop/Komputer"
+		parentID := folder.ID
+		if err := server.DB.Where("name = ? AND parent_id = ?", subName, parentID).First(&folder).Error; err != nil {
+			folder = models.DMSFolder{
+				ID:       uuid.New().String(),
+				Name:     subName,
+				ParentID: &parentID,
+				Section:  section,
+			}
+			server.DB.Create(&folder)
+		}
+
+		// 1.3 Year Folder
+		yearStr := time.Now().Format("2006")
+		if d := r.FormValue("handover_date"); d != "" {
+			if t, err := time.Parse("2006-01-02", d); err == nil {
+				yearStr = t.Format("2006")
+			}
+		}
+		parentID = folder.ID
+		if err := server.DB.Where("name = ? AND parent_id = ?", yearStr, parentID).First(&folder).Error; err != nil {
+			folder = models.DMSFolder{
+				ID:       uuid.New().String(),
+				Name:     yearStr,
+				ParentID: &parentID,
+				Section:  section,
+			}
+			server.DB.Create(&folder)
+		}
 	}
 
 	// 2. Siapkan data file
@@ -307,38 +346,67 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 
 		pdfTitle := "BERITA ACARA SERAH TERIMA"
 		prefix := "BAST"
+		subFolderName := "BAST Umum"
+		subFolderColor := "#3b82f6"
+
 		if id == "form-bast-laptop" {
 			pdfTitle = "BERITA ACARA SERAH TERIMA\nLAPTOP/KOMPUTER"
 			prefix = "BAST_IT"
+			subFolderName = "BAST Laptop/Komputer"
+			subFolderColor = "#ec4899" // Pink matching the icon
 
 			// Adjust prefix based on category as requested
 			if data.Category != "" {
 				prefix = fmt.Sprintf("BAST_IT_%s", data.Category)
 			}
-
-			// Create/Find Subfolder "BAST Laptop/Komputer"
-			var subFolder models.DMSFolder
-			subFolderName := "BAST Laptop/Komputer"
-
-			var subFolders []models.DMSFolder
-			server.DB.Where("name = ? AND parent_id = ?", subFolderName, folder.ID).Limit(1).Find(&subFolders)
-
-			if len(subFolders) == 0 {
-				subFolder = models.DMSFolder{
-					ID:       uuid.New().String(),
-					Name:     subFolderName,
-					Section:  section,
-					ParentID: &folder.ID,
-					Color:    "#ec4899", // Pink matching the icon
-				}
-				server.DB.Create(&subFolder)
-			} else {
-				subFolder = subFolders[0]
-			}
-			folder = subFolder // Re-assign folder so the file is saved here
-			section = folder.Section
-
 		}
+
+		// 1. Create/Find subfolder (General BAST or Laptop BAST)
+		var subFolder models.DMSFolder
+		var subFolders []models.DMSFolder
+		server.DB.Where("name = ? AND parent_id = ?", subFolderName, folder.ID).Limit(1).Find(&subFolders)
+
+		if len(subFolders) == 0 {
+			subFolder = models.DMSFolder{
+				ID:       uuid.New().String(),
+				Name:     subFolderName,
+				Section:  section,
+				ParentID: &folder.ID,
+				Color:    subFolderColor,
+			}
+			server.DB.Create(&subFolder)
+		} else {
+			subFolder = subFolders[0]
+		}
+
+		// 2. Find/Create Year Subfolder inside subFolder
+		currentYear := time.Now().Format("2006")
+		var yearFolder models.DMSFolder
+		var yearFolders []models.DMSFolder
+		server.DB.Where("name = ? AND parent_id = ?", currentYear, subFolder.ID).Limit(1).Find(&yearFolders)
+
+		if len(yearFolders) == 0 {
+			yearFolder = models.DMSFolder{
+				ID:       uuid.New().String(),
+				Name:     currentYear,
+				Section:  section,
+				ParentID: &subFolder.ID,
+				Color:    "#3b82f6", // Blue
+			}
+			server.DB.Create(&yearFolder)
+		} else {
+			yearFolder = yearFolders[0]
+		}
+
+		folder = yearFolder // Final destination folder
+		section = folder.Section
+
+		// Recalculate uploadDir based on the final target folder (year folder)
+		uploadDir = server.getPhysicalFolderPath(&folder.ID, section, false)
+		if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
+			os.MkdirAll(uploadDir, 0755)
+		}
+		fmt.Printf("[GoForm] Final target folder: %s (ID: %s), Path: %s\n", folder.Name, folder.ID, uploadDir)
 
 		// Dynamic Filename: For Pengembalian, focus on P1 (The Giver)
 		personName := data.P2.Name

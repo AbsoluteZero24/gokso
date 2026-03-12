@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import {
     Users,
@@ -20,14 +21,19 @@ import {
     Key,
     UserCog
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import ConfirmModal from '../components/ConfirmModal';
 import SearchableSelect from '../components/SearchableSelect';
 
 const UserManagement = () => {
+    const { user: currentUser, checkAuth } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [importLoading, setImportLoading] = useState(false);
+
+    const location = useLocation();
+    const isLocalUserPage = location.pathname === '/administration/local-user';
 
     // Modal State
     const [showModal, setShowModal] = useState(false);
@@ -114,12 +120,6 @@ const UserManagement = () => {
     const handleConfirmDelete = async () => {
         setConfirmModal(prev => ({ ...prev, isLoading: true }));
         try {
-            // Check if there is an admin record for this user and delete it too
-            const admin = admins.find(a => a.UserID === confirmModal.id);
-            if (admin) {
-                await axios.delete(`/api/setting/users/delete/${admin.ID}`);
-            }
-            
             await axios.delete(`/api/users/delete/${confirmModal.id}`);
             setConfirmModal({ isOpen: false, id: null, isLoading: false });
             fetchData();
@@ -212,6 +212,11 @@ const UserManagement = () => {
                 phone_number: '', role: '', password: ''
             });
             fetchData();
+
+            // If the updated user is the currently logged in user, refresh AuthContext
+            if (isEdit && editId === currentUser?.admin_id) {
+                checkAuth();
+            }
         } catch (error) {
             console.error('Error saving user:', error);
             alert('Gagal menyimpan data: ' + (error.response?.data?.error || error.message));
@@ -220,7 +225,15 @@ const UserManagement = () => {
         }
     };
 
-    const filteredUsers = users.filter(user => {
+    const displayedUsers = users.filter(u => {
+        if (isLocalUserPage) {
+            return u.NIK === 'admin';
+        } else {
+            return u.NIK !== 'admin';
+        }
+    });
+
+    const filteredUsers = displayedUsers.filter(user => {
         const query = searchTerm.toLowerCase();
         return (
             user.Name?.toLowerCase().includes(query) ||
@@ -244,8 +257,8 @@ const UserManagement = () => {
         <div className="page-content">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <div>
-                    <h1 style={{ fontSize: '1.875rem', fontWeight: 800 }}>User Management</h1>
-                    <p style={{ color: 'var(--text-light)' }}>Kelola data karyawan dan hak akses aplikasi</p>
+                    <h1 style={{ fontSize: '1.875rem', fontWeight: 800 }}>{isLocalUserPage ? 'Lokal User Management' : 'User Management'}</h1>
+                    <p style={{ color: 'var(--text-light)' }}>{isLocalUserPage ? 'Kelola akun user lokal sistem' : 'Kelola data karyawan dan hak akses aplikasi'}</p>
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem' }}>

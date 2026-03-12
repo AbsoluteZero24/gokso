@@ -160,6 +160,11 @@ function App() {
                 <MainLayout><User /></MainLayout>
               </ProtectedRoute>
             } />
+            <Route path="/administration/local-user" element={
+              <ProtectedRoute>
+                <MainLayout><User /></MainLayout>
+              </ProtectedRoute>
+            } />
 
             <Route path="/administration/master-data/branch" element={
               <ProtectedRoute>

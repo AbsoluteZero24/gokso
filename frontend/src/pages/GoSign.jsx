@@ -64,6 +64,24 @@ const GoSign = () => {
         }
     };
 
+    const handleReject = async (taskId) => {
+        if (!window.confirm('Apakah Anda yakin ingin menolak permohonan tanda tangan ini?')) return;
+
+        try {
+            const formData = new URLSearchParams();
+            formData.append('task_id', taskId);
+            formData.append('reason', 'Ditolak oleh signer'); // Default reason
+            
+            const response = await axios.post('/api/gosign/reject', formData);
+            showNotification(response.data.message, 'success');
+            setShowDetail(false);
+            fetchTasks();
+        } catch (error) {
+            console.error('Error rejecting:', error);
+            showNotification(error.response?.data?.error || 'Gagal menolak dokumen', 'error');
+        }
+    };
+
     const handleOpenDetail = (task) => {
         try {
             const data = JSON.parse(task.data_json);
@@ -163,22 +181,25 @@ const GoSign = () => {
                                 </td>
                             </tr>
                         ) : filteredTasks.map((item) => {
-                            const mySignerEntry = item.signers?.find(s => s.user_id === user?.ID);
+                            const mySignerEntry = item.signers?.find(s => s.user_id === user?.admin_id);
                             const hasSigned = mySignerEntry?.signed;
                             const totalSigners = item.signers?.length || 0;
                             const signedCount = item.signers?.filter(s => s.signed).length || 0;
 
                             let statusLabel = item.status;
-                            let statusVariant = item.status === 'Completed' ? 'Approved' : 'Pending';
+                            let statusVariant = item.status === 'Completed' ? 'Approved' : item.status;
 
                             if (item.status === 'Pending') {
                                 if (hasSigned) {
-                                    statusLabel = "Menunggu Pihak Lain";
+                                    statusLabel = "Menunggu TTD";
                                     statusVariant = "Waiting";
                                 } else {
                                     statusLabel = "Perlu TTD Anda";
                                     statusVariant = "Pending";
                                 }
+                            } else if (item.status === 'Rejected') {
+                                statusLabel = "Ditolak";
+                                statusVariant = "Rejected";
                             }
 
                             const statusStyle = getStatusStyle(statusVariant);
@@ -227,25 +248,64 @@ const GoSign = () => {
                                     </td>
                                     <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
                                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                            {!hasSigned && item.status === 'Pending' && (
-                                                <button 
-                                                    onClick={() => handleSign(item.id)}
-                                                    style={{ 
-                                                        background: '#10b981', 
-                                                        color: 'white', 
-                                                        border: 'none', 
-                                                        padding: '0.5rem 1rem', 
-                                                        borderRadius: '8px', 
-                                                        fontSize: '0.813rem', 
-                                                        fontWeight: 700, 
-                                                        cursor: 'pointer',
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        gap: '0.4rem'
-                                                    }}
-                                                >
-                                                    <PenTool size={14} /> Tanda Tangan
-                                                </button>
+                                            {item.status === 'Pending' && (
+                                                hasSigned ? (
+                                                    <button 
+                                                        disabled
+                                                        style={{ 
+                                                            background: '#f1f5f9', 
+                                                            color: '#94a3b8', 
+                                                            border: '1px solid #e2e8f0', 
+                                                            padding: '0.5rem 1rem', 
+                                                            borderRadius: '8px', 
+                                                            fontSize: '0.813rem', 
+                                                            fontWeight: 700, 
+                                                            cursor: 'not-allowed',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.4rem'
+                                                        }}
+                                                    >
+                                                        <Clock size={14} /> Menunggu
+                                                    </button>
+                                                ) : (
+                                                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handleSign(item.id); }}
+                                                            style={{ 
+                                                                background: '#10b981', 
+                                                                color: 'white', 
+                                                                border: 'none', 
+                                                                padding: '0.5rem 1rem', 
+                                                                borderRadius: '8px', 
+                                                                fontSize: '0.813rem', 
+                                                                fontWeight: 700, 
+                                                                cursor: 'pointer',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.4rem'
+                                                            }}
+                                                        >
+                                                            <PenTool size={14} /> TTD
+                                                        </button>
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handleReject(item.id); }}
+                                                            title="Tolak Permohonan"
+                                                            style={{ 
+                                                                background: '#ef4444', 
+                                                                color: 'white', 
+                                                                border: 'none', 
+                                                                padding: '0.5rem', 
+                                                                borderRadius: '8px', 
+                                                                cursor: 'pointer',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center'
+                                                            }}
+                                                        >
+                                                            <XCircle size={16} />
+                                                        </button>
+                                                    </div>
+                                                )
                                             )}
                                                 <button 
                                                     onClick={() => handleOpenDetail(item)}
@@ -432,8 +492,47 @@ const GoSign = () => {
                                 )}
                             </div>
 
-                            {/* Modal Footer */}
-                            <div style={{ padding: '1.5rem 2rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', background: '#f8fafc' }}>
+                             {/* Modal Footer */}
+                             <div style={{ padding: '1.5rem 2rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', background: '#f8fafc', gap: '1rem' }}>
+                                {selectedTask.status === 'Pending' && !selectedTask.signers?.find(s => s.user_id === user?.admin_id)?.signed && (
+                                     <>
+                                        <button 
+                                            onClick={() => handleReject(selectedTask.id)}
+                                            style={{ 
+                                                padding: '0.75rem 1.5rem', 
+                                                borderRadius: '12px', 
+                                                border: '1px solid #fee2e2', 
+                                                background: '#fef2f2', 
+                                                color: '#991b1b',
+                                                fontWeight: 800, 
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem'
+                                            }}
+                                        >
+                                            <XCircle size={18} /> Tolak Permohonan
+                                        </button>
+                                        <button 
+                                            onClick={() => handleSign(selectedTask.id)}
+                                            style={{ 
+                                                padding: '0.75rem 2rem', 
+                                                borderRadius: '12px', 
+                                                border: 'none', 
+                                                background: '#10b981', 
+                                                color: 'white',
+                                                fontWeight: 800, 
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
+                                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
+                                            }}
+                                        >
+                                            <PenTool size={18} /> Tanda Tangan Sekarang
+                                        </button>
+                                     </>
+                                )}
                                 <button 
                                     onClick={() => setShowDetail(false)}
                                     style={{ 

@@ -11,7 +11,7 @@ import (
 
 // ListSettingRole menampilkan halaman pengaturan izin akses (permission) untuk setiap peran
 func (server *Server) ListSettingRole(w http.ResponseWriter, r *http.Request) {
-	roles := []string{"Super Admin", "Koordinator", "Top Management", "staf"}
+	roles := []string{"Super Admin", "Koordinator", "Top Management"}
 
 	type RoleWithPerms struct {
 		Role        string
@@ -67,12 +67,8 @@ func (server *Server) UpdateSettingRole(w http.ResponseWriter, r *http.Request) 
 // ApiListRoles returns JSON list of roles
 func (server *Server) ApiListRoles(w http.ResponseWriter, r *http.Request) {
 	var roles []models.Role
-	server.DB.Find(&roles)
-	for i := range roles {
-		var count int64
-		server.DB.Model(&models.User{}).Where("role = ?", roles[i].Name).Count(&count)
-		roles[i].UserCount = count
-	}
+	// Use a subquery to count users for each role efficiently
+	server.DB.Select("roles.*, (SELECT COUNT(*) FROM users WHERE users.role = roles.name AND users.deleted_at IS NULL) as user_count").Find(&roles)
 
 	if roles == nil {
 		roles = []models.Role{}

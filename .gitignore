@@ -17,7 +17,7 @@
 # Project specific
 .env
 tmp/
-public/uploads/
-public/godms/
+backend/public/uploads/
+backend/public/godms/
 *.db
 *.sqlite

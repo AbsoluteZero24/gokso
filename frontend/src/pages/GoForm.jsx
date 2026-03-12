@@ -28,7 +28,6 @@ const GoForm = () => {
 
     // Visibility Settings State
     const [showModal, setShowModal] = useState(false);
-    const [selectedForm, setSelectedForm] = useState(null);
     const [availableDepts, setAvailableDepts] = useState([]);
     const [selectedDepts, setSelectedDepts] = useState([]);
     const [saving, setSaving] = useState(false);
@@ -224,7 +223,6 @@ const GoForm = () => {
                 </div>
             )}
 
-            {/* Visibility Modal */}
             {showModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
                     <div style={{ background: 'white', borderRadius: '24px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden' }}>

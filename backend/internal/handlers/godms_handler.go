@@ -117,6 +117,16 @@ func (server *Server) syncFolderPhysically(folderID string) {
 	for _, sub := range subfolders {
 		server.syncFolderPhysically(sub.ID)
 	}
+
+	// 3. Bersihkan direktori kosong di sisi "seberang" (jika pindah ke trash, hapus edoc yang kosong, dan sebaliknya)
+	var folder models.DMSFolder
+	if err := server.DB.Unscoped().Where("id = ?", folderID).First(&folder).Error; err == nil {
+		isTrash := folder.TrashedAt != nil
+		oppositePath := server.getPhysicalFolderPath(&folderID, folder.Section, !isTrash)
+		if _, err := os.Stat(oppositePath); err == nil {
+			os.Remove(oppositePath) // Hanya hapus jika kosong
+		}
+	}
 }
 
 func (server *Server) MigrateDMS(w http.ResponseWriter, r *http.Request) {
@@ -277,15 +287,17 @@ func (server *Server) ApiListFolderContent(w http.ResponseWriter, r *http.Reques
 // ApiListAllFolders returns a simple list of all folders for movement UI
 func (server *Server) ApiListAllFolders(w http.ResponseWriter, r *http.Request) {
 	section := r.URL.Query().Get("section")
-	if section == "" {
-		section = "Sistem Informasi"
-	}
-
+	
 	var folders []models.DMSFolder
-	server.DB.Where("section = ? AND trashed_at IS NULL", section).Order("name asc").Find(&folders)
+	query := server.DB.Where("trashed_at IS NULL")
+	if section != "" {
+		query = query.Where("section = ?", section)
+	}
+	query.Order("name asc").Find(&folders)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(folders)
+	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
+		"folders": folders,
+	})
 }
 
 // StoreFolder menyimpan folder baru ke database (Legacy HTML Support)
@@ -578,13 +590,18 @@ func (server *Server) DeleteFolderPermanently(w http.ResponseWriter, r *http.Req
 
 // deleteFolderRecursive adalah helper untuk menghapus folder, subfolder, dan file secara rekursif
 func (server *Server) deleteFolderRecursive(folderID string) {
-	// 1. Hapus semua file di dalam folder ini
+	// 1. Ambil info folder dulu sebelum dihapus dari DB
+	var folder models.DMSFolder
+	if err := server.DB.Unscoped().Where("id = ?", folderID).First(&folder).Error; err != nil {
+		return
+	}
+
+	// 2. Hapus semua file di dalam folder ini
 	var files []models.DMSFile
 	server.DB.Unscoped().Where("folder_id = ?", folderID).Find(&files)
 	for _, file := range files {
 		// Hapus fisik
 		if file.FilePath != "" {
-			// Path di model adalah format URL: /public/nas/xxx.ext atau /public/uploads/edoc/xxx.ext
 			physicalPath := strings.TrimPrefix(file.FilePath, "/")
 			if _, err := os.Stat(physicalPath); err == nil {
 				os.Remove(physicalPath)
@@ -594,7 +611,7 @@ func (server *Server) deleteFolderRecursive(folderID string) {
 		server.DB.Unscoped().Delete(&file)
 	}
 
-	// 2. Cari semua subfolder
+	// 3. Cari semua subfolder
 	var subfolders []models.DMSFolder
 	server.DB.Unscoped().Where("parent_id = ?", folderID).Find(&subfolders)
 	for _, sub := range subfolders {
@@ -602,15 +619,19 @@ func (server *Server) deleteFolderRecursive(folderID string) {
 		server.deleteFolderRecursive(sub.ID)
 	}
 
-	// 3. Akhirnya hapus folder itu sendiri (dan direktorinya jika kosong)
-	var folder models.DMSFolder
-	if err := server.DB.Unscoped().Where("id = ?", folderID).First(&folder).Error; err == nil {
-		dirPath := server.getPhysicalFolderPath(&folderID, folder.Section, folder.TrashedAt != nil)
-		if _, err := os.Stat(dirPath); err == nil {
-			os.Remove(dirPath) // Hanya akan terhapus jika kosong
-		}
-		server.DB.Unscoped().Delete(&folder)
+	// 4. Akhirnya hapus folder itu sendiri secara fisik (dari edoc DAN trash agar bersih)
+	edocPath := server.getPhysicalFolderPath(&folderID, folder.Section, false)
+	trashPath := server.getPhysicalFolderPath(&folderID, folder.Section, true)
+
+	if _, err := os.Stat(edocPath); err == nil {
+		os.RemoveAll(edocPath)
 	}
+	if _, err := os.Stat(trashPath); err == nil {
+		os.RemoveAll(trashPath)
+	}
+
+	// 5. Hapus dari DB
+	server.DB.Unscoped().Delete(&folder)
 }
 
 // DeleteFilePermanently menghapus file secara permanen dari database dan penyimpanan fisik

@@ -23,6 +23,8 @@ func SeedPermissions(db *gorm.DB) error {
 		"view_trash",
 		"view_administration",
 		"view_user_list",
+		"view_employee_list",
+		"view_local_user",
 		"view_setting",
 		"view_master_collection",
 		"view_master_category",
@@ -32,7 +34,7 @@ func SeedPermissions(db *gorm.DB) error {
 		"view_roles",
 	}
 
-	roles := []string{"Super Admin", "Koordinator", "Top Management", "staf"}
+	roles := []string{"Super Admin", "Koordinator", "Top Management"}
 
 	for _, role := range roles {
 		for _, res := range resources {

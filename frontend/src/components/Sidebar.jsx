@@ -117,7 +117,8 @@ const Sidebar = ({ collapsed, onExpand }) => {
       path: '/administration/employee',
       permission: 'view_administration',
       children: [
-        { icon: Users, label: 'User Management', path: '/administration/employee', permission: 'view_employee_list' }
+        { icon: Users, label: 'User Management', path: '/administration/employee', permission: 'view_employee_list' },
+        { icon: UserCog, label: 'Lokal User', path: '/administration/local-user', permission: 'view_local_user' }
       ]
     },
     {
