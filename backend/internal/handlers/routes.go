@@ -11,9 +11,22 @@ import (
 func (server *Server) initializeRoutes() {
 	server.Router = mux.NewRouter()
 
-	// Logging Middleware for debug
+	// CORS Middleware
 	server.Router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+			if origin != "" {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			}
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Cookie")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
 			if strings.HasPrefix(r.URL.Path, "/api/profile") {
 				fmt.Printf("[%s] %s %s\n", r.Method, r.URL.Path, r.RemoteAddr)
 			}
@@ -131,6 +144,7 @@ func (server *Server) initializeRoutes() {
 	api.HandleFunc("/gosign/sign", server.ApiSignTask).Methods("POST")
 	api.HandleFunc("/gosign/preview/{id}", server.ApiPreviewGoSignTask).Methods("GET")
 	api.HandleFunc("/gosign/reject", server.ApiRejectTask).Methods("POST")
+	api.HandleFunc("/gosign/delete/{id}", server.ApiDeleteGoSignTask).Methods("DELETE")
 
 	// Notifications
 	api.HandleFunc("/notifications", server.ApiListNotifications).Methods("GET")

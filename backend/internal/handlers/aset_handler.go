@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/AbsoluteZero24/gokso/internal/models"
@@ -319,6 +320,13 @@ func (server *Server) ApiStoreAssetKSOBulk(w http.ResponseWriter, r *http.Reques
 		if base == "" {
 			return ""
 		}
+
+		// Support [NUM] placeholder
+		if strings.Contains(base, "[NUM]") {
+			numStr := fmt.Sprintf("%03d", index+1)
+			return strings.ReplaceAll(base, "[NUM]", numStr)
+		}
+
 		re := regexp.MustCompile(`(\d+)$`)
 		matches := re.FindStringSubmatch(base)
 

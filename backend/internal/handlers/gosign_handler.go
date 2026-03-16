@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/AbsoluteZero24/gokso/internal/models"
@@ -15,19 +16,29 @@ import (
 
 // ApiListGoSignTasks returns tasks for current user
 func (server *Server) ApiListGoSignTasks(w http.ResponseWriter, r *http.Request) {
-	adminID, _, _, _ := GetCurrentAdmin(r)
-
-	var signers []models.GoSignSigner
-	server.DB.Where("user_id = ?", adminID).Find(&signers)
-
-	taskIDs := make([]string, 0)
-	for _, s := range signers {
-		taskIDs = append(taskIDs, s.TaskID)
-	}
+	adminID, _, role, _ := GetCurrentAdmin(r)
 
 	var tasks []models.GoSignTask
-	if len(taskIDs) > 0 {
-		server.DB.Preload("Signers").Where("id IN ?", taskIDs).Order("created_at desc").Find(&tasks)
+	query := server.DB.Preload("Signers").Order("created_at desc")
+
+	// Super Admin sees everything
+	if strings.ToLower(strings.TrimSpace(role)) == "super admin" {
+		query.Find(&tasks)
+	} else {
+		// Normal user sees tasks they created OR tasks where they are a signer
+		var signers []models.GoSignSigner
+		server.DB.Where("user_id = ?", adminID).Find(&signers)
+
+		taskIDs := make([]string, 0)
+		for _, s := range signers {
+			taskIDs = append(taskIDs, s.TaskID)
+		}
+
+		if len(taskIDs) > 0 {
+			query.Where("id IN ? OR creator_id = ?", taskIDs, adminID).Find(&tasks)
+		} else {
+			query.Where("creator_id = ?", adminID).Find(&tasks)
+		}
 	}
 
 	if tasks == nil {
@@ -290,4 +301,47 @@ func (server *Server) ApiRejectTask(w http.ResponseWriter, r *http.Request) {
 	server.AddNotification(task.CreatorID, "Permohonan Ditolak", rejectMsg, "danger", "/gosign")
 
 	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Permohonan tanda tangan telah ditolak"})
+}
+
+// ApiDeleteGoSignTask deletes a GoSign task and its associated data
+func (server *Server) ApiDeleteGoSignTask(w http.ResponseWriter, r *http.Request) {
+	_, _, role, _ := GetCurrentAdmin(r)
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var task models.GoSignTask
+	if err := server.DB.First(&task, "id = ?", id).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusNotFound, map[string]string{"error": "Permohonan tidak ditemukan"})
+		return
+	}
+
+	// Permission Check: Only Super Admin can delete per User Request
+	if strings.ToLower(strings.TrimSpace(role)) != "super admin" {
+		server.Renderer.JSON(w, http.StatusForbidden, map[string]string{"error": "Hanya Super Admin yang dapat menghapus data permohonan"})
+		return
+	}
+
+	// 1. Delete Signers
+	if err := server.DB.Where("task_id = ?", id).Delete(&models.GoSignSigner{}).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal menghapus data signer"})
+		return
+	}
+
+	// 2. Remove Draft File if exists and task is not completed
+	// Completed tasks have their file in eDoc (DMSFile), which we might want to keep unless specifically deleted from DMS
+	if task.Status != "Completed" && task.FilePath != "" {
+		relPath := task.FilePath
+		if len(relPath) > 0 && relPath[0] == '/' {
+			relPath = relPath[1:]
+		}
+		os.Remove(relPath)
+	}
+
+	// 3. Delete Task
+	if err := server.DB.Delete(&task).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal menghapus permohonan"})
+		return
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "Permohonan telah berhasil dihapus"})
 }

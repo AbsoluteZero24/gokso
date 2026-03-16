@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/AbsoluteZero24/gokso/internal/models"
@@ -50,6 +51,8 @@ func (server *Server) ApiDashboard(w http.ResponseWriter, r *http.Request) {
 		"categoryStats": categoryStats,
 		"statusStats":   statusStats,
 	}
+
+	fmt.Printf("ApiDashboard stats: totalAssets=%d, readyAssets=%d, brokenAssets=%d, totalUsers=%d\n", totalAssets, readyAssets, brokenAssets, totalUsers)
 
 	server.Renderer.JSON(w, http.StatusOK, data)
 }

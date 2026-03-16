@@ -161,7 +161,7 @@ func (server *Server) FillGoForm(w http.ResponseWriter, r *http.Request) {
 	formName := ""
 
 	var users []models.User
-	server.DB.Order("name asc").Find(&users)
+	server.DB.Where("nik != ?", "admin").Order("name asc").Find(&users)
 
 	var assets []models.AssetKSO
 	query := server.DB.Preload("User").Order("inventory_number asc")
@@ -203,7 +203,7 @@ func (server *Server) ApiGetGoFormInitData(w http.ResponseWriter, r *http.Reques
 	id := vars["id"]
 
 	var users []models.User
-	server.DB.Order("name asc").Find(&users)
+	server.DB.Where("nik != ?", "admin").Order("name asc").Find(&users)
 
 	var assets []models.AssetKSO
 	query := server.DB.Preload("User").Order("inventory_number asc")
@@ -229,10 +229,11 @@ func (server *Server) SubmitGoForm(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	err := r.ParseForm()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	// Support both multipart (mobile) and urlencoded (web)
+	if strings.Contains(r.Header.Get("Content-Type"), "multipart/form-data") {
+		r.ParseMultipartForm(32 << 20)
+	} else {
+		r.ParseForm()
 	}
 
 	// 1. Dapatkan Folder Penyimpanan Otomatis (Sistem Informasi / Laporan Digital / {FormName} / {Year})

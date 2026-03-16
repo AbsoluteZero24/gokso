@@ -16,7 +16,7 @@ func (server *Server) ListAssetLaptop(w http.ResponseWriter, r *http.Request) {
 	server.DB.Preload("User").Where("category = ? AND status = ?", "Laptop", "Ready").Order("inventory_number asc").Find(&assets)
 
 	var users []models.User
-	server.DB.Find(&users)
+	server.DB.Where("nik != ?", "admin").Find(&users)
 
 	server.RenderHTML(w, r, http.StatusOK, "assets_kso/laptop_management", map[string]interface{}{
 		"title":  "Asset Management - Laptop",
@@ -36,7 +36,7 @@ func (server *Server) ApiListAssetLaptop(w http.ResponseWriter, r *http.Request)
 	server.DB.Preload("User").Where("category = ? AND status = ?", category, "Ready").Order("inventory_number asc").Find(&assets)
 
 	var users []models.User
-	server.DB.Find(&users)
+	server.DB.Where("nik != ?", "admin").Find(&users)
 
 	var masterCategories []models.MasterAssetCategory
 	server.DB.Find(&masterCategories)
@@ -99,7 +99,7 @@ func (server *Server) ApiUpdateAssetLabel(w http.ResponseWriter, r *http.Request
 // CreateAssetLaptopForm menampilkan form untuk menambah aset Laptop baru melalui menu Asset Management
 func (server *Server) CreateAssetLaptopForm(w http.ResponseWriter, r *http.Request) {
 	var users []models.User
-	server.DB.Find(&users)
+	server.DB.Where("nik != ?", "admin").Find(&users)
 
 	masterData, _ := server.fetchAssetMasterData()
 	masterData["title"] = "Tambah Laptop"
@@ -121,7 +121,7 @@ func (server *Server) EditAssetLaptopForm(w http.ResponseWriter, r *http.Request
 	}
 
 	var users []models.User
-	server.DB.Find(&users)
+	server.DB.Where("nik != ?", "admin").Find(&users)
 
 	masterData, _ := server.fetchAssetMasterData()
 	masterData["title"] = "Edit Laptop"
@@ -170,7 +170,7 @@ func (server *Server) ListAssetKomputer(w http.ResponseWriter, r *http.Request) 
 	server.DB.Preload("User").Where("category = ? AND status = ?", "Komputer", "Ready").Order("inventory_number asc").Find(&assets)
 
 	var users []models.User
-	server.DB.Find(&users)
+	server.DB.Where("nik != ?", "admin").Find(&users)
 
 	server.RenderHTML(w, r, http.StatusOK, "assets_kso/komputer_management", map[string]interface{}{
 		"title":  "Asset Management - Komputer",
@@ -182,7 +182,7 @@ func (server *Server) ListAssetKomputer(w http.ResponseWriter, r *http.Request) 
 // CreateAssetKomputerForm menampilkan form untuk menambah aset Komputer baru
 func (server *Server) CreateAssetKomputerForm(w http.ResponseWriter, r *http.Request) {
 	var users []models.User
-	server.DB.Find(&users)
+	server.DB.Where("nik != ?", "admin").Find(&users)
 
 	masterData, _ := server.fetchAssetMasterData()
 	masterData["title"] = "Tambah Komputer"
@@ -203,7 +203,7 @@ func (server *Server) EditAssetKomputerForm(w http.ResponseWriter, r *http.Reque
 	}
 
 	var users []models.User
-	server.DB.Find(&users)
+	server.DB.Where("nik != ?", "admin").Find(&users)
 
 	masterData, _ := server.fetchAssetMasterData()
 	masterData["title"] = "Edit Komputer"

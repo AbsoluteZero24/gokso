@@ -107,9 +107,12 @@ func (server *Server) ApiLogin(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 
 	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
-		"message":  "Login successful",
-		"username": user.Name,
-		"role":     user.Role,
+		"message":    "Login successful",
+		"id":         user.ID,
+		"name":       user.Name,
+		"role":       user.Role,
+		"avatar":     user.Avatar,
+		"department": user.Department,
 	})
 }
 
@@ -153,6 +156,7 @@ func (server *Server) ApiCheckAuth(w http.ResponseWriter, r *http.Request) {
 		"dms_filter_scope": adminData["DMSFilterScope"],
 		"allowed_sections": adminData["AllowedSections"],
 		"permissions":      adminData["RolePermissions"],
+		"perms":            adminData["Permissions"],
 	})
 }
 

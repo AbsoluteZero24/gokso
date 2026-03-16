@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
-import SessionTimeoutModal from '../components/SessionTimeoutModal';
+import SessionTimeoutModal from '../components/shared/SessionTimeoutModal';
 
 const AuthContext = createContext(null);
 
