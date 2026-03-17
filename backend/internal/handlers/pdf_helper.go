@@ -62,6 +62,12 @@ func renderPerson(pdf *gofpdf.Fpdf, title string, user models.User) {
 }
 
 func renderSignatures(pdf *gofpdf.Fpdf, data BASTData) {
+	// Paging Check
+	// Estimated height: Date(6) + Ln(5) + Yang(6) + Pihak(6) + Sig(40) + Name(6) + Pos(5) = ~75mm
+	// Page height 297mm (Portrait) - Footer(15) = 282mm
+	if pdf.GetY() > 200 {
+		pdf.AddPage()
+	}
 	pdf.Ln(5)
 	dateStr := data.HandoverDate.Format("02 January 2006")
 	dateStr = translateMonth(dateStr)

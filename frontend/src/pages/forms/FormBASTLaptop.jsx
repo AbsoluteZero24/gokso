@@ -14,9 +14,11 @@ import {
     Loader2,
     ChevronLeft,
     Smartphone,
-    CircleCheck
+    CircleCheck,
+    ChevronRight
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmModal from '../../components/shared/ConfirmModal';
 
 const FormBASTLaptop = () => {
@@ -43,6 +45,9 @@ const FormBASTLaptop = () => {
         selected_assets: [{ id: '', sn: '', label: '' }],
         notes: ''
     });
+
+    const [viewDate, setViewDate] = useState(new Date());
+    const [activeDropdown, setActiveDropdown] = useState(null); // 'date'
 
     const [alertConfig, setAlertConfig] = useState({
         isOpen: false,
@@ -71,11 +76,18 @@ const FormBASTLaptop = () => {
 
     useEffect(() => {
         fetchData();
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('.modern-datepicker-container')) {
+                setActiveDropdown(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [id]);
 
     const userOptions = initData.employees.map(e => ({
-        value: e.ID,
-        label: `${e.Name} - ${e.Department || 'N/A'}`
+        value: e.id || e.ID,
+        label: `${e.name || e.Name || 'Unknown'} - ${e.department || e.Department || 'N/A'}`
     }));
 
     const standardAssetOptions = initData.assets
@@ -84,25 +96,31 @@ const FormBASTLaptop = () => {
             if (category === 'Pengambilan') return !a.UserID && a.Status === 'Ready';
             return true;
         })
-        .map(a => ({
-            value: a.ID,
-            label: `${a.InventoryNumber} - ${a.AssetName} ${a.DeviceName ? `(${a.DeviceName})` : ''} ${a.User ? `- Assign: ${a.User.Name}` : ''}`,
-            data: a
-        }));
+        .map(a => {
+            const userName = a.User?.name || a.User?.Name || '';
+            return {
+                value: a.ID || a.id,
+                label: `${a.InventoryNumber || a.inventory_number} - ${a.AssetName || a.asset_name} ${a.DeviceName ? `(${a.DeviceName})` : ''} ${userName ? `- Assign: ${userName}` : ''}`,
+                data: a
+            };
+        });
 
     const oldAssetOptions = initData.assets
         .filter(a => !!a.UserID)
-        .map(a => ({
-            value: a.ID,
-            label: `${a.InventoryNumber} - ${a.AssetName} (User: ${a.User?.Name})`,
-            data: a
-        }));
+        .map(a => {
+            const userName = a.User?.name || a.User?.Name || '';
+            return {
+                value: a.ID || a.id,
+                label: `${a.InventoryNumber || a.inventory_number} - ${a.AssetName || a.asset_name} (User: ${userName})`,
+                data: a
+            };
+        });
 
     const newAssetOptions = initData.assets
         .filter(a => !a.UserID && a.Status === 'Ready')
         .map(a => ({
-            value: a.ID,
-            label: `${a.InventoryNumber} - ${a.AssetName}`,
+            value: a.ID || a.id,
+            label: `${a.InventoryNumber || a.inventory_number} - ${a.AssetName || a.asset_name}`,
             data: a
         }));
 
@@ -135,6 +153,37 @@ const FormBASTLaptop = () => {
 
     const clearSignature = (ref) => {
         if (ref.current) ref.current.clear();
+    };
+
+    // Date Picker Helpers
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    };
+
+    const getDaysInMonth = (date) => {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const daysInPrevMonth = new Date(year, month, 0).getDate();
+        
+        const days = [];
+        // Prev month days
+        for (let i = firstDay - 1; i >= 0; i--) {
+            days.push({ day: daysInPrevMonth - i, currentMonth: false, date: new Date(year, month - 1, daysInPrevMonth - i) });
+        }
+        // Current month days
+        for (let i = 1; i <= daysInMonth; i++) {
+            days.push({ day: i, currentMonth: true, date: new Date(year, month, i) });
+        }
+        // Next month days
+        const remaining = 42 - days.length;
+        for (let i = 1; i <= remaining; i++) {
+            days.push({ day: i, currentMonth: false, date: new Date(year, month + 1, i) });
+        }
+        return days;
     };
 
     const handleSubmit = async (e, submitType = 'direct') => {
@@ -262,15 +311,94 @@ const FormBASTLaptop = () => {
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '0.5rem' }}>Tanggal Serah Terima</label>
-                                    <div style={{ display: 'flex', alignItems: 'center', background: 'white', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.5rem 1rem' }}>
-                                        <Calendar size={18} color="var(--text-light)" style={{ marginRight: '0.75rem' }} />
-                                        <input
-                                            type="date"
-                                            value={formData.handover_date}
-                                            onChange={(e) => setFormData({ ...formData, handover_date: e.target.value })}
-                                            style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontWeight: 600 }}
-                                            required
-                                        />
+                                    <div style={{ position: 'relative' }} className="modern-datepicker-container">
+                                        <div 
+                                            onClick={() => setActiveDropdown(activeDropdown === 'date' ? null : 'date')}
+                                            style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                background: 'white', 
+                                                border: `1.5px solid ${activeDropdown === 'date' ? 'var(--primary)' : 'var(--border)'}`, 
+                                                borderRadius: '12px', 
+                                                padding: '0.75rem 1rem',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                boxShadow: activeDropdown === 'date' ? '0 0 0 4px rgba(30, 89, 197, 0.1)' : 'none'
+                                            }}
+                                        >
+                                            <Calendar size={18} color={activeDropdown === 'date' ? 'var(--primary)' : 'var(--text-light)'} style={{ marginRight: '0.75rem' }} />
+                                            <span style={{ fontWeight: 600, fontSize: '0.938rem', color: formData.handover_date ? '#1e293b' : '#94a3b8' }}>
+                                                {formData.handover_date ? formatDate(formData.handover_date) : 'Pilih Tanggal...'}
+                                            </span>
+                                        </div>
+
+                                        <AnimatePresence>
+                                            {activeDropdown === 'date' && (
+                                                <motion.div 
+                                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                    style={{ 
+                                                        position: 'absolute', 
+                                                        top: 'calc(100% + 8px)', 
+                                                        left: 0, 
+                                                        background: 'white', 
+                                                        borderRadius: '20px', 
+                                                        boxShadow: '0 15px 35px rgba(0,0,0,0.12)', 
+                                                        padding: '1.5rem', 
+                                                        zIndex: 3000, 
+                                                        width: '320px',
+                                                        border: '1px solid #f1f5f9' 
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                                        <button type="button" onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1))} style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #f1f5f9', background: 'white', cursor: 'pointer' }}><ChevronLeft size={16} /></button>
+                                                        <span style={{ fontWeight: 800, fontSize: '1rem', color: '#1e293b' }}>
+                                                            {viewDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                                                        </span>
+                                                        <button type="button" onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1))} style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #f1f5f9', background: 'white', cursor: 'pointer' }}><ChevronRight size={16} /></button>
+                                                    </div>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '8px' }}>
+                                                        {['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB'].map(d => <span key={d} style={{ fontSize: '0.625rem', fontWeight: 800, color: '#94a3b8' }}>{d}</span>)}
+                                                    </div>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+                                                        {getDaysInMonth(viewDate).map((d, i) => {
+                                                            const isSelected = formData.handover_date === d.date.toISOString().split('T')[0];
+                                                            const isToday = new Date().toISOString().split('T')[0] === d.date.toISOString().split('T')[0];
+                                                            
+                                                            return (
+                                                                <div 
+                                                                    key={i} 
+                                                                    onClick={() => {
+                                                                        setFormData({ ...formData, handover_date: d.date.toISOString().split('T')[0] });
+                                                                        setActiveDropdown(null);
+                                                                    }}
+                                                                    style={{ 
+                                                                        padding: '0.6rem 0', 
+                                                                        borderRadius: '10px', 
+                                                                        cursor: 'pointer', 
+                                                                        fontSize: '0.875rem', 
+                                                                        fontWeight: isSelected || isToday ? 700 : 500,
+                                                                        background: isSelected ? 'var(--primary)' : (isToday ? 'rgba(30, 89, 197, 0.1)' : 'transparent'),
+                                                                        color: isSelected ? 'white' : (d.currentMonth ? '#1e293b' : '#cbd5e1'),
+                                                                        transition: 'all 0.2s',
+                                                                        textAlign: 'center'
+                                                                    }}
+                                                                    onMouseOver={(e) => !isSelected && (e.currentTarget.style.background = '#f1f5f9')}
+                                                                    onMouseOut={(e) => {
+                                                                        if (!isSelected) {
+                                                                            e.currentTarget.style.background = isToday ? 'rgba(30, 89, 197, 0.1)' : 'transparent';
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {d.day}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                 </div>
                             </div>

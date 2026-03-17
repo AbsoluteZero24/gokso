@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -51,6 +52,29 @@ func (server *Server) ApiDeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": "User deleted successfully"})
+}
+
+// ApiBulkDeleteUser handles JSON request to delete multiple users
+func (server *Server) ApiBulkDeleteUser(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		server.Renderer.JSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
+		return
+	}
+
+	if len(input.IDs) == 0 {
+		server.Renderer.JSON(w, http.StatusBadRequest, map[string]string{"error": "No IDs provided"})
+		return
+	}
+
+	if err := server.DB.Where("id IN ?", input.IDs).Delete(&models.User{}).Error; err != nil {
+		server.Renderer.JSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	server.Renderer.JSON(w, http.StatusOK, map[string]string{"message": fmt.Sprintf("%d users deleted successfully", len(input.IDs))})
 }
 
 // CreateUserForm menampilkan form untuk menambah user baru

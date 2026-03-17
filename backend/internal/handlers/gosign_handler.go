@@ -105,6 +105,101 @@ func (server *Server) FinalizeGoSignTask(taskID string) error {
 		return err
 	}
 
+	if task.FormID == "FM.SI.0101" {
+		return server.FinalizeFMSI0101Task(task)
+	}
+
+	// Default BAST Logic
+	return server.FinalizeBASTTask(task)
+}
+
+func (server *Server) FinalizeFMSI0101Task(task models.GoSignTask) error {
+	var data struct {
+		Period   string            `json:"period"`
+		Servers  []models.FMSI0101 `json:"servers"`
+		Preparer models.User       `json:"preparer"`
+		Approver models.User       `json:"approver"`
+		Date     string            `json:"date"`
+	}
+	if err := json.Unmarshal([]byte(task.DataJSON), &data); err != nil {
+		return err
+	}
+
+	// 1. Prepare Signatures
+	sigPreparer := ""
+	sigApprover := ""
+	for _, s := range task.Signers {
+		var u models.User
+		server.DB.Where("id = ?", s.UserID).First(&u)
+		
+		sigData := ""
+		if u.Signature != "" {
+			if strings.HasPrefix(u.Signature, "data:image") {
+				sigData = u.Signature
+			} else {
+				sigPath := filepath.Join("./public/uploads/signatures", u.Signature)
+				sigBytes, err := os.ReadFile(sigPath)
+				if err == nil {
+					sigData = "data:image/png;base64," + base64.StdEncoding.EncodeToString(sigBytes)
+				}
+			}
+		}
+
+		if s.Role == "Penyusun" {
+			sigPreparer = sigData
+		} else if s.Role == "Penyetuju" {
+			sigApprover = sigData
+		}
+	}
+
+	// 2. Generate Final PDF
+	uploadDir := server.getPhysicalFolderPath(&task.TargetFolderID, task.Section, false)
+	os.MkdirAll(uploadDir, 0755)
+	physicalPath := filepath.Join(uploadDir, server.sanitizeFileName(task.FileName))
+
+	pdf := server.GenerateFMSI0101PDF(data.Servers, data.Period, &data.Preparer, &data.Approver, sigPreparer, sigApprover, data.Date)
+	err := pdf.OutputFileAndClose(physicalPath)
+	if err != nil {
+		return err
+	}
+
+	// 3. Register to DMS
+	newFile := models.DMSFile{
+		ID:         task.ID,
+		FolderID:   &task.TargetFolderID,
+		Section:    task.Section,
+		Name:       task.FileName,
+		Extension:  "pdf",
+		FilePath:   "/" + filepath.ToSlash(physicalPath),
+		UploadedBy: task.CreatorName,
+		Category:   "Digital Form",
+	}
+
+	if info, err := os.Stat(physicalPath); err == nil {
+		newFile.Size = info.Size()
+	}
+
+	if err := server.DB.Create(&newFile).Error; err != nil {
+		return err
+	}
+
+	// 4. Cleanup Task
+	task.Status = "Completed"
+	server.DB.Save(&task)
+
+	if task.FilePath != "" {
+		relPath := task.FilePath
+		if len(relPath) > 0 && relPath[0] == '/' {
+			relPath = relPath[1:]
+		}
+		os.Remove(relPath)
+	}
+
+	server.AddNotification(task.CreatorID, "Dokumen Selesai", fmt.Sprintf("Dokumen %s telah ditandatangani oleh semua pihak dan disimpan di eDoc.", task.FormName), "success", "/godms/edoc")
+	return nil
+}
+
+func (server *Server) FinalizeBASTTask(task models.GoSignTask) error {
 	var data BASTData
 	if err := json.Unmarshal([]byte(task.DataJSON), &data); err != nil {
 		return err
@@ -181,7 +276,6 @@ func (server *Server) FinalizeGoSignTask(taskID string) error {
 		}
 		if data.OldAsset != nil {
 			server.DB.Model(&models.AssetKSO{}).Where("id = ?", data.OldAsset.ID).Update("user_id", nil)
-			// Status would need to be passed in DataJSON if we want to update it to "Rusak"/"Hilang"
 		}
 	}
 
@@ -282,7 +376,17 @@ func (server *Server) ApiRejectTask(w http.ResponseWriter, r *http.Request) {
 
 	// Update Task Status
 	task.Status = "Rejected"
+	task.RejectionReason = reason
+	task.RejectorID = adminID
+	task.RejectorName = adminName
 	server.DB.Save(&task)
+
+	// Update specific signer to "Rejected"
+	now := time.Now()
+	server.DB.Model(&models.GoSignSigner{}).Where("task_id = ? AND user_id = ?", taskID, adminID).Updates(map[string]interface{}{
+		"rejected":    true,
+		"rejected_at": &now,
+	})
 
 	// Cleanup Draft if exists
 	if task.FilePath != "" {

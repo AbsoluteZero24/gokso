@@ -104,9 +104,10 @@ const Sidebar = ({ collapsed, onExpand }) => {
     {
       icon: FolderRoot,
       label: 'GoDMS',
-      path: '/godms/edoc',
+      path: '/godms/edid',
       permission: 'view_godms',
       children: [
+        { icon: ClipboardList, label: 'eDID', path: '/godms/edid', permission: 'view_edid' },
         { icon: HardDrive, label: 'eDoc', path: '/godms/edoc', permission: 'view_edoc' },
         { icon: Trash2, label: 'Trash', path: '/godms/trash', permission: 'view_trash' }
       ]

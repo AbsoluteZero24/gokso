@@ -23,6 +23,8 @@ func RegisterModels() []Model {
 		{Model: Notification{}},
 		{Model: GoSignTask{}},
 		{Model: GoSignSigner{}},
+		{Model: &FMSI0101{}},
 		{Model: GoForm{}},
+		{Model: EDIDDocument{}},
 	}
 }

@@ -15,7 +15,8 @@ import {
     PenTool,
     FileSearch,
     Download,
-    Trash2
+    Trash2,
+    AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -33,6 +34,7 @@ const GoSign = () => {
     // Toast & Dialog State
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null, loading: false });
+    const [confirmReject, setConfirmReject] = useState({ show: false, id: null, loading: false, reason: '' });
 
     const fetchTasks = async () => {
         setLoading(true);
@@ -62,6 +64,8 @@ const GoSign = () => {
             
             const response = await axios.post('/api/gosign/sign', formData);
             showNotification(response.data.message, 'success');
+            setShowDetail(false);
+            setSelectedTask(null);
             fetchTasks(); // Refresh
         } catch (error) {
             console.error('Error signing:', error);
@@ -69,13 +73,21 @@ const GoSign = () => {
         }
     };
 
-    const handleReject = async (taskId) => {
-        if (!window.confirm('Apakah Anda yakin ingin menolak permohonan tanda tangan ini?')) return;
+    const handleReject = (taskId) => {
+        setConfirmReject({ show: true, id: taskId, loading: false, reason: '' });
+    };
 
+    const handleConfirmReject = async () => {
+        if (!confirmReject.reason.trim()) {
+            showNotification('Mohon masukkan alasan penolakan', 'error');
+            return;
+        }
+
+        setConfirmReject(prev => ({ ...prev, loading: true }));
         try {
             const formData = new URLSearchParams();
-            formData.append('task_id', taskId);
-            formData.append('reason', 'Ditolak oleh signer'); // Default reason
+            formData.append('task_id', confirmReject.id);
+            formData.append('reason', confirmReject.reason);
             
             const response = await axios.post('/api/gosign/reject', formData);
             showNotification(response.data.message, 'success');
@@ -84,6 +96,8 @@ const GoSign = () => {
         } catch (error) {
             console.error('Error rejecting:', error);
             showNotification(error.response?.data?.error || 'Gagal menolak dokumen', 'error');
+        } finally {
+            setConfirmReject({ show: false, id: null, loading: false, reason: '' });
         }
     };
     
@@ -457,90 +471,188 @@ const GoSign = () => {
 
                             {/* Modal Content */}
                             <div style={{ padding: '2rem', overflowY: 'auto', flex: 1 }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
-                                    <div style={{ padding: '1.25rem', background: '#f0f9ff', borderRadius: '16px', border: '1px solid #e0f2fe' }}>
-                                        <p style={{ fontSize: '0.625rem', fontWeight: 800, color: '#0369a1', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Pihak Pertama (Pemberi/IT)</p>
-                                        <div style={{ fontWeight: 700, fontSize: '0.938rem' }}>{selectedTask.details.P1?.Name}</div>
-                                        <div style={{ fontSize: '0.813rem', color: '#64748b' }}>{selectedTask.details.P1?.Position || '-'}</div>
-                                    </div>
-                                    <div style={{ padding: '1.25rem', background: '#fdf4ff', borderRadius: '16px', border: '1px solid #fae8ff' }}>
-                                        <p style={{ fontSize: '0.625rem', fontWeight: 800, color: '#86198f', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Pihak Kedua (Penerima)</p>
-                                        <div style={{ fontWeight: 700, fontSize: '0.938rem' }}>{selectedTask.details.P2?.Name}</div>
-                                        <div style={{ fontSize: '0.813rem', color: '#64748b' }}>{selectedTask.details.P2?.Position || '-'}</div>
-                                    </div>
-                                </div>
+                                {/* 
+                                    DETAIL PARTISIPAN (Pihak 1 & Pihak 2 / Disusun & Disetujui)
+                                    Pemeriksaan dilakukan secara dinamis untuk mendukung perbedaan struktur DataJSON 
+                                    antara form BAST Laptop dan form FM.SI.0101.
+                                */}
+                                {(() => {
+                                    const details = selectedTask.details || {};
+                                    const isFMSI0101 = selectedTask.form_id === 'FM.SI.0101' || details.Form === 'FMSI0101';
+                                    
+                                    // Fallback key mapping untuk Pihak 1
+                                    const p1 = details.P1 || details.preparer || details.p1 || details.P1User;
+                                    // Fallback key mapping untuk Pihak 2
+                                    const p2 = details.P2 || details.approver || details.p2 || details.P2User;
+
+                                    const label1 = isFMSI0101 ? "Disusun oleh" : "Pihak Pertama (Pemberi/IT)";
+                                    const label2 = isFMSI0101 ? "Disetujui oleh" : "Pihak Kedua (Penerima)";
+
+                                    // Helper untuk mengambil nama/jabatan (antisipasi case-sensitivity dari backend)
+                                    const getName = (obj) => obj?.name || obj?.Name || '-';
+                                    const getPos = (obj) => obj?.position || obj?.Position || '-';
+
+                                    return (
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+                                            <div style={{ padding: '1.25rem', background: '#f0f9ff', borderRadius: '16px', border: '1px solid #e0f2fe' }}>
+                                                <p style={{ fontSize: '0.625rem', fontWeight: 800, color: '#0369a1', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{label1}</p>
+                                                <div style={{ fontWeight: 700, fontSize: '0.938rem' }}>{getName(p1)}</div>
+                                                <div style={{ fontSize: '0.813rem', color: '#64748b' }}>{getPos(p1)}</div>
+                                            </div>
+                                            <div style={{ padding: '1.25rem', background: '#fdf4ff', borderRadius: '16px', border: '1px solid #fae8ff' }}>
+                                                <p style={{ fontSize: '0.625rem', fontWeight: 800, color: '#86198f', textTransform: 'uppercase', marginBottom: '0.5rem' }}>{label2}</p>
+                                                <div style={{ fontWeight: 700, fontSize: '0.938rem' }}>{getName(p2)}</div>
+                                                <div style={{ fontSize: '0.813rem', color: '#64748b' }}>{getPos(p2)}</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
 
                                 <div style={{ marginBottom: '2rem' }}>
                                     <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <Clock size={18} color="var(--primary)" /> Status Persetujuan
                                     </h3>
+
+                                    {/* Rejection Reason - High Visibility */}
+                                    {selectedTask.status === 'Rejected' && selectedTask.rejection_reason && (
+                                        <div style={{ 
+                                            marginBottom: '1.5rem', 
+                                            padding: '1.25rem', 
+                                            background: '#fef2f2', 
+                                            borderRadius: '16px', 
+                                            border: '1px solid #fee2e2',
+                                            display: 'flex',
+                                            gap: '1rem',
+                                            alignItems: 'flex-start'
+                                        }}>
+                                            <div style={{ padding: '0.5rem', borderRadius: '10px', background: '#fee2e2', color: '#dc2626' }}>
+                                                <AlertTriangle size={20} />
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#991b1b', textTransform: 'uppercase', marginBottom: '0.25rem', letterSpacing: '0.025em' }}>Alasan Penolakan</div>
+                                                <div style={{ fontSize: '0.938rem', color: '#dc2626', fontWeight: 600, lineHeight: 1.5 }}>{selectedTask.rejection_reason}</div>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                                        {selectedTask.signers?.map((signer, idx) => (
-                                            <div key={idx} style={{ 
-                                                padding: '1rem', 
-                                                borderRadius: '16px', 
-                                                border: '1px solid #f1f5f9',
-                                                background: signer.signed ? '#f0fdf4' : 'white',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.75rem'
-                                            }}>
-                                                {signer.signed ? (
-                                                    <CheckCircle size={20} color="#10b981" />
-                                                ) : (
-                                                    <Clock size={20} color="#64748b" />
-                                                )}
-                                                <div>
-                                                    <div style={{ fontSize: '0.875rem', fontWeight: 700, color: signer.signed ? '#166534' : '#1e293b' }}>{signer.user_name}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: signer.signed ? '#15803d' : '#64748b' }}>
-                                                        {signer.signed ? `Sudah Tanda Tangan` : 'Menunggu...'}
+                                        {selectedTask.signers?.map((signer, idx) => {
+                                            const isRejector = signer.rejected || (selectedTask.status === 'Rejected' && String(signer.user_id) === String(selectedTask.rejector_id));
+                                            
+                                            return (
+                                                <div key={idx} style={{ 
+                                                    padding: '1rem', 
+                                                    borderRadius: '16px', 
+                                                    border: '1px solid #f1f5f9',
+                                                    background: signer.signed ? '#f0fdf4' : (isRejector ? '#fef2f2' : 'white'),
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.75rem'
+                                                }}>
+                                                    {signer.signed ? (
+                                                        <CheckCircle size={20} color="#10b981" />
+                                                    ) : isRejector ? (
+                                                        <XCircle size={20} color="#dc2626" />
+                                                    ) : (
+                                                        <Clock size={20} color="#64748b" />
+                                                    )}
+                                                    <div>
+                                                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: signer.signed ? '#166534' : (isRejector ? '#991b1b' : '#1e293b') }}>{signer.user_name}</div>
+                                                        <div style={{ fontSize: '0.75rem', color: signer.signed ? '#15803d' : (isRejector ? '#dc2626' : '#64748b') }}>
+                                                            {signer.signed ? `Sudah Tanda Tangan` : (isRejector ? 'Menolak' : 'Menunggu...')}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
-                                <div style={{ marginBottom: '2rem' }}>
-                                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <FileText size={18} color="var(--primary)" /> Informasi Aset
-                                    </h3>
-                                    <div style={{ border: '1px solid #f1f5f9', borderRadius: '16px', overflow: 'hidden' }}>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                            <thead>
-                                                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-                                                    <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textAlign: 'left' }}>Aset / Barang</th>
-                                                    <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textAlign: 'left' }}>Serial Number</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {selectedTask.details.Items?.map((item, idx) => (
-                                                    <tr key={idx} style={{ borderBottom: idx === selectedTask.details.Items.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
-                                                        <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: 600 }}>{item.AssetName}</td>
-                                                        <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{item.SerialNumber}</td>
-                                                    </tr>
-                                                ))}
-                                                {selectedTask.details.Category === "Tukar" && (
-                                                    <>
-                                                        <tr style={{ background: '#fff7ed' }}>
-                                                            <td style={{ padding: '1rem', fontSize: '0.875rem' }}>
-                                                                <span style={{ color: '#c2410c', fontWeight: 800, fontSize: '0.625rem', display: 'block' }}>ASET BARU (NEW)</span>
-                                                                <span style={{ fontWeight: 600 }}>{selectedTask.details.NewAsset?.AssetName}</span>
-                                                            </td>
-                                                            <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{selectedTask.details.NewAsset?.SerialNumber}</td>
-                                                        </tr>
-                                                        <tr style={{ background: '#fef2f2' }}>
-                                                            <td style={{ padding: '1rem', fontSize: '0.875rem' }}>
-                                                                <span style={{ color: '#991b1b', fontWeight: 800, fontSize: '0.625rem', display: 'block' }}>ASET LAMA (OLD)</span>
-                                                                <span style={{ fontWeight: 600 }}>{selectedTask.details.OldAsset?.AssetName}</span>
-                                                            </td>
-                                                            <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{selectedTask.details.OldAsset?.SerialNumber}</td>
-                                                        </tr>
-                                                    </>
-                                                )}
-                                            </tbody>
-                                        </table>
+                                {selectedTask.details.Period && (
+                                    <div style={{ marginBottom: '2rem', padding: '1rem 1.25rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <div style={{ padding: '0.5rem', borderRadius: '10px', background: 'white', border: '1px solid #e2e8f0', color: 'var(--primary)', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                                            <Calendar size={18} />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.625rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Periode Laporan</div>
+                                            <div style={{ fontWeight: 700, fontSize: '0.938rem', color: '#1e293b' }}>Tahun {selectedTask.details.Period}</div>
+                                        </div>
                                     </div>
+                                )}
+
+                                <div style={{ marginBottom: '2rem' }}>
+                                    {(selectedTask.details.Form === 'FMSI0101' || selectedTask.form_id === 'FM.SI.0101') ? (
+                                        <div style={{ 
+                                            padding: '1.5rem', 
+                                            background: '#f8fafc', 
+                                            borderRadius: '16px', 
+                                            border: '1px solid #e2e8f0',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '1rem'
+                                        }}>
+                                            <div style={{ 
+                                                width: '48px', 
+                                                height: '48px', 
+                                                background: 'rgba(30, 89, 197, 0.1)', 
+                                                borderRadius: '12px', 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'center', 
+                                                color: 'var(--primary)' 
+                                            }}>
+                                                <FileText size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#1e293b' }}>Detail Permohonan</h3>
+                                                <p style={{ fontSize: '0.938rem', color: '#64748b', margin: '0.25rem 0 0 0', lineHeight: 1.5 }}>
+                                                    Permohonan dokumen <strong>FM.SI.0101 Daftar Server KSO SCSI</strong> untuk periode <strong>{(selectedTask.details.Period || selectedTask.details.period || '2026')}</strong>.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <FileText size={18} color="var(--primary)" /> Informasi Aset / Barang
+                                            </h3>
+                                            <div style={{ border: '1px solid #f1f5f9', borderRadius: '16px', overflow: 'hidden', overflowX: 'auto' }}>
+                                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                                    <thead>
+                                                        <tr style={{ background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+                                                            <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textAlign: 'left' }}>Aset / Barang</th>
+                                                            <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textAlign: 'left' }}>Serial Number</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {selectedTask.details.Items?.map((item, idx) => (
+                                                            <tr key={idx} style={{ borderBottom: idx === selectedTask.details.Items.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                                                                <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: 600 }}>{item.AssetName}</td>
+                                                                <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{item.SerialNumber}</td>
+                                                            </tr>
+                                                        ))}
+                                                        {selectedTask.details.Category === "Tukar" && (
+                                                            <>
+                                                                <tr style={{ background: '#fff7ed' }}>
+                                                                    <td style={{ padding: '1rem', fontSize: '0.875rem' }}>
+                                                                        <span style={{ color: '#c2410c', fontWeight: 800, fontSize: '0.625rem', display: 'block' }}>ASET BARU (NEW)</span>
+                                                                        <span style={{ fontWeight: 600 }}>{selectedTask.details.NewAsset?.AssetName}</span>
+                                                                    </td>
+                                                                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{selectedTask.details.NewAsset?.SerialNumber}</td>
+                                                                </tr>
+                                                                <tr style={{ background: '#fef2f2' }}>
+                                                                    <td style={{ padding: '1rem', fontSize: '0.875rem' }}>
+                                                                        <span style={{ color: '#991b1b', fontWeight: 800, fontSize: '0.625rem', display: 'block' }}>ASET LAMA (OLD)</span>
+                                                                        <span style={{ fontWeight: 600 }}>{selectedTask.details.OldAsset?.AssetName}</span>
+                                                                    </td>
+                                                                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{selectedTask.details.OldAsset?.SerialNumber}</td>
+                                                                </tr>
+                                                            </>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 {selectedTask.details.Notes && (
@@ -604,6 +716,133 @@ const GoSign = () => {
                                     }}
                                 >
                                     Tutup
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Confirm Reject Modal */}
+            <AnimatePresence>
+                {confirmReject.show && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => !confirmReject.loading && setConfirmReject({ ...confirmReject, show: false })}
+                            style={{ position: 'absolute', inset: 0, background: 'rgba(15, 23, 42, 0.3)', backdropFilter: 'blur(8px)' }}
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            style={{
+                                position: 'relative',
+                                background: 'white',
+                                width: '100%',
+                                maxWidth: '440px',
+                                borderRadius: '24px',
+                                padding: '2rem',
+                                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+                                textAlign: 'center'
+                            }}
+                        >
+                            <div style={{ 
+                                width: '64px', 
+                                height: '64px', 
+                                background: '#fef2f2', 
+                                borderRadius: '20px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                margin: '0 auto 1.5rem',
+                                color: '#ef4444'
+                            }}>
+                                <XCircle size={32} />
+                            </div>
+                            
+                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', marginBottom: '0.5rem' }}>Tolak Permohonan</h3>
+                            <p style={{ color: '#64748b', fontSize: '0.875rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+                                Apakah Anda yakin ingin menolak permohonan ini? Mohon berikan alasan penolakan untuk pemohon.
+                            </p>
+
+                            <div style={{ textAlign: 'left', marginBottom: '1.5rem' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem', marginLeft: '0.25rem' }}>
+                                    Alasan Penolakan
+                                </label>
+                                <textarea
+                                    value={confirmReject.reason}
+                                    onChange={(e) => setConfirmReject({ ...confirmReject, reason: e.target.value })}
+                                    placeholder="Contoh: Lampiran belum lengkap atau ada kesalahan data..."
+                                    disabled={confirmReject.loading}
+                                    style={{
+                                        width: '100%',
+                                        height: '100px',
+                                        padding: '1rem',
+                                        borderRadius: '16px',
+                                        border: '1.5px solid #e2e8f0',
+                                        fontSize: '0.875rem',
+                                        outline: 'none',
+                                        resize: 'none',
+                                        transition: 'all 0.2s',
+                                        background: '#f8fafc'
+                                    }}
+                                    onFocus={(e) => {
+                                        e.target.style.borderColor = 'var(--primary)';
+                                        e.target.style.background = 'white';
+                                        e.target.style.boxShadow = '0 0 0 4px rgba(30, 89, 197, 0.1)';
+                                    }}
+                                    onBlur={(e) => {
+                                        e.target.style.borderColor = '#e2e8f0';
+                                        e.target.style.background = '#f8fafc';
+                                        e.target.style.boxShadow = 'none';
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <button
+                                    disabled={confirmReject.loading}
+                                    onClick={() => setConfirmReject({ ...confirmReject, show: false })}
+                                    style={{
+                                        padding: '0.875rem',
+                                        borderRadius: '14px',
+                                        border: '1px solid #e2e8f0',
+                                        background: 'white',
+                                        color: '#64748b',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    disabled={confirmReject.loading}
+                                    onClick={handleConfirmReject}
+                                    style={{
+                                        padding: '0.875rem',
+                                        borderRadius: '14px',
+                                        border: 'none',
+                                        background: '#ef4444',
+                                        color: 'white',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
+                                        boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    {confirmReject.loading ? (
+                                        <Loader2 size={18} className="animate-spin" />
+                                    ) : (
+                                        <>Konfirmasi Tolak</>
+                                    )}
                                 </button>
                             </div>
                         </motion.div>

@@ -31,6 +31,7 @@ const UserManagement = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [importLoading, setImportLoading] = useState(false);
+    const [selectedIds, setSelectedIds] = useState([]);
 
     const location = useLocation();
     const isLocalUserPage = location.pathname === '/administration/local-user';
@@ -108,6 +109,44 @@ const UserManagement = () => {
         fetchData();
         fetchMasterData();
     }, []);
+
+    // Reset selection when users list changes or search filters list
+    useEffect(() => {
+        setSelectedIds([]);
+    }, [searchTerm, users]);
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedIds(filteredUsers.map(u => u.ID));
+        } else {
+            setSelectedIds([]);
+        }
+    };
+
+    const handleSelectUser = (id) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const [bulkConfirm, setBulkConfirm] = useState({
+        isOpen: false,
+        isLoading: false
+    });
+
+    const handleBulkDelete = async () => {
+        setBulkConfirm(prev => ({ ...prev, isLoading: true }));
+        try {
+            await axios.post('/api/users/bulk-delete', { ids: selectedIds });
+            setSelectedIds([]);
+            setBulkConfirm({ isOpen: false, isLoading: false });
+            fetchData();
+        } catch (error) {
+            setBulkConfirm(prev => ({ ...prev, isLoading: false }));
+            console.error('Error bulk deleting users:', error);
+            alert('Gagal menghapus beberapa data.');
+        }
+    };
 
     const handleDelete = (id) => {
         setConfirmModal({
@@ -287,6 +326,27 @@ const UserManagement = () => {
                     >
                         <UserPlus size={20} /> Tambah User
                     </button>
+
+                    {selectedIds.length > 0 && (
+                        <button
+                            onClick={() => setBulkConfirm({ isOpen: true, isLoading: false })}
+                            style={{
+                                background: '#fef2f2',
+                                color: '#ef4444',
+                                border: '1px solid #fee2e2',
+                                padding: '0.75rem 1.25rem',
+                                borderRadius: '12px',
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            <Trash2 size={20} /> Hapus Terpilih ({selectedIds.length})
+                        </button>
+                    )}
                     
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button
@@ -311,6 +371,14 @@ const UserManagement = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                         <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
+                            <th style={{ padding: '1rem 1.5rem', width: '50px' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={filteredUsers.length > 0 && selectedIds.length === filteredUsers.length}
+                                    onChange={handleSelectAll}
+                                    style={{ cursor: 'pointer', width: '18px', height: '18px', accentColor: 'var(--primary)' }}
+                                />
+                            </th>
                             <th style={{ padding: '1rem 1.5rem', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Personel</th>
                             <th style={{ padding: '1rem 1.5rem', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Unit / Bagian</th>
                             <th style={{ padding: '1rem 1.5rem', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Akses Login</th>
@@ -321,13 +389,13 @@ const UserManagement = () => {
                     <tbody>
                         {loading ? (
                             <tr>
-                                <td colSpan="5" style={{ padding: '5rem', textAlign: 'center' }}>
+                                <td colSpan="6" style={{ padding: '5rem', textAlign: 'center' }}>
                                     <Loader2 className="animate-spin" size={40} color="var(--primary)" style={{ margin: '0 auto' }} />
                                 </td>
                             </tr>
                         ) : filteredUsers.length === 0 ? (
                             <tr>
-                                <td colSpan="5" style={{ padding: '5rem', textAlign: 'center', color: 'var(--text-light)' }}>
+                                <td colSpan="6" style={{ padding: '5rem', textAlign: 'center', color: 'var(--text-light)' }}>
                                     Tidak ada data user ditemukan.
                                 </td>
                             </tr>
@@ -336,7 +404,15 @@ const UserManagement = () => {
                             const badge = roleName ? getRoleBadge(roleName) : null;
                             
                             return (
-                                <tr key={user.ID} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }} className="table-row-hover">
+                                <tr key={user.ID} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s', background: selectedIds.includes(user.ID) ? 'rgba(30, 89, 197, 0.03)' : 'transparent' }} className="table-row-hover">
+                                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedIds.includes(user.ID)}
+                                            onChange={() => handleSelectUser(user.ID)}
+                                            style={{ cursor: 'pointer', width: '18px', height: '18px', accentColor: 'var(--primary)' }}
+                                        />
+                                    </td>
                                     <td style={{ padding: '1.25rem 1.5rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                             <div style={{ width: '42px', height: '42px', background: 'rgba(30, 89, 197, 0.08)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1rem', fontWeight: 700 }}>
@@ -407,6 +483,15 @@ const UserManagement = () => {
                     </tbody>
                 </table>
             </div>
+
+            <ConfirmModal
+                isOpen={bulkConfirm.isOpen}
+                onClose={() => setBulkConfirm({ ...bulkConfirm, isOpen: false })}
+                onConfirm={handleBulkDelete}
+                loading={bulkConfirm.isLoading}
+                title="Hapus Beberapa User"
+                message={`Apakah Anda yakin ingin menghapus ${selectedIds.length} user yang dipilih? Tindakan ini tidak dapat dibatalkan.`}
+            />
 
             {/* Unified User Modal */}
             {showModal && (

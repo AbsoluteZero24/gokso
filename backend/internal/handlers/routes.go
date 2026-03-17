@@ -66,6 +66,7 @@ func (server *Server) initializeRoutes() {
 	api.HandleFunc("/users/store", server.ApiStoreUser).Methods("POST")
 	api.HandleFunc("/users/update/{id}", server.ApiUpdateUser).Methods("POST")
 	api.HandleFunc("/users/delete/{id}", server.ApiDeleteUser).Methods("DELETE")
+	api.HandleFunc("/users/bulk-delete", server.ApiBulkDeleteUser).Methods("POST")
 	api.HandleFunc("/users/export", server.ApiExportUsers).Methods("GET")
 	api.HandleFunc("/users/import", server.ApiImportUsers).Methods("POST")
 
@@ -89,6 +90,20 @@ func (server *Server) initializeRoutes() {
 	api.HandleFunc("/godms/bulk/restore", server.BulkRestore).Methods("POST")
 	api.HandleFunc("/godms/bulk/delete", server.BulkDeletePermanent).Methods("POST")
 	api.HandleFunc("/godms/migrate", server.MigrateDMS).Methods("GET")
+
+	// GoDID (Digital Internal Documents)
+	api.HandleFunc("/godms/edid", server.ApiListEDID).Methods("GET")
+	api.HandleFunc("/godms/edid/store", server.ApiStoreEDIDDocument).Methods("POST")
+	api.HandleFunc("/godms/edid/update/{id}", server.ApiUpdateEDIDDocument).Methods("POST")
+	api.HandleFunc("/godms/edid/delete/{id}", server.ApiDeleteEDIDDocument).Methods("DELETE")
+	api.HandleFunc("/godms/server-inventory", server.ApiListFMSI0101).Methods("GET")
+	api.HandleFunc("/godms/server-inventory/store", server.ApiStoreFMSI0101).Methods("POST")
+	api.HandleFunc("/godms/server-inventory/import", server.ApiImportFMSI0101).Methods("POST")
+	api.HandleFunc("/godms/server-inventory/delete/{id}", server.ApiDeleteFMSI0101).Methods("DELETE")
+	api.HandleFunc("/godms/server-inventory/bulk-delete", server.ApiBulkDeleteFMSI0101).Methods("POST")
+	api.HandleFunc("/godms/server-inventory/update/{id}", server.ApiUpdateFMSI0101).Methods("PUT")
+	api.HandleFunc("/godms/server-inventory/export", server.ApiExportFMSI0101).Methods("POST")
+	api.HandleFunc("/godms/server-inventory/preview", server.ApiGetFMSI0101Preview).Methods("GET")
 
 	// GoForm (Digital Form Catalog & Submission)
 	api.HandleFunc("/goform/list", server.ApiListGoForm).Methods("GET")
@@ -149,6 +164,7 @@ func (server *Server) initializeRoutes() {
 	// Notifications
 	api.HandleFunc("/notifications", server.ApiListNotifications).Methods("GET")
 	api.HandleFunc("/notifications/mark-read", server.ApiMarkNotificationsRead).Methods("POST")
+	api.HandleFunc("/notifications/mark-read/{id}", server.ApiMarkSingleNotificationRead).Methods("POST")
 	api.HandleFunc("/notifications/clear", server.ApiClearNotifications).Methods("POST")
 
 	// 2. STATIC FILES

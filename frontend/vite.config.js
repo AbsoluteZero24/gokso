@@ -8,7 +8,6 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:9001',
       '/public': 'http://localhost:9001',
-      '/godms': 'http://localhost:9001',
     }
   }
 })

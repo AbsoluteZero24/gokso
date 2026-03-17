@@ -1,6 +1,7 @@
 package seeders
 
 import (
+	"fmt"
 	"math/rand"
 
 	"github.com/AbsoluteZero24/gokso/internal/database/fakers"
@@ -34,6 +35,9 @@ func DBSeed(db *gorm.DB) error {
 	}
 
 	SeedNotifications(db)
+	SeedEDID(db)
+	SeedFMSI0101(db)
 
+	fmt.Println("Database initialization complete.")
 	return nil
 }

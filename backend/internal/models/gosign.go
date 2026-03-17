@@ -16,6 +16,9 @@ type GoSignTask struct {
 	CreatorName    string         `gorm:"size:255" json:"creator_name"`
 	TargetFolderID string         `gorm:"size:36" json:"target_folder_id"`
 	Section        string         `gorm:"size:100" json:"section"`
+	RejectionReason string        `gorm:"type:text" json:"rejection_reason"`
+	RejectorID      string        `gorm:"size:36" json:"rejector_id"`
+	RejectorName    string        `gorm:"size:255" json:"rejector_name"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
 	Signers        []GoSignSigner `gorm:"foreignKey:TaskID" json:"signers"`
@@ -29,4 +32,6 @@ type GoSignSigner struct {
 	Role      string     `gorm:"size:50" json:"role"` // Pihak Pertama, Pihak Kedua
 	Signed    bool       `gorm:"default:false" json:"signed"`
 	SignedAt  *time.Time `json:"signed_at"`
+	Rejected  bool       `gorm:"default:false" json:"rejected"`
+	RejectedAt *time.Time `json:"rejected_at"`
 }

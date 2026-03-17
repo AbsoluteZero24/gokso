@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import {
     Plus,
@@ -28,8 +29,11 @@ const InventoryBase = ({ title, description, status }) => {
     const [stats, setStats] = useState({ total: 0, laptop: 0, computer: 0, others: 0 });
     const [searchTerm, setSearchTerm] = useState('');
     const [importLoading, setImportLoading] = useState(false);
+    const [searchParams] = useSearchParams();
+    const urlCategory = searchParams.get('category');
+    
     const [filterYear, setFilterYear] = useState('2026');
-    const [filterCategory, setFilterCategory] = useState('Semua Kategori');
+    const [filterCategory, setFilterCategory] = useState(urlCategory || 'Semua Kategori');
     const [showYearDropdown, setShowYearDropdown] = useState(false);
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     
@@ -136,6 +140,12 @@ const InventoryBase = ({ title, description, status }) => {
             console.error('Error fetching specs:', error);
         }
     };
+
+    useEffect(() => {
+        if (urlCategory) {
+            setFilterCategory(urlCategory);
+        }
+    }, [urlCategory]);
 
     useEffect(() => {
         fetchData();

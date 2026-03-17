@@ -61,9 +61,7 @@ const Navbar = ({ onToggleSidebar }) => {
         // Mark as read first
         if (!notif.is_read) {
             try {
-                // We'd need a backend endpoint for marking single notif as read if we want to be precise
-                // For now, let's just update local state or mark all if needed.
-                // Assuming we might have a single read endpoint or just update local
+                await axios.post(`/api/notifications/mark-read/${notif.id}`);
                 setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
             } catch (error) {
                 console.error('Error marking notification as read:', error);

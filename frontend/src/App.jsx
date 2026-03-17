@@ -9,6 +9,8 @@ import Service from './pages/inventory/Service';
 import Gudang from './pages/inventory/Gudang';
 import Inactive from './pages/inventory/Inactive';
 import GoDMS from './pages/dms/GoDMS';
+import GoDID from './pages/dms/GoDID';
+import FMSI0101 from './pages/dms/FMSI0101';
 import User from './pages/admin/User';
 import Roles from './pages/admin/Roles';
 import AssetManagement from './pages/inventory/AssetManagement';
@@ -24,6 +26,7 @@ import Notifications from './pages/admin/Notifications';
 import Login from './pages/auth/Login';
 import Trash from './pages/dms/Trash';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { Toaster } from 'react-hot-toast';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -208,7 +211,19 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/godms" element={<Navigate to="/godms/edoc" replace />} />
+            <Route path="/godms" element={<Navigate to="/godms/edid" replace />} />
+
+            <Route path="/godms/edid" element={
+              <ProtectedRoute>
+                <MainLayout><GoDID /></MainLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/godms/edid/fmsi0101" element={
+              <ProtectedRoute>
+                <MainLayout><FMSI0101 /></MainLayout>
+              </ProtectedRoute>
+            } />
 
             <Route path="/godms/edoc" element={
               <ProtectedRoute>
@@ -257,6 +272,21 @@ function App() {
           </Routes>
         </AuthProvider>
       </ErrorBoundary>
+      <Toaster 
+        position="top-center"
+        reverseOrder={false}
+        gutter={8}
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+            borderRadius: '12px',
+            fontSize: '14px',
+            fontWeight: 500
+          },
+        }}
+      />
     </Router>
   );
 }
