@@ -27,6 +27,7 @@ const MasterAssetCategory = () => {
         isLoading: false
     });
 
+    // Mengambil data kategori aset dari server
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -43,18 +44,21 @@ const MasterAssetCategory = () => {
         fetchData();
     }, []);
 
+    // Menangani penambahan kategori baru (reset form)
     const handleAdd = () => {
         setEditingCategory(null);
         setFormData({ name: '' });
         setIsModalOpen(true);
     };
 
+    // Menangani edit kategori (isi form dengan data lama)
     const handleEdit = (category) => {
         setEditingCategory(category);
-        setFormData({ name: category.Name });
+        setFormData({ name: category.name || category.Name });
         setIsModalOpen(true);
     };
 
+    // Menampilkan modal konfirmasi hapus
     const handleDelete = (id) => {
         setConfirmModal({
             isOpen: true,
@@ -63,6 +67,7 @@ const MasterAssetCategory = () => {
         });
     };
 
+    // Menjalankan proses hapus data
     const handleConfirmDelete = async () => {
         setConfirmModal(prev => ({ ...prev, isLoading: true }));
         try {
@@ -75,6 +80,7 @@ const MasterAssetCategory = () => {
         }
     };
 
+    // Menyimpan data (tambah atau update)
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -83,7 +89,8 @@ const MasterAssetCategory = () => {
             params.append('name', formData.name);
 
             if (editingCategory) {
-                await axios.post(`/api/master-data/asset-category/update/${editingCategory.ID}`, params);
+                const categoryId = editingCategory.id || editingCategory.ID;
+                await axios.post(`/api/master-data/asset-category/update/${categoryId}`, params);
             } else {
                 await axios.post('/api/master-data/asset-category/store', params);
             }
@@ -96,9 +103,11 @@ const MasterAssetCategory = () => {
         }
     };
 
-    const filteredCategories = categories.filter(c =>
-        c.Name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Filter kategori berdasarkan input pencarian
+    const filteredCategories = categories.filter(c => {
+        const catName = c.name || c.Name || '';
+        return catName.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     return (
         <div className="page-content">
@@ -150,37 +159,42 @@ const MasterAssetCategory = () => {
                                     Tidak ada data kategori ditemukan.
                                 </td>
                             </tr>
-                        ) : filteredCategories.map((cat, idx) => (
-                            <tr key={cat.ID} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }} className="table-row-hover">
-                                <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>{String(idx + 1).padStart(2, '0')}</td>
-                                <td style={{ padding: '1.25rem 1.5rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <Archive size={18} />
+                        ) : filteredCategories.map((cat, idx) => {
+                            const catId = cat.id || cat.ID;
+                            const catName = cat.name || cat.Name || '-';
+
+                            return (
+                                <tr key={catId} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }} className="table-row-hover">
+                                    <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>{String(idx + 1).padStart(2, '0')}</td>
+                                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Archive size={18} />
+                                            </div>
+                                            <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.938rem' }}>{catName}</div>
                                         </div>
-                                        <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.938rem' }}>{cat.Name}</div>
-                                    </div>
-                                </td>
-                                <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                                        <button
-                                            onClick={() => handleEdit(cat)}
-                                            style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: 'var(--primary)', cursor: 'pointer', transition: 'all 0.2s' }}
-                                            className="btn-action-hover"
-                                        >
-                                            <Edit size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(cat.ID)}
-                                            style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#ef4444', cursor: 'pointer', transition: 'all 0.2s' }}
-                                            className="btn-action-hover"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                                    </td>
+                                    <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => handleEdit(cat)}
+                                                style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: 'var(--primary)', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                className="btn-action-hover"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(catId)}
+                                                style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#ef4444', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                className="btn-action-hover"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Search, Bell, Maximize, Minimize, User as UserIcon, LogOut, X, Info, ArrowUpRight } from 'lucide-react';
+import { Menu, Search, Bell, Maximize, Minimize, User as UserIcon, LogOut, X, Info, ArrowUpRight, CheckCheck, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import ConfirmModal from '../shared/ConfirmModal';
 
 const Navbar = ({ onToggleSidebar }) => {
     const { user, logout } = useAuth();
@@ -11,6 +12,8 @@ const Navbar = ({ onToggleSidebar }) => {
     const [notifications, setNotifications] = useState([]);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
+    const [showClearConfirm, setShowClearConfirm] = useState(false);
+    const [isClearing, setIsClearing] = useState(false);
     const profileRef = useRef(null);
     const notificationRef = useRef(null);
     const location = useLocation();
@@ -46,14 +49,23 @@ const Navbar = ({ onToggleSidebar }) => {
         }
     };
 
-    const clearNotifications = async (e) => {
-        e.stopPropagation();
-        if (!window.confirm('Hapus semua notifikasi?')) return;
+    // Menghapus semua notifikasi
+    const clearNotifications = (e) => {
+        if (e) e.stopPropagation();
+        if (notifications.length === 0) return;
+        setShowClearConfirm(true);
+    };
+
+    const handleConfirmClear = async () => {
+        setIsClearing(true);
         try {
             await axios.post('/api/notifications/clear');
             setNotifications([]);
+            setShowClearConfirm(false);
         } catch (error) {
             console.error('Error clearing notifications:', error);
+        } finally {
+            setIsClearing(false);
         }
     };
 
@@ -180,17 +192,39 @@ const Navbar = ({ onToggleSidebar }) => {
                                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                                     <span
                                         onClick={markAllRead}
-                                        style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.2s' }}
-                                        className="hover-opacity"
+                                        style={{ 
+                                            fontSize: '0.75rem', 
+                                            color: 'var(--primary)', 
+                                            fontWeight: 700, 
+                                            cursor: 'pointer', 
+                                            transition: 'all 0.2s',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.25rem',
+                                            padding: '0.25rem 0.5rem',
+                                            borderRadius: '6px'
+                                        }}
+                                        className="action-link-hover"
                                     >
-                                        Mark all read
+                                        <CheckCheck size={14} /> Mark read
                                     </span>
                                     <span
                                         onClick={clearNotifications}
-                                        style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 700, cursor: 'pointer', transition: 'opacity 0.2s' }}
-                                        className="hover-opacity"
+                                        style={{ 
+                                            fontSize: '0.75rem', 
+                                            color: '#ef4444', 
+                                            fontWeight: 700, 
+                                            cursor: 'pointer', 
+                                            transition: 'all 0.2s',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.25rem',
+                                            padding: '0.25rem 0.5rem',
+                                            borderRadius: '6px'
+                                        }}
+                                        className="action-link-destructive-hover"
                                     >
-                                        Clear
+                                        <Trash2 size={14} /> Clear
                                     </span>
                                 </div>
                             </div>
@@ -305,6 +339,12 @@ const Navbar = ({ onToggleSidebar }) => {
                                     from { opacity: 0; transform: scale(0.95); }
                                     to { opacity: 1; transform: scale(1); }
                                 }
+                                .action-link-hover:hover {
+                                    background: rgba(30, 89, 197, 0.08);
+                                }
+                                .action-link-destructive-hover:hover {
+                                    background: rgba(239, 68, 68, 0.08);
+                                }
                             `}</style>
                             <Link
                                 to="/profile"
@@ -340,6 +380,18 @@ const Navbar = ({ onToggleSidebar }) => {
                     )}
                 </div>
             </div>
+
+            <ConfirmModal
+                isOpen={showClearConfirm}
+                onClose={() => setShowClearConfirm(false)}
+                onConfirm={handleConfirmClear}
+                title="Hapus Notifikasi"
+                message="Apakah Anda yakin ingin menghapus semua notifikasi? Tindakan ini tidak dapat dibatalkan."
+                confirmText="Ya, Hapus Semua"
+                cancelText="Batal"
+                type="danger"
+                loading={isClearing}
+            />
         </nav>
     );
 };

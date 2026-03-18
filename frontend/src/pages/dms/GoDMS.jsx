@@ -42,23 +42,25 @@ const GoDMS = () => {
     const { folderId } = useParams();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user: currentUser } = useAuth(); // Menggunakan custom hook auth
     
-    // Advanced Role Logic
-    const userDept = user?.department;
-    const dmsScope = user?.dms_filter_scope || 'Department'; // Default to Department for security
-    const allowedSectionsStr = user?.allowed_sections || '';
+    // --- LOGIKA AKSES DAN FILTER ---
+    const userDept = currentUser?.department;
+    const dmsScope = currentUser?.dms_filter_scope || 'Department'; // Lingkup akses DMS
+    const allowedSectionsStr = currentUser?.allowed_sections || '';
     const allowedSections = allowedSectionsStr ? allowedSectionsStr.split(',') : [];
     
-    const isFullAccess = dmsScope === 'All' || user?.role === 'Super Admin';
+    // Cek apakah user memiliki akses penuh
+    const isFullAccess = dmsScope === 'All' || currentUser?.role === 'Super Admin';
     
-    // If not full access, and no section selected, use user's department
+    // Menentukan seksi (departemen) yang sedang aktif dilihat
     const section = searchParams.get('section') || (isFullAccess ? 'Sistem Informasi' : (userDept || 'Sistem Informasi'));
 
-    const [data, setData] = useState({ folders: [], files: [], breadcrumbs: [], totalStorage: '0 KB' });
-    const [loading, setLoading] = useState(true);
-    const [viewMode, setViewMode] = useState('grid');
-    const [searchTerm, setSearchTerm] = useState('');
+    // --- STATE MANAGEMENT ---
+    const [data, setData] = useState({ folders: [], files: [], breadcrumbs: [], totalStorage: '0 KB' }); // Data utama DMS
+    const [loading, setLoading] = useState(true); // Status loading data
+    const [viewMode, setViewMode] = useState('grid'); // Mode tampilan: grid atau list
+    const [searchTerm, setSearchTerm] = useState(''); // Kata kunci pencarian file/folder
 
     const allSections = [
         { label: 'Operasi Luar Negeri', icon: <FileText size={16} /> },
@@ -75,28 +77,28 @@ const GoDMS = () => {
         return allowedSections.includes(s.label);
     });
 
-    const [showSectionDropdown, setShowSectionDropdown] = useState(false);
-    const [showNewMenu, setShowNewMenu] = useState(false);
-    const [showFolderModal, setShowFolderModal] = useState(false);
-    const [previewFile, setPreviewFile] = useState(null);
-    const [spreadsheetData, setSpreadsheetData] = useState(null);
-    const [docxContent, setDocxContent] = useState('');
-    const [previewLoading, setPreviewLoading] = useState(false);
-    const [newFolderName, setNewFolderName] = useState('');
-    const [modalLoading, setModalLoading] = useState(false);
-    const [isDragging, setIsDragging] = useState(false);
-    const [selectedItems, setSelectedItems] = useState({ folderIds: [], fileIds: [] });
-    const [showMoveModal, setShowMoveModal] = useState(false);
-    const [allFolders, setAllFolders] = useState([]);
-    const [selectedTargetFolder, setSelectedTargetFolder] = useState(null);
-    const [moveLoading, setMoveLoading] = useState(false);
+    const [showSectionDropdown, setShowSectionDropdown] = useState(false); // Dropdown pilih departemen/seksi
+    const [showNewMenu, setShowNewMenu] = useState(false); // Menu tambah folder/upload
+    const [showFolderModal, setShowFolderModal] = useState(false); // Modal input folder baru
+    const [previewFile, setPreviewFile] = useState(null); // File yang sedang di-preview
+    const [spreadsheetData, setSpreadsheetData] = useState(null); // Data excel hasil parse
+    const [docxContent, setDocxContent] = useState(''); // Konten word hasil parse
+    const [previewLoading, setPreviewLoading] = useState(false); // Loading saat parse file preview
+    const [newFolderName, setNewFolderName] = useState(''); // Variabel input folder baru
+    const [modalLoading, setModalLoading] = useState(false); // Loading saat simpan data modal
+    const [isDragging, setIsDragging] = useState(false); // Status drag-and-drop file
+    const [selectedItems, setSelectedItems] = useState({ folderIds: [], fileIds: [] }); // Item yang sedang dipilih (checkbox)
+    const [showMoveModal, setShowMoveModal] = useState(false); // Modal pindah folder/file
+    const [allFolders, setAllFolders] = useState([]); // Daftar semua folder untuk target pindah
+    const [selectedTargetFolder, setSelectedTargetFolder] = useState(null); // Folder tujuan pemindahan
+    const [moveLoading, setMoveLoading] = useState(false); // Loading saat memindahkan item
     const [alertConfig, setAlertConfig] = useState({
         isOpen: false,
         title: '',
         message: '',
         type: 'info',
         onConfirm: () => { }
-    });
+    }); // Konfigurasi notifikasi alert
     const [confirmAction, setConfirmAction] = useState({
         isOpen: false,
         title: '',
@@ -104,27 +106,30 @@ const GoDMS = () => {
         onConfirm: () => { },
         isLoading: false,
         type: 'danger'
-    });
+    }); // Konfigurasi modal konfirmasi hapus/pindah
 
     const sectionRef = useRef(null);
     const newMenuRef = useRef(null);
     const fileInputRef = useRef(null);
 
+    /**
+     * Menentukan gaya visual dan icon berdasarkan ekstensi file.
+     */
     const getFileStyle = (extension) => {
-        const ext = extension?.toLowerCase();
+        const ext = (extension || '').toLowerCase();
         switch (ext) {
             case 'pdf':
-                return { color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.1)', icon: <FileText /> }; // Red
+                return { color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.1)', icon: <FileText /> }; // Merah
             case 'xlsx':
             case 'xls':
             case 'csv':
-                return { color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.1)', icon: <FileSpreadsheet /> }; // Green
+                return { color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.1)', icon: <FileSpreadsheet /> }; // Hijau
             case 'docx':
             case 'doc':
-                return { color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.1)', icon: <FileText /> }; // Blue
+                return { color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.1)', icon: <FileText /> }; // Biru
             case 'pptx':
             case 'ppt':
-                return { color: '#f97316', bgColor: 'rgba(249, 115, 22, 0.1)', icon: <FileText /> }; // Orange (can use specialized icon later)
+                return { color: '#f97316', bgColor: 'rgba(249, 115, 22, 0.1)', icon: <FileText /> }; // Oranye
             case 'png':
             case 'jpg':
             case 'jpeg':
@@ -135,11 +140,11 @@ const GoDMS = () => {
             case 'zip':
             case 'rar':
             case '7z':
-                return { color: '#a855f7', bgColor: 'rgba(168, 85, 247, 0.1)', icon: <FileArchive /> }; // Purple
+                return { color: '#a855f7', bgColor: 'rgba(168, 85, 247, 0.1)', icon: <FileArchive /> }; // Ungu
             case 'mp4':
             case 'mov':
             case 'avi':
-                return { color: '#facc15', bgColor: 'rgba(250, 204, 21, 0.1)', icon: <FileVideo /> }; // Yellow
+                return { color: '#facc15', bgColor: 'rgba(250, 204, 21, 0.1)', icon: <FileVideo /> }; // Kuning
             case 'mp3':
             case 'wav':
             case 'ogg':
@@ -151,7 +156,7 @@ const GoDMS = () => {
             case 'py':
                 return { color: '#10b981', bgColor: 'rgba(16, 185, 129, 0.1)', icon: <FileCode /> }; // Emerald
             default:
-                return { color: '#64748b', bgColor: 'rgba(100, 116, 139, 0.1)', icon: <File /> }; // Slate
+                return { color: '#64748b', bgColor: 'rgba(100, 116, 139, 0.1)', icon: <File /> }; // Abu-abu
         }
     };
 
@@ -178,10 +183,14 @@ const GoDMS = () => {
         setSelectedItems({ folderIds: [], fileIds: [] });
     }, [folderId, section]);
 
+    /**
+     * Parsing file Excel ke dalam format JSON untuk ditampilkan di modal preview.
+     */
     const loadSpreadsheet = async (file) => {
         setPreviewLoading(true);
         try {
-            const response = await axios.get(file.FilePath, { responseType: 'arraybuffer' });
+            const filePath = file.file_path || file.FilePath;
+            const response = await axios.get(filePath, { responseType: 'arraybuffer' });
             const data = new Uint8Array(response.data);
             const workbook = XLSX.read(data, { type: 'array' });
             const firstSheetName = workbook.SheetNames[0];
@@ -196,15 +205,19 @@ const GoDMS = () => {
         }
     };
 
+    /**
+     * Parsing file Word (.docx) ke HTML untuk modal preview.
+     */
     const loadDocx = async (file) => {
         setPreviewLoading(true);
         try {
-            const response = await axios.get(file.FilePath, { responseType: 'arraybuffer' });
+            const filePath = file.file_path || file.FilePath;
+            const response = await axios.get(filePath, { responseType: 'arraybuffer' });
             const result = await mammoth.convertToHtml({ arrayBuffer: response.data });
             setDocxContent(result.value);
         } catch (error) {
             console.error('Error loading docx:', error);
-            setDocxContent('<p style="color:red; text-align:center; padding: 2rem;">Error loading document preview. The file might be corrupted or in an unsupported format.</p>');
+            setDocxContent('<p style="color:red; text-align:center; padding: 2rem;">Gagal memuat pratinjau dokumen.</p>');
         } finally {
             setPreviewLoading(false);
         }
@@ -212,7 +225,7 @@ const GoDMS = () => {
 
     useEffect(() => {
         if (previewFile) {
-            const ext = previewFile.Extension?.toLowerCase();
+            const ext = (previewFile.extension || previewFile.Extension || '').toLowerCase();
             if (['xlsx', 'xls', 'csv'].includes(ext)) {
                 loadSpreadsheet(previewFile);
             } else if (['docx', 'doc'].includes(ext)) {
@@ -310,6 +323,7 @@ const GoDMS = () => {
         }
     };
 
+    // Menangani seleksi file/folder secara tunggal
     const toggleSelection = (id, type) => {
         setSelectedItems(prev => {
             const key = type === 'folder' ? 'folderIds' : 'fileIds';
@@ -322,9 +336,10 @@ const GoDMS = () => {
         });
     };
 
+    // Mengatur "Pilih Semua" untuk folder dan file di halaman saat ini
     const selectAll = () => {
-        const folderIds = filteredFolders.map(f => f.ID);
-        const fileIds = filteredFiles.map(f => f.ID);
+        const folderIds = filteredFolders.map(f => f.id || f.ID);
+        const fileIds = filteredFiles.map(f => f.id || f.ID);
         if (selectedItems.folderIds.length === folderIds.length && selectedItems.fileIds.length === fileIds.length) {
             setSelectedItems({ folderIds: [], fileIds: [] });
         } else {
@@ -514,9 +529,13 @@ const GoDMS = () => {
         }
     };
 
-    const filteredFolders = data.folders.filter(f => f.Name.toLowerCase().includes(searchTerm.toLowerCase()));
-    const filteredFiles = data.files.filter(f => f.Name.toLowerCase().includes(searchTerm.toLowerCase()));
+    // Filter tampilan berdasarkan pencarian nama
+    const filteredFolders = data.folders.filter(f => (f.name || f.Name || '').toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredFiles = data.files.filter(f => (f.name || f.Name || '').toLowerCase().includes(searchTerm.toLowerCase()));
 
+    /**
+     * Memformat ukuran file dari bytes ke format yang mudah dibaca (KB, MB, GB).
+     */
     const formatSize = (bytes) => {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -671,24 +690,28 @@ const GoDMS = () => {
                 />
             </div>
 
-            {/* Breadcrumbs */}
+            {/* Navigasi Breadcrumbs */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.75rem 1.25rem', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '1.5rem', overflowX: 'auto' }}>
                 <Link to={`/godms/edoc?section=${section}`} style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}>
                     <Home size={18} />
                 </Link>
                 <ChevronRight size={16} color="var(--border)" />
-                {data.breadcrumbs.map((crumb, idx) => (
-                    <React.Fragment key={crumb.ID}>
-                        <Link to={`/godms/edoc/${crumb.ID}`} style={{
-                            color: idx === data.breadcrumbs.length - 1 ? 'var(--text-main)' : 'var(--primary)',
-                            fontWeight: idx === data.breadcrumbs.length - 1 ? 700 : 500,
-                            whiteSpace: 'nowrap'
-                        }}>
-                            {crumb.Name}
-                        </Link>
-                        {idx < data.breadcrumbs.length - 1 && <ChevronRight size={16} color="var(--border)" />}
-                    </React.Fragment>
-                ))}
+                {data.breadcrumbs.map((crumb, idx) => {
+                    const crumbId = crumb.id || crumb.ID;
+                    const crumbName = crumb.name || crumb.Name;
+                    return (
+                        <React.Fragment key={crumbId}>
+                            <Link to={`/godms/edoc/${crumbId}`} style={{
+                                color: idx === data.breadcrumbs.length - 1 ? 'var(--text-main)' : 'var(--primary)',
+                                fontWeight: idx === data.breadcrumbs.length - 1 ? 700 : 500,
+                                whiteSpace: 'nowrap'
+                            }}>
+                                {crumbName}
+                            </Link>
+                            {idx < data.breadcrumbs.length - 1 && <ChevronRight size={16} color="var(--border)" />}
+                        </React.Fragment>
+                    );
+                })}
             </div>
 
             {/* Search and View Toggle */}
@@ -741,69 +764,72 @@ const GoDMS = () => {
                         <div style={{ marginBottom: '2.5rem' }}>
                             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-light)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Folders</h3>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                                {filteredFolders.map(folder => (
-                                    <div
-                                        key={folder.ID}
-                                        onClick={() => navigate(`/godms/edoc/${folder.ID}?section=${section}`)}
-                                        className={`chart-container ${selectedItems.folderIds.includes(folder.ID) ? 'item-selected' : ''}`}
-                                        style={{
-                                            padding: '1.25rem',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '1rem',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            border: selectedItems.folderIds.includes(folder.ID) ? '2px solid var(--primary)' : '1px solid var(--border)',
-                                            position: 'relative',
-                                            overflow: 'hidden'
-                                        }}
-                                    >
+                                {filteredFolders.map(folder => {
+                                    const folderId = folder.id || folder.ID;
+                                    const folderName = folder.name || folder.Name || 'Unnamed Folder';
+                                    const isSelected = selectedItems.folderIds.includes(folderId);
+
+                                    return (
                                         <div
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleSelection(folder.ID, 'folder');
-                                            }}
+                                            key={folderId}
+                                            onClick={() => navigate(`/godms/edoc/${folderId}?section=${section}`)}
+                                            className={`chart-container ${isSelected ? 'item-selected' : ''}`}
                                             style={{
-                                                position: 'absolute',
-                                                top: '0.75rem',
-                                                right: '0.75rem',
-                                                width: '20px',
-                                                height: '20px',
-                                                borderRadius: '6px',
-                                                border: '2px solid',
-                                                borderColor: selectedItems.folderIds.includes(folder.ID) ? 'var(--primary)' : '#cbd5e1',
-                                                background: selectedItems.folderIds.includes(folder.ID) ? 'var(--primary)' : 'white',
+                                                padding: '1.25rem',
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                justifyContent: 'center',
-                                                zIndex: 10
+                                                gap: '1rem',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border)',
+                                                position: 'relative',
+                                                overflow: 'hidden'
                                             }}
                                         >
-                                            {selectedItems.folderIds.includes(folder.ID) && <Check size={14} color="white" strokeWidth={3} />}
+                                            <div
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleSelection(folderId, 'folder');
+                                                }}
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: '0.75rem',
+                                                    right: '0.75rem',
+                                                    width: '20px',
+                                                    height: '20px',
+                                                    borderRadius: '6px',
+                                                    border: '2px solid',
+                                                    borderColor: isSelected ? 'var(--primary)' : '#cbd5e1',
+                                                    background: isSelected ? 'var(--primary)' : 'white',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    zIndex: 10
+                                                }}
+                                            >
+                                                {isSelected && <Check size={14} color="white" strokeWidth={3} />}
+                                            </div>
+                                            <div style={{ background: '#fef3c7', padding: '0.75rem', borderRadius: '14px', display: 'flex' }}>
+                                                <Folder size={28} color="#f59e0b" fill="#f59e0b" fillOpacity={0.4} />
+                                            </div>
+                                            <div style={{ flexGrow: 1, overflow: 'hidden' }}>
+                                                <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#1e293b' }}>{folderName}</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Folder</div>
+                                            </div>
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteFolder(folderId, folderName);
+                                                }}
+                                                style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: 'none', cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s' }}
+                                                onMouseOver={(e) => e.currentTarget.style.opacity = 1}
+                                                className="folder-delete-btn"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
-                                        <div style={{ background: '#fef3c7', padding: '0.75rem', borderRadius: '14px', display: 'flex' }}>
-                                            <Folder size={28} color="#f59e0b" fill="#f59e0b" fillOpacity={0.4} />
-                                        </div>
-                                        <div style={{ flexGrow: 1, overflow: 'hidden' }}>
-                                            <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#1e293b' }}>{folder.Name}</div>
-                                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Folder</div>
-                                        </div>
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteFolder(folder.ID, folder.Name);
-                                            }}
-                                            style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: 'none', cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s' }}
-                                            onMouseOver={(e) => e.currentTarget.style.opacity = 1}
-                                            className="folder-delete-btn"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                        <style>{`
-                                            .chart-container:hover .folder-delete-btn { opacity: 1 !important; }
-                                        `}</style>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -813,93 +839,103 @@ const GoDMS = () => {
                         <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-light)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Files</h3>
                         {viewMode === 'grid' ? (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-                                {filteredFiles.map(file => (
-                                    <div
-                                        key={file.ID}
-                                        className={`chart-container ${selectedItems.fileIds.includes(file.ID) ? 'item-selected' : ''}`}
-                                        style={{
-                                            padding: '1rem',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '0.75rem',
-                                            position: 'relative',
-                                            border: selectedItems.fileIds.includes(file.ID) ? '2px solid var(--primary)' : '1px solid var(--border)'
-                                        }}
-                                    >
+                                {filteredFiles.map(file => {
+                                    const fileId = file.id || file.ID;
+                                    const fileName = file.name || file.Name || 'Unnamed File';
+                                    const fileExt = file.extension || file.Extension || '';
+                                    const filePath = file.file_path || file.FilePath;
+                                    const fileSize = file.size || file.Size || 0;
+                                    const fileUpdated = file.updated_at || file.UpdatedAt;
+                                    const isSelected = selectedItems.fileIds.includes(fileId);
+                                    
+                                    return (
                                         <div
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleSelection(file.ID, 'file');
-                                            }}
+                                            key={fileId}
+                                            className={`chart-container ${isSelected ? 'item-selected' : ''}`}
                                             style={{
-                                                position: 'absolute',
-                                                top: '0.75rem',
-                                                right: '0.75rem',
-                                                width: '20px',
-                                                height: '20px',
-                                                borderRadius: '6px',
-                                                border: '2px solid',
-                                                borderColor: selectedItems.fileIds.includes(file.ID) ? 'var(--primary)' : '#cbd5e1',
-                                                background: selectedItems.fileIds.includes(file.ID) ? 'var(--primary)' : 'white',
+                                                padding: '1rem',
                                                 display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                zIndex: 10,
-                                                cursor: 'pointer'
+                                                flexDirection: 'column',
+                                                gap: '0.75rem',
+                                                position: 'relative',
+                                                border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border)'
                                             }}
                                         >
-                                            {selectedItems.fileIds.includes(file.ID) && <Check size={14} color="white" strokeWidth={3} />}
-                                        </div>
-                                        <div
-                                            onClick={() => setPreviewFile(file)}
-                                            style={{
-                                                display: 'flex',
-                                                justifyContent: 'center',
-                                                alignItems: 'center',
-                                                height: '140px',
-                                                background: getFileStyle(file.Extension).bgColor,
-                                                borderRadius: '12px',
-                                                cursor: 'pointer',
-                                                overflow: 'hidden',
-                                                position: 'relative'
-                                            }}
-                                        >
-                                            {(() => {
-                                                const fileStyle = getFileStyle(file.Extension);
-                                                const isImage = ['jpg', 'jpeg', 'png', 'svg', 'webp', 'gif'].includes(file.Extension?.toLowerCase());
-                                                if (isImage) {
-                                                    return <img src={file.FilePath} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
-                                                }
-                                                return (
-                                                    <div style={{ textAlign: 'center' }}>
-                                                        {React.cloneElement(fileStyle.icon, { size: 48, color: fileStyle.color })}
-                                                        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 700, color: fileStyle.color, textTransform: 'uppercase' }}>{file.Extension}</div>
-                                                    </div>
-                                                );
-                                            })()}
-                                        </div>
-                                        <div style={{ flexGrow: 1 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                <div style={{ fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0.25rem', flex: 1 }} title={file.Name}>{file.Name}</div>
-                                                <button 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteFile(file.ID, file.Name);
-                                                    }}
-                                                    style={{ padding: '0.25rem', borderRadius: '6px', background: 'transparent', color: '#94a3b8', border: 'none', cursor: 'pointer' }}
-                                                    onMouseOver={(e) => e.currentTarget.style.color = '#ef4444'}
-                                                    onMouseOut={(e) => e.currentTarget.style.color = '#94a3b8'}
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
+                                            <div
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleSelection(fileId, 'file');
+                                                }}
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: '0.75rem',
+                                                    right: '0.75rem',
+                                                    width: '20px',
+                                                    height: '20px',
+                                                    borderRadius: '6px',
+                                                    border: '2px solid',
+                                                    borderColor: isSelected ? 'var(--primary)' : '#cbd5e1',
+                                                    background: isSelected ? 'var(--primary)' : 'white',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    zIndex: 10,
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                {isSelected && <Check size={14} color="white" strokeWidth={3} />}
                                             </div>
-                                            <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
-                                                <span>{formatSize(file.Size)}</span>
-                                                <span>{formatDateWithTime(file.UpdatedAt)}</span>
+                                            <div
+                                                onClick={() => setPreviewFile(file)}
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                    height: '140px',
+                                                    background: getFileStyle(fileExt).bgColor,
+                                                    borderRadius: '12px',
+                                                    cursor: 'pointer',
+                                                    overflow: 'hidden',
+                                                    position: 'relative'
+                                                }}
+                                            >
+                                                {(() => {
+                                                    const fileStyle = getFileStyle(fileExt);
+                                                    const isImage = ['jpg', 'jpeg', 'png', 'svg', 'webp', 'gif'].includes(fileExt.toLowerCase());
+                                                    if (isImage) {
+                                                        return <img src={filePath} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
+                                                    }
+                                                    return (
+                                                        <div style={{ textAlign: 'center' }}>
+                                                            {React.cloneElement(fileStyle.icon, { size: 48, color: fileStyle.color })}
+                                                            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 700, color: fileStyle.color, textTransform: 'uppercase' }}>{fileExt}</div>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                            <div style={{ flexGrow: 1 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                    <div style={{ fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0.25rem', flex: 1 }} title={fileName}>{fileName}</div>
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteFile(fileId, fileName);
+                                                        }}
+                                                        style={{ padding: '0.25rem', borderRadius: '6px', background: 'transparent', color: '#94a3b8', border: 'none', cursor: 'pointer' }}
+                                                        onMouseOver={(e) => e.currentTarget.style.color = '#ef4444'}
+                                                        onMouseOut={(e) => e.currentTarget.style.color = '#94a3b8'}
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                                <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span>{formatSize(fileSize)}</span>
+                                                    <span>{formatDateWithTime(fileUpdated)}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                                 {filteredFiles.length === 0 && filteredFolders.length === 0 && (
                                     <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '5rem', color: 'var(--text-light)' }}>
                                         <File size={64} color="var(--border)" style={{ margin: '0 auto 1.5rem' }} />
@@ -938,91 +974,103 @@ const GoDMS = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {filteredFolders.map(folder => (
-                                            <tr key={folder.ID} style={{ borderBottom: '1px solid var(--border)' }}>
-                                                <td style={{ padding: '1rem 1.5rem' }}>
-                                                    <div
-                                                        onClick={() => toggleSelection(folder.ID, 'folder')}
-                                                        style={{
-                                                            width: '20px',
-                                                            height: '20px',
-                                                            borderRadius: '6px',
-                                                            border: '2px solid',
-                                                            borderColor: selectedItems.folderIds.includes(folder.ID) ? 'var(--primary)' : '#cbd5e1',
-                                                            background: selectedItems.folderIds.includes(folder.ID) ? 'var(--primary)' : 'white',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            cursor: 'pointer'
-                                                        }}
-                                                    >
-                                                        {selectedItems.folderIds.includes(folder.ID) && <Check size={14} color="white" strokeWidth={3} />}
-                                                    </div>
-                                                </td>
-                                                <td style={{ padding: '1rem 1.5rem' }}>
-                                                    <div onClick={() => navigate(`/godms/edoc/${folder.ID}?section=${section}`)} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                                                        <Folder size={20} color="#f59e0b" fill="#f59e0b" fillOpacity={0.2} />
-                                                        <span style={{ fontWeight: 600 }}>{folder.Name}</span>
-                                                    </div>
-                                                </td>
-                                                <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>-</td>
-                                                <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>-</td>
-                                                <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                                                        <button onClick={() => navigate(`/godms/edoc/${folder.ID}?section=${section}`)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', border: 'none', cursor: 'pointer' }}>
-                                                            <ChevronRight size={18} />
-                                                        </button>
-                                                        <button onClick={() => handleDeleteFolder(folder.ID, folder.Name)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: 'none', cursor: 'pointer' }}>
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {filteredFiles.map(file => (
-                                            <tr key={file.ID} style={{ borderBottom: '1px solid var(--border)' }}>
-                                                <td style={{ padding: '1rem 1.5rem' }}>
-                                                    <div
-                                                        onClick={() => toggleSelection(file.ID, 'file')}
-                                                        style={{
-                                                            width: '20px',
-                                                            height: '20px',
-                                                            borderRadius: '6px',
-                                                            border: '2px solid',
-                                                            borderColor: selectedItems.fileIds.includes(file.ID) ? 'var(--primary)' : '#cbd5e1',
-                                                            background: selectedItems.fileIds.includes(file.ID) ? 'var(--primary)' : 'white',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            cursor: 'pointer'
-                                                        }}
-                                                    >
-                                                        {selectedItems.fileIds.includes(file.ID) && <Check size={14} color="white" strokeWidth={3} />}
-                                                    </div>
-                                                </td>
-                                                <td style={{ padding: '1rem 1.5rem' }}>
-                                                    <div onClick={() => setPreviewFile(file)} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                                                        {React.cloneElement(getFileStyle(file.Extension).icon, { size: 20, color: getFileStyle(file.Extension).color })}
-                                                        <span style={{ fontWeight: 500 }}>{file.Name}</span>
-                                                    </div>
-                                                </td>
-                                                <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>{formatSize(file.Size)}</td>
-                                                <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>{formatDateWithTime(file.UpdatedAt)}</td>
-                                                <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                                                        <button onClick={() => setPreviewFile(file)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', border: 'none', cursor: 'pointer' }}>
-                                                            <Eye size={18} />
-                                                        </button>
-                                                        <button onClick={() => handleDownload(file.ID)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', border: 'none', cursor: 'pointer' }}>
-                                                            <Download size={18} />
-                                                        </button>
-                                                        <button onClick={() => handleDeleteFile(file.ID, file.Name)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: 'none', cursor: 'pointer' }}>
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {filteredFolders.map(folder => {
+                                            const folderId = folder.id || folder.ID;
+                                            const folderName = folder.name || folder.Name || 'Unnamed Folder';
+                                            return (
+                                                <tr key={folderId} style={{ borderBottom: '1px solid var(--border)' }}>
+                                                    <td style={{ padding: '1rem 1.5rem' }}>
+                                                        <div
+                                                            onClick={() => toggleSelection(folderId, 'folder')}
+                                                            style={{
+                                                                width: '20px',
+                                                                height: '20px',
+                                                                borderRadius: '6px',
+                                                                border: '2px solid',
+                                                                borderColor: selectedItems.folderIds.includes(folderId) ? 'var(--primary)' : '#cbd5e1',
+                                                                background: selectedItems.folderIds.includes(folderId) ? 'var(--primary)' : 'white',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            {selectedItems.folderIds.includes(folderId) && <Check size={14} color="white" strokeWidth={3} />}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '1rem 1.5rem' }}>
+                                                        <div onClick={() => navigate(`/godms/edoc/${folderId}?section=${section}`)} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                                                            <Folder size={20} color="#f59e0b" fill="#f59e0b" fillOpacity={0.2} />
+                                                            <span style={{ fontWeight: 600 }}>{folderName}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>-</td>
+                                                    <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>-</td>
+                                                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                                            <button onClick={() => navigate(`/godms/edoc/${folderId}?section=${section}`)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', border: 'none', cursor: 'pointer' }}>
+                                                                <ChevronRight size={18} />
+                                                            </button>
+                                                            <button onClick={() => handleDeleteFolder(folderId, folderName)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: 'none', cursor: 'pointer' }}>
+                                                                <Trash2 size={18} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {filteredFiles.map(file => {
+                                            const fileId = file.id || file.ID;
+                                            const fileName = file.name || file.Name || 'Unnamed File';
+                                            const fileExt = file.extension || file.Extension || '';
+                                            const fileSize = file.size || file.Size || 0;
+                                            const fileUpdated = file.updated_at || file.UpdatedAt;
+                                            
+                                            return (
+                                                <tr key={fileId} style={{ borderBottom: '1px solid var(--border)' }}>
+                                                    <td style={{ padding: '1rem 1.5rem' }}>
+                                                        <div
+                                                            onClick={() => toggleSelection(fileId, 'file')}
+                                                            style={{
+                                                                width: '20px',
+                                                                height: '20px',
+                                                                borderRadius: '6px',
+                                                                border: '2px solid',
+                                                                borderColor: selectedItems.fileIds.includes(fileId) ? 'var(--primary)' : '#cbd5e1',
+                                                                background: selectedItems.fileIds.includes(fileId) ? 'var(--primary)' : 'white',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            {selectedItems.fileIds.includes(fileId) && <Check size={14} color="white" strokeWidth={3} />}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '1rem 1.5rem' }}>
+                                                        <div onClick={() => setPreviewFile(file)} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                                                            {React.cloneElement(getFileStyle(fileExt).icon, { size: 20, color: getFileStyle(fileExt).color })}
+                                                            <span style={{ fontWeight: 500 }}>{fileName}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>{formatSize(fileSize)}</td>
+                                                    <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>{formatDateWithTime(fileUpdated)}</td>
+                                                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                                            <button onClick={() => setPreviewFile(file)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', border: 'none', cursor: 'pointer' }}>
+                                                                <Eye size={18} />
+                                                            </button>
+                                                            <button onClick={() => handleDownload(fileId)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', border: 'none', cursor: 'pointer' }}>
+                                                                <Download size={18} />
+                                                            </button>
+                                                            <button onClick={() => handleDeleteFile(fileId, fileName)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: 'none', cursor: 'pointer' }}>
+                                                                <Trash2 size={18} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>

@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/AbsoluteZero24/gokso/internal/config"
 	"github.com/AbsoluteZero24/gokso/internal/models"
@@ -15,9 +16,20 @@ func Initialize(dbConfig config.DBConfig) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable Timezone=Asia/Jakarta",
 		dbConfig.DBHost, dbConfig.DBUser, dbConfig.DBPassword, dbConfig.DBName, dbConfig.DBPort)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		PrepareStmt: true, // Optimasi: Mengaktifkan caching Prepared Statement untuk query berkala
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	// Optimasi Performance: Konfigurasi Connection Pool
+	sqlDB, err := db.DB()
+	if err == nil {
+		sqlDB.SetMaxIdleConns(10)                  // Jumlah koneksi idle maksimum
+		sqlDB.SetMaxOpenConns(100)                 // Jumlah koneksi terbuka maksimum
+		sqlDB.SetConnMaxLifetime(time.Hour)        // Masa hidup koneksi maksimum
+		sqlDB.SetConnMaxIdleTime(10 * time.Minute) // Waktu idle maksimum sebelum koneksi ditutup
 	}
 
 	return db, nil

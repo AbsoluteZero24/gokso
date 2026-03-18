@@ -26,37 +26,36 @@ import ConfirmModal from '../../components/shared/ConfirmModal';
 import SearchableSelect from '../../components/shared/SearchableSelect';
 
 const UserManagement = () => {
+    // --- STATE MANAGEMENT ---
     const { user: currentUser, checkAuth } = useAuth();
-    const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [importLoading, setImportLoading] = useState(false);
-    const [selectedIds, setSelectedIds] = useState([]);
+    const [users, setUsers] = useState([]); // Menyimpan daftar user dari backend
+    const [loading, setLoading] = useState(true); // Status loading saat fetch data
+    const [searchTerm, setSearchTerm] = useState(''); // Kata kunci pencarian
+    const [importLoading, setImportLoading] = useState(false); // Status loading saat import excel
+    const [selectedIds, setSelectedIds] = useState([]); // Daftar ID user yang dipilih (checkbox)
 
     const location = useLocation();
-    const isLocalUserPage = location.pathname === '/administration/local-user';
+    const isLocalUserPage = location.pathname === '/administration/local-user'; // Cek apakah di halaman local-user
 
-    // Modal State
-    const [showModal, setShowModal] = useState(false);
-    const [modalLoading, setModalLoading] = useState(false);
+    // --- MODAL & FORM STATE ---
+    const [showModal, setShowModal] = useState(false); // Menampilkan modal tambah/edit
+    const [modalLoading, setModalLoading] = useState(false); // Status loading dalam modal
     const [masterData, setMasterData] = useState({
         branches: [],
         departments: [],
         sub_departments: [],
         positions: []
-    });
-    const [roles, setRoles] = useState([]);
+    }); // Data referensi untuk dropdown
+    const [roles, setRoles] = useState([]); // Daftar role dari backend
 
-    // Edit State
-    const [isEdit, setIsEdit] = useState(false);
-    const [editId, setEditId] = useState(null);
+    const [isEdit, setIsEdit] = useState(false); // Penanda mode edit atau tambah
+    const [editId, setEditId] = useState(null); // ID user yang sedang diedit
 
-    // Confirm Modal State
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
         id: null,
         isLoading: false
-    });
+    }); // State untuk konfirmasi hapus tunggal
 
     const [formData, setFormData] = useState({
         nik: '',
@@ -70,8 +69,12 @@ const UserManagement = () => {
         phone_number: '',
         role: '',
         password: ''
-    });
+    }); // Data input form user
 
+    /**
+     * Mengambil daftar user dari API.
+     * Menggunakan lowercase keys sesuai standar backend terbaru.
+     */
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -84,6 +87,9 @@ const UserManagement = () => {
         }
     };
 
+    /**
+     * Mengambil data master (cabang, departemen, dsb) untuk dropdown form.
+     */
     const fetchMasterData = async () => {
         try {
             const [b, d, sd, p, r] = await Promise.all([
@@ -115,14 +121,16 @@ const UserManagement = () => {
         setSelectedIds([]);
     }, [searchTerm, users]);
 
+    // Mengatur pemilihan semua user dalam tabel (Bulk Select)
     const handleSelectAll = (e) => {
         if (e.target.checked) {
-            setSelectedIds(filteredUsers.map(u => u.ID));
+            setSelectedIds(filteredUsers.map(u => u.id || u.ID));
         } else {
             setSelectedIds([]);
         }
     };
 
+    // Mengatur pemilihan user individu
     const handleSelectUser = (id) => {
         setSelectedIds(prev =>
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -169,21 +177,22 @@ const UserManagement = () => {
         }
     };
 
+    // Menyiapkan modal untuk mode edit user
     const handleEdit = (user) => {
         setFormData({
-            nik: user.NIK || '',
-            name: user.Name || '',
-            email: user.Email || '',
-            branch: user.Branch || '',
-            department: user.Department || '',
-            sub_department: user.SubDepartment || '',
-            position: user.Position || '',
-            status_karyawan: user.StatusKaryawan || 'Tetap',
-            phone_number: user.PhoneNumber || '',
-            role: user.Role || '',
+            nik: user.nik || user.NIK || '',
+            name: user.name || user.Name || '',
+            email: user.email || user.Email || '',
+            branch: user.branch || user.Branch || '',
+            department: user.department || user.Department || '',
+            sub_department: user.sub_department || user.SubDepartment || '',
+            position: user.position || user.Position || '',
+            status_karyawan: user.status_karyawan || user.StatusKaryawan || 'Tetap',
+            phone_number: user.phone_number || user.PhoneNumber || '',
+            role: user.role || user.Role || '',
             password: ''
         });
-        setEditId(user.ID);
+        setEditId(user.id || user.ID);
         setIsEdit(true);
         setShowModal(true);
     };
@@ -215,6 +224,9 @@ const UserManagement = () => {
         }
     };
 
+    /**
+     * Menyimpan data user (Insert atau Update).
+     */
     const handleStore = async (e) => {
         e.preventDefault();
         setModalLoading(true);
@@ -231,16 +243,13 @@ const UserManagement = () => {
                 await axios.post(`/api/users/update/${editId}`, params);
             } else {
                 const res = await axios.post('/api/users/store', params);
-                // Handle both id and ID casing based on API response
+                // Menangani kemungkinan perbedaan casing ID dari response API
                 savedUserId = res.data.user?.id || res.data.user?.ID;
                 if (!savedUserId) {
                     console.error('Failed to get saved user ID from response:', res.data);
                     throw new Error('Gagal mendapatkan ID user yang baru disimpan.');
                 }
             }
-
-            // No longer creating Admin record by default, as User table now has Role and Password.
-            // auth_handler.go is updated to support login via User table Email/NIK.
             
             setShowModal(false);
             setEditId(null);
@@ -252,7 +261,7 @@ const UserManagement = () => {
             });
             fetchData();
 
-            // If the updated user is the currently logged in user, refresh AuthContext
+            // Jika user yang diedit adalah user yang sedang login, refresh data auth
             if (isEdit && editId === currentUser?.admin_id) {
                 checkAuth();
             }
@@ -264,21 +273,29 @@ const UserManagement = () => {
         }
     };
 
+    // Memfilter user berdasarkan tipe (Local User "admin" atau Employee biasa)
     const displayedUsers = users.filter(u => {
+        const nik = u.nik || u.NIK;
         if (isLocalUserPage) {
-            return u.NIK === 'admin';
+            return nik === 'admin';
         } else {
-            return u.NIK !== 'admin';
+            return nik !== 'admin';
         }
     });
 
+    // Memfilter data berdasarkan input pencarian user
     const filteredUsers = displayedUsers.filter(user => {
         const query = searchTerm.toLowerCase();
+        const name = (user.name || user.Name || '').toLowerCase();
+        const nik = (user.nik || user.NIK || '').toLowerCase();
+        const dept = (user.department || user.Department || '').toLowerCase();
+        const email = (user.email || user.Email || '').toLowerCase();
+        
         return (
-            user.Name?.toLowerCase().includes(query) ||
-            user.NIK?.toLowerCase().includes(query) ||
-            user.Department?.toLowerCase().includes(query) ||
-            user.Email?.toLowerCase().includes(query)
+            name.includes(query) ||
+            nik.includes(query) ||
+            dept.includes(query) ||
+            email.includes(query)
         );
     });
 
@@ -400,42 +417,50 @@ const UserManagement = () => {
                                 </td>
                             </tr>
                         ) : filteredUsers.map((user) => {
-                            const roleName = user.Role;
+                            const roleName = user.role || user.Role;
+                            const userName = user.name || user.Name || 'Unknown';
+                            const userNik = user.nik || user.NIK || '-';
+                            const userBranch = user.branch || user.Branch || '-';
+                            const userDept = user.department || user.Department || '-';
+                            const userEmail = user.email || user.Email || '-';
+                            const userStatus = user.status_karyawan || user.StatusKaryawan || '-';
+                            const userId = user.id || user.ID;
+
                             const badge = roleName ? getRoleBadge(roleName) : null;
                             
                             return (
-                                <tr key={user.ID} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s', background: selectedIds.includes(user.ID) ? 'rgba(30, 89, 197, 0.03)' : 'transparent' }} className="table-row-hover">
+                                <tr key={userId} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s', background: selectedIds.includes(userId) ? 'rgba(30, 89, 197, 0.03)' : 'transparent' }} className="table-row-hover">
                                     <td style={{ padding: '1.25rem 1.5rem' }}>
                                         <input
                                             type="checkbox"
-                                            checked={selectedIds.includes(user.ID)}
-                                            onChange={() => handleSelectUser(user.ID)}
+                                            checked={selectedIds.includes(userId)}
+                                            onChange={() => handleSelectUser(userId)}
                                             style={{ cursor: 'pointer', width: '18px', height: '18px', accentColor: 'var(--primary)' }}
                                         />
                                     </td>
                                     <td style={{ padding: '1.25rem 1.5rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                             <div style={{ width: '42px', height: '42px', background: 'rgba(30, 89, 197, 0.08)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1rem', fontWeight: 700 }}>
-                                                {user.Name.charAt(0)}
+                                                {userName.charAt(0)}
                                             </div>
                                             <div>
-                                                <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.938rem', marginBottom: '0.125rem' }}>{user.Name}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>NIK: {user.NIK}</div>
+                                                <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.938rem', marginBottom: '0.125rem' }}>{userName}</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>NIK: {userNik}</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td style={{ padding: '1.25rem 1.5rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem' }}>
-                                            <Building2 size={12} /> {user.Branch}
+                                            <Building2 size={12} /> {userBranch}
                                         </div>
-                                        <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#334155' }}>{user.Department}</div>
+                                        <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#334155' }}>{userDept}</div>
                                     </td>
                                     <td style={{ padding: '1.25rem 1.5rem' }}>
-                                        {user.Role ? (
+                                        {roleName ? (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700 }}>{user.Email}</div>
-                                                    <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600 }}>NIK: {user.NIK}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700 }}>{userEmail}</div>
+                                                    <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600 }}>NIK: {userNik}</div>
                                                 </div>
                                                 {badge && (
                                                     <span style={{
@@ -464,17 +489,17 @@ const UserManagement = () => {
                                             borderRadius: '6px',
                                             fontSize: '0.75rem',
                                             fontWeight: 600,
-                                            background: user.StatusKaryawan === 'Tetap' ? '#f0fdf4' : '#f8fafc',
-                                            color: user.StatusKaryawan === 'Tetap' ? '#166534' : '#64748b',
-                                            border: user.StatusKaryawan === 'Tetap' ? '1px solid #dcfce7' : '1px solid #e2e8f0'
+                                            background: userStatus === 'Tetap' ? '#f0fdf4' : '#f8fafc',
+                                            color: userStatus === 'Tetap' ? '#166534' : '#64748b',
+                                            border: userStatus === 'Tetap' ? '1px solid #dcfce7' : '1px solid #e2e8f0'
                                         }}>
-                                            {user.StatusKaryawan}
+                                            {userStatus}
                                         </span>
                                     </td>
                                     <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
                                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                                             <button onClick={() => handleEdit(user)} style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'white', color: 'var(--primary)', cursor: 'pointer' }}><Edit size={16} /></button>
-                                            <button onClick={() => handleDelete(user.ID)} style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'white', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={16} /></button>
+                                            <button onClick={() => handleDelete(userId)} style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'white', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={16} /></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -552,13 +577,13 @@ const UserManagement = () => {
                                     <SearchableSelect
                                         label="Cabang" required
                                         value={formData.branch} onChange={(val) => setFormData({ ...formData, branch: val })}
-                                        options={masterData.branches.map(b => ({ value: b.Name, label: b.Name }))}
+                                        options={masterData.branches.map(b => ({ value: b.name || b.Name, label: b.name || b.Name }))}
                                         placeholder="Pilih Cabang"
                                     />
                                     <SearchableSelect
                                         label="Bagian" required
                                         value={formData.department} onChange={(val) => setFormData({ ...formData, department: val, sub_department: '' })}
-                                        options={masterData.departments.map(d => ({ value: d.Name, label: d.Name }))}
+                                        options={masterData.departments.map(d => ({ value: d.name || d.Name, label: d.name || d.Name }))}
                                         placeholder="Pilih Bagian"
                                     />
                                 </div>
@@ -566,7 +591,7 @@ const UserManagement = () => {
                                     <SearchableSelect
                                         label="Jabatan" required
                                         value={formData.position} onChange={(val) => setFormData({ ...formData, position: val })}
-                                        options={masterData.positions.map(p => ({ value: p.Name, label: p.Name }))}
+                                        options={masterData.positions.map(p => ({ value: p.name || p.Name, label: p.name || p.Name }))}
                                         placeholder="Pilih Jabatan"
                                     />
                                     <SearchableSelect
@@ -581,7 +606,7 @@ const UserManagement = () => {
                                 </div>
                             </div>
 
-                            {/* Login Access Section */}
+                            {/* Section Akses Login - Role dan Password */}
                             <div style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid var(--border)', marginBottom: '1rem' }}>
                                 <div style={{ fontWeight: 800, fontSize: '0.813rem', color: '#475569', textTransform: 'uppercase', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                                     <Shield size={18} color="var(--primary)" /> Akses Login Aplikasi (Opsional)
@@ -594,11 +619,11 @@ const UserManagement = () => {
                                             style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', background: 'white', fontSize: '0.875rem' }}
                                         >
                                             <option value="">No Access</option>
-                                            {roles.map(r => <option key={r.ID} value={r.Name}>{r.Name}</option>)}
+                                            {roles.map(r => <option key={r.id || r.ID} value={r.name || r.Name}>{r.name || r.Name}</option>)}
                                         </select>
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: '#64748b', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Password {isEdit && '(Fill to change)'}</label>
+                                        <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: '#64748b', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Password {isEdit && '(Isi untuk ubah)'}</label>
                                         <input
                                             type="password" placeholder="••••••••"
                                             value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })}

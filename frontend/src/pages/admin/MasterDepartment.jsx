@@ -30,6 +30,7 @@ const MasterDepartment = () => {
         isLoading: false
     });
 
+    // Mengambil data bagian dan cabang dari server
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -50,18 +51,25 @@ const MasterDepartment = () => {
         fetchData();
     }, []);
 
+    // Membuka modal tambah bagian baru
     const handleAdd = () => {
         setEditingDepartment(null);
-        setFormData({ name: '', master_branch_id: branches[0]?.ID || '' });
+        const firstBranchId = branches[0]?.id || branches[0]?.ID || '';
+        setFormData({ name: '', master_branch_id: firstBranchId });
         setIsModalOpen(true);
     };
 
+    // Membuka modal edit bagian dengan data yang sudah ada
     const handleEdit = (dept) => {
         setEditingDepartment(dept);
-        setFormData({ name: dept.Name, master_branch_id: dept.MasterBranchID });
+        setFormData({ 
+            name: dept.name || dept.Name, 
+            master_branch_id: dept.master_branch_id || dept.MasterBranchID 
+        });
         setIsModalOpen(true);
     };
 
+    // Menampilkan modal konfirmasi hapus bagian
     const handleDelete = (id) => {
         setConfirmModal({
             isOpen: true,
@@ -70,6 +78,7 @@ const MasterDepartment = () => {
         });
     };
 
+    // Proses hapus bagian setelah konfirmasi
     const handleConfirmDelete = async () => {
         setConfirmModal(prev => ({ ...prev, isLoading: true }));
         try {
@@ -82,6 +91,7 @@ const MasterDepartment = () => {
         }
     };
 
+    // Menyimpan data bagian (tambah atau update)
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -91,7 +101,8 @@ const MasterDepartment = () => {
             params.append('master_branch_id', formData.master_branch_id);
 
             if (editingDepartment) {
-                await axios.post(`/api/master-data/department/update/${editingDepartment.ID}`, params);
+                const deptId = editingDepartment.id || editingDepartment.ID;
+                await axios.post(`/api/master-data/department/update/${deptId}`, params);
             } else {
                 await axios.post('/api/master-data/department/store', params);
             }
@@ -104,10 +115,13 @@ const MasterDepartment = () => {
         }
     };
 
-    const filteredDepartments = departments.filter(d =>
-        d.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        d.MasterBranch?.Name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Filter daftar bagian berdasarkan input pencarian
+    const filteredDepartments = departments.filter(d => {
+        const deptName = d.name || d.Name || '';
+        const branchName = d.master_branch?.name || d.MasterBranch?.Name || '';
+        return deptName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               branchName.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     return (
         <div className="page-content">
@@ -160,42 +174,48 @@ const MasterDepartment = () => {
                                     Tidak ada data bagian ditemukan.
                                 </td>
                             </tr>
-                        ) : filteredDepartments.map((dept, idx) => (
-                            <tr key={dept.ID} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }} className="table-row-hover">
-                                <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>{String(idx + 1).padStart(2, '0')}</td>
-                                <td style={{ padding: '1.25rem 1.5rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.813rem', color: '#64748b', fontWeight: 500 }}>
-                                        <Building2 size={14} color="#94a3b8" /> {dept.MasterBranch?.Name || 'N/A'}
-                                    </div>
-                                </td>
-                                <td style={{ padding: '1.25rem 1.5rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <Database size={18} />
+                        ) : filteredDepartments.map((dept, idx) => {
+                            const deptId = dept.id || dept.ID;
+                            const deptName = dept.name || dept.Name || '-';
+                            const branchName = dept.master_branch?.name || dept.MasterBranch?.Name || 'N/A';
+
+                            return (
+                                <tr key={deptId} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }} className="table-row-hover">
+                                    <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>{String(idx + 1).padStart(2, '0')}</td>
+                                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.813rem', color: '#64748b', fontWeight: 500 }}>
+                                            <Building2 size={14} color="#94a3b8" /> {branchName}
                                         </div>
-                                        <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.938rem' }}>{dept.Name}</div>
-                                    </div>
-                                </td>
-                                <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                                        <button
-                                            onClick={() => handleEdit(dept)}
-                                            style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: 'var(--primary)', cursor: 'pointer', transition: 'all 0.2s' }}
-                                            className="btn-action-hover"
-                                        >
-                                            <Edit size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(dept.ID)}
-                                            style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#ef4444', cursor: 'pointer', transition: 'all 0.2s' }}
-                                            className="btn-action-hover"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                                    </td>
+                                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Database size={18} />
+                                            </div>
+                                            <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.938rem' }}>{deptName}</div>
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => handleEdit(dept)}
+                                                style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: 'var(--primary)', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                className="btn-action-hover"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(deptId)}
+                                                style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#ef4444', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                className="btn-action-hover"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -216,7 +236,10 @@ const MasterDepartment = () => {
                                     required
                                     value={formData.master_branch_id}
                                     onChange={(val) => setFormData({ ...formData, master_branch_id: val })}
-                                    options={branches.map(b => ({ value: b.ID, label: b.Name }))}
+                                    options={branches.map(b => ({ 
+                                        value: b.id || b.ID, 
+                                        label: b.name || b.Name 
+                                    }))}
                                     placeholder="Pilih Cabang"
                                 />
                             </div>

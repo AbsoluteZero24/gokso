@@ -24,17 +24,19 @@ import ConfirmModal from '../../components/shared/ConfirmModal';
 const FormBASTLaptop = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [initData, setInitData] = useState({ employees: [], assets: [] });
-    const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const [category, setCategory] = useState('Pengambilan');
-    const [signMethod, setSignMethod] = useState('direct'); // 'direct' or 'request'
+    
+    // --- STATE MANAGEMENT ---
+    const [initData, setInitData] = useState({ employees: [], assets: [] }); // Menyimpan data user dan aset untuk pilihan
+    const [loading, setLoading] = useState(true); // Status loading saat fetch data awal
+    const [submitting, setSubmitting] = useState(false); // Status loading saat submit form
+    const [category, setCategory] = useState('Pengambilan'); // Kategori BAST: Pengambilan, Pengembalian, atau Tukar
+    const [signMethod, setSignMethod] = useState('direct'); // Metode TTD: 'direct' (langsung) atau 'request' (GoSign)
 
-    // Signature Refs
-    const sigRefP1 = useRef(null);
-    const sigRefP2 = useRef(null);
+    // Signature Pad References
+    const sigRefP1 = useRef(null); // Ref untuk tanda tangan Pihak Pertama
+    const sigRefP2 = useRef(null); // Ref untuk tanda tangan Pihak Kedua
 
-    // Form State
+    // Form Data State
     const [formData, setFormData] = useState({
         handover_date: new Date().toISOString().split('T')[0],
         p1_user_id: '',
@@ -46,8 +48,8 @@ const FormBASTLaptop = () => {
         notes: ''
     });
 
-    const [viewDate, setViewDate] = useState(new Date());
-    const [activeDropdown, setActiveDropdown] = useState(null); // 'date'
+    const [viewDate, setViewDate] = useState(new Date()); // State untuk tampilan bulan di datepicker
+    const [activeDropdown, setActiveDropdown] = useState(null); // Kontrol dropdown datepicker
 
     const [alertConfig, setAlertConfig] = useState({
         isOpen: false,
@@ -85,53 +87,66 @@ const FormBASTLaptop = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [id]);
 
+    // Memformat daftar karyawan untuk SearchableSelect
     const userOptions = initData.employees.map(e => ({
         value: e.id || e.ID,
         label: `${e.name || e.Name || 'Unknown'} - ${e.department || e.Department || 'N/A'}`
     }));
 
+    // Memformat daftar aset standar berdasarkan kategori dokumen
     const standardAssetOptions = initData.assets
         .filter(a => {
-            if (category === 'Pengembalian') return !!a.UserID;
-            if (category === 'Pengambilan') return !a.UserID && a.Status === 'Ready';
+            const hasUser = !!(a.user_id || a.UserID);
+            const isReady = (a.status || a.Status) === 'Ready';
+            if (category === 'Pengembalian') return hasUser;
+            if (category === 'Pengambilan') return !hasUser && isReady;
             return true;
         })
         .map(a => {
-            const userName = a.User?.name || a.User?.Name || '';
+            const userName = a.user?.name || a.User?.Name || '';
+            const invNum = a.inventory_number || a.InventoryNumber;
+            const assetName = a.asset_name || a.AssetName;
+            const deviceName = a.device_name || a.DeviceName;
+            
             return {
-                value: a.ID || a.id,
-                label: `${a.InventoryNumber || a.inventory_number} - ${a.AssetName || a.asset_name} ${a.DeviceName ? `(${a.DeviceName})` : ''} ${userName ? `- Assign: ${userName}` : ''}`,
+                value: a.id || a.ID,
+                label: `${invNum} - ${assetName} ${deviceName ? `(${deviceName})` : ''} ${userName ? `- Assign: ${userName}` : ''}`,
                 data: a
             };
         });
 
+    // Memformat daftar aset lama (untuk kategori Tukar)
     const oldAssetOptions = initData.assets
-        .filter(a => !!a.UserID)
+        .filter(a => !!(a.user_id || a.UserID))
         .map(a => {
-            const userName = a.User?.name || a.User?.Name || '';
+            const userName = a.user?.name || a.User?.Name || '';
+            const invNum = a.inventory_number || a.InventoryNumber;
+            const assetName = a.asset_name || a.AssetName;
             return {
-                value: a.ID || a.id,
-                label: `${a.InventoryNumber || a.inventory_number} - ${a.AssetName || a.asset_name} (User: ${userName})`,
+                value: a.id || a.ID,
+                label: `${invNum} - ${assetName} (User: ${userName})`,
                 data: a
             };
         });
 
+    // Memformat daftar aset baru (untuk kategori Tukar)
     const newAssetOptions = initData.assets
-        .filter(a => !a.UserID && a.Status === 'Ready')
+        .filter(a => !(a.user_id || a.UserID) && (a.status || a.Status) === 'Ready')
         .map(a => ({
-            value: a.ID || a.id,
-            label: `${a.InventoryNumber || a.inventory_number} - ${a.AssetName || a.asset_name}`,
+            value: a.id || a.ID,
+            label: `${a.inventory_number || a.InventoryNumber} - ${a.asset_name || a.AssetName}`,
             data: a
         }));
 
+    // Menangani perubahan pemilihan aset pada tabel
     const handleAssetChange = (index, selectedOption) => {
         const updatedAssets = [...formData.selected_assets];
         if (selectedOption) {
-            const asset = selectedOption.data;
+            const assetData = selectedOption.data;
             updatedAssets[index] = {
-                id: asset.ID,
-                sn: asset.SerialNumber || '-',
-                label: asset.DeviceName || asset.Category || '-'
+                id: assetData.id || assetData.ID,
+                sn: assetData.serial_number || assetData.SerialNumber || '-',
+                label: assetData.device_name || assetData.DeviceName || assetData.category || assetData.Category || '-'
             };
         } else {
             updatedAssets[index] = { id: '', sn: '', label: '' };

@@ -68,7 +68,7 @@ func (server *Server) UpdateSettingRole(w http.ResponseWriter, r *http.Request) 
 func (server *Server) ApiListRoles(w http.ResponseWriter, r *http.Request) {
 	var roles []models.Role
 	// Use a subquery to count users for each role efficiently
-	server.DB.Select("roles.*, (SELECT COUNT(*) FROM users WHERE users.role = roles.name AND users.deleted_at IS NULL) as user_count").Find(&roles)
+	server.DB.Select("roles.*, (SELECT COUNT(*) FROM users WHERE LOWER(users.role) = LOWER(roles.name) AND users.deleted_at IS NULL) as user_count").Find(&roles)
 
 	if roles == nil {
 		roles = []models.Role{}

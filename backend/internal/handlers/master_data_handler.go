@@ -24,7 +24,7 @@ func (server *Server) ListMasterBranch(w http.ResponseWriter, r *http.Request) {
 // ApiListMasterBranch returns JSON list of branches
 func (server *Server) ApiListMasterBranch(w http.ResponseWriter, r *http.Request) {
 	var branches []models.MasterBranch
-	server.DB.Find(&branches)
+	server.DB.Select("id, name").Find(&branches)
 	if branches == nil {
 		branches = []models.MasterBranch{}
 	}
@@ -98,7 +98,13 @@ func (server *Server) ApiDeleteMasterBranch(w http.ResponseWriter, r *http.Reque
 // ApiListMasterDepartment returns JSON list of departments
 func (server *Server) ApiListMasterDepartment(w http.ResponseWriter, r *http.Request) {
 	var departments []models.MasterDepartment
-	server.DB.Preload("MasterBranch").Find(&departments)
+	// Menampilkan hanya kolom yg dibutuhkan untuk performa lebih cepat (id, name, master_branch_id)
+	server.DB.Select("id", "name", "master_branch_id").
+		Preload("MasterBranch", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "name")
+		}).
+		Find(&departments)
+
 	if departments == nil {
 		departments = []models.MasterDepartment{}
 	}
@@ -254,7 +260,8 @@ func (server *Server) ApiDeleteMasterSubDepartment(w http.ResponseWriter, r *htt
 // ApiListMasterPosition returns JSON list of positions
 func (server *Server) ApiListMasterPosition(w http.ResponseWriter, r *http.Request) {
 	var positions []models.MasterPosition
-	server.DB.Find(&positions)
+	// Hanya mengambil kolom id dan name untuk performa listing yang cepat
+	server.DB.Select("id", "name").Find(&positions)
 	if positions == nil {
 		positions = []models.MasterPosition{}
 	}

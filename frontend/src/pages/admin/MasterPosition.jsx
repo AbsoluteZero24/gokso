@@ -27,6 +27,7 @@ const MasterPosition = () => {
         isLoading: false
     });
 
+    // Mengambil data daftar jabatan dari server
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -43,18 +44,21 @@ const MasterPosition = () => {
         fetchData();
     }, []);
 
+    // Reset form untuk menambah jabatan baru
     const handleAdd = () => {
         setEditingPosition(null);
         setFormData({ name: '' });
         setIsModalOpen(true);
     };
 
+    // Mengisi form dengan data jabatan yang akan diedit
     const handleEdit = (position) => {
         setEditingPosition(position);
-        setFormData({ name: position.Name });
+        setFormData({ name: position.name || position.Name });
         setIsModalOpen(true);
     };
 
+    // Menampilkan modal konfirmasi hapus jabatan
     const handleDelete = (id) => {
         setConfirmModal({
             isOpen: true,
@@ -63,6 +67,7 @@ const MasterPosition = () => {
         });
     };
 
+    // Proses penghapusan data jabatan secara permanen
     const handleConfirmDelete = async () => {
         setConfirmModal(prev => ({ ...prev, isLoading: true }));
         try {
@@ -75,6 +80,7 @@ const MasterPosition = () => {
         }
     };
 
+    // Menyimpan perubahan data jabatan (tambah/update)
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -83,7 +89,8 @@ const MasterPosition = () => {
             params.append('name', formData.name);
 
             if (editingPosition) {
-                await axios.post(`/api/master-data/position/update/${editingPosition.ID}`, params);
+                const positionId = editingPosition.id || editingPosition.ID;
+                await axios.post(`/api/master-data/position/update/${positionId}`, params);
             } else {
                 await axios.post('/api/master-data/position/store', params);
             }
@@ -96,9 +103,11 @@ const MasterPosition = () => {
         }
     };
 
-    const filteredPositions = positions.filter(p =>
-        p.Name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Pencarian jabatan berdasarkan nama
+    const filteredPositions = positions.filter(p => {
+        const posName = p.name || p.Name || '';
+        return posName.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     return (
         <div className="page-content">
@@ -150,37 +159,42 @@ const MasterPosition = () => {
                                     Tidak ada data jabatan ditemukan.
                                 </td>
                             </tr>
-                        ) : filteredPositions.map((pos, idx) => (
-                            <tr key={pos.ID} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }} className="table-row-hover">
-                                <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>{String(idx + 1).padStart(2, '0')}</td>
-                                <td style={{ padding: '1.25rem 1.5rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <Briefcase size={18} />
+                        ) : filteredPositions.map((pos, idx) => {
+                            const posId = pos.id || pos.ID;
+                            const posName = pos.name || pos.Name || '-';
+
+                            return (
+                                <tr key={posId} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }} className="table-row-hover">
+                                    <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>{String(idx + 1).padStart(2, '0')}</td>
+                                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Briefcase size={18} />
+                                            </div>
+                                            <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.938rem' }}>{posName}</div>
                                         </div>
-                                        <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.938rem' }}>{pos.Name}</div>
-                                    </div>
-                                </td>
-                                <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                                        <button
-                                            onClick={() => handleEdit(pos)}
-                                            style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: 'var(--primary)', cursor: 'pointer', transition: 'all 0.2s' }}
-                                            className="btn-action-hover"
-                                        >
-                                            <Edit size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(pos.ID)}
-                                            style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#ef4444', cursor: 'pointer', transition: 'all 0.2s' }}
-                                            className="btn-action-hover"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                                    </td>
+                                    <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => handleEdit(pos)}
+                                                style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: 'var(--primary)', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                className="btn-action-hover"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(posId)}
+                                                style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#ef4444', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                className="btn-action-hover"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

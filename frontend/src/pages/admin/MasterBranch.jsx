@@ -27,6 +27,7 @@ const MasterBranch = () => {
         isLoading: false
     });
 
+    // Mengambil data seluruh cabang dari server
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -43,18 +44,21 @@ const MasterBranch = () => {
         fetchData();
     }, []);
 
+    // Membuka modal tambah cabang
     const handleAdd = () => {
         setEditingBranch(null);
         setFormData({ name: '' });
         setIsModalOpen(true);
     };
 
+    // Membuka modal edit cabang dengan data yang ada
     const handleEdit = (branch) => {
         setEditingBranch(branch);
-        setFormData({ name: branch.Name });
+        setFormData({ name: branch.name || branch.Name });
         setIsModalOpen(true);
     };
 
+    // Menampilkan konfirmasi hapus
     const handleDelete = (id) => {
         setConfirmModal({
             isOpen: true,
@@ -63,6 +67,7 @@ const MasterBranch = () => {
         });
     };
 
+    // Proses hapus cabang secara permanen
     const handleConfirmDelete = async () => {
         setConfirmModal(prev => ({ ...prev, isLoading: true }));
         try {
@@ -75,6 +80,7 @@ const MasterBranch = () => {
         }
     };
 
+    // Menyimpan cabang baru atau update yang sudah ada
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -83,7 +89,8 @@ const MasterBranch = () => {
             params.append('name', formData.name);
 
             if (editingBranch) {
-                await axios.post(`/api/master-data/branch/update/${editingBranch.ID}`, params);
+                const branchId = editingBranch.id || editingBranch.ID;
+                await axios.post(`/api/master-data/branch/update/${branchId}`, params);
             } else {
                 await axios.post('/api/master-data/branch/store', params);
             }
@@ -96,9 +103,11 @@ const MasterBranch = () => {
         }
     };
 
-    const filteredBranches = branches.filter(b =>
-        b.Name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Filter cabang berdasarkan input pencarian pengguna
+    const filteredBranches = branches.filter(b => {
+        const branchName = b.name || b.Name || '';
+        return branchName.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     return (
         <div className="page-content">
@@ -150,37 +159,42 @@ const MasterBranch = () => {
                                     Tidak ada data cabang ditemukan.
                                 </td>
                             </tr>
-                        ) : filteredBranches.map((branch, idx) => (
-                            <tr key={branch.ID} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }} className="table-row-hover">
-                                <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>{String(idx + 1).padStart(2, '0')}</td>
-                                <td style={{ padding: '1.25rem 1.5rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <Building2 size={18} />
+                        ) : filteredBranches.map((branch, idx) => {
+                            const branchId = branch.id || branch.ID;
+                            const branchName = branch.name || branch.Name || '-';
+
+                            return (
+                                <tr key={branchId} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }} className="table-row-hover">
+                                    <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>{String(idx + 1).padStart(2, '0')}</td>
+                                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Building2 size={18} />
+                                            </div>
+                                            <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.938rem' }}>{branchName}</div>
                                         </div>
-                                        <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.938rem' }}>{branch.Name}</div>
-                                    </div>
-                                </td>
-                                <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                                        <button
-                                            onClick={() => handleEdit(branch)}
-                                            style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: 'var(--primary)', cursor: 'pointer', transition: 'all 0.2s' }}
-                                            className="btn-action-hover"
-                                        >
-                                            <Edit size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(branch.ID)}
-                                            style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#ef4444', cursor: 'pointer', transition: 'all 0.2s' }}
-                                            className="btn-action-hover"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                                    </td>
+                                    <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => handleEdit(branch)}
+                                                style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: 'var(--primary)', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                className="btn-action-hover"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(branchId)}
+                                                style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#ef4444', cursor: 'pointer', transition: 'all 0.2s' }}
+                                                className="btn-action-hover"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

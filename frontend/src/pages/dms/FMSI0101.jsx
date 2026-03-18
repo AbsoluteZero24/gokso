@@ -69,6 +69,7 @@ const FMSI0101 = () => {
 
     const periods = ['2026', '2025', '2024', '2023'];
 
+    // Mengambil data inventory server berdasarkan periode (tahun)
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -87,14 +88,17 @@ const FMSI0101 = () => {
         s.function.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Mengambil daftar user untuk keperluan tanda tangan (GoSign)
     const fetchUsers = async () => {
         try {
             const response = await axios.get('/api/users');
-            // Backend returns { users: [] }
-            // Filter out administrator and ensure it's an array
-            const filteredUsers = (response.data.users || []).filter(
-                u => u.name.toLowerCase() !== 'administrator'
-            );
+            // Backend mengembalikan { users: [] }
+            // Filter user 'administrator' dan pastikan data dalam bentuk array
+            const allUsers = response.data.users || [];
+            const filteredUsers = allUsers.filter(u => {
+                const name = u.name || u.Name || '';
+                return name.toLowerCase() !== 'administrator';
+            });
             setUsers(filteredUsers);
         } catch (error) {
             console.error('Error fetching users:', error);
@@ -185,8 +189,9 @@ const FMSI0101 = () => {
         window.open(`/api/godms/server-inventory/preview?period=${selectedPeriod}`, '_blank');
     };
 
+    // Menyiapkan modal edit dengan data server yang dipilih
     const handleEdit = (server) => {
-        // Parse values: match number first, then optional letters as unit
+        // Memisahkan nilai numerik dan unit (misal: "16 Core" -> "16", "Core")
         const cpuMatch = server.cpu ? server.cpu.match(/^([\d.]+)\s*([a-zA-Z]*)/) : null;
         const ramMatch = server.ram ? server.ram.match(/^([\d.]+)\s*([a-zA-Z]*)/) : null;
         const storageMatch = server.storage ? server.storage.match(/^([\d.]+)\s*([a-zA-Z]*)/) : null;
@@ -1096,7 +1101,10 @@ const FMSI0101 = () => {
                                     <SearchableSelect
                                         label="Disusun oleh"
                                         placeholder="Pilih Penyusun..."
-                                        options={users.map(u => ({ value: u.id, label: `${u.name} - ${u.position}` }))}
+                                        options={users.map(u => ({ 
+                                            value: u.id || u.ID, 
+                                            label: `${u.name || u.Name || 'Tanpa Nama'} - ${u.position || u.Position || 'Tanpa Jabatan'}` 
+                                        }))}
                                         value={signForm.prepared_by_id}
                                         onChange={(val) => setSignForm({ ...signForm, prepared_by_id: val })}
                                         required
@@ -1107,7 +1115,10 @@ const FMSI0101 = () => {
                                     <SearchableSelect
                                         label="Disetujui oleh"
                                         placeholder="Pilih Penyetuju..."
-                                        options={users.map(u => ({ value: u.id, label: `${u.name} - ${u.position}` }))}
+                                        options={users.map(u => ({ 
+                                            value: u.id || u.ID, 
+                                            label: `${u.name || u.Name || 'Tanpa Nama'} - ${u.position || u.Position || 'Tanpa Jabatan'}` 
+                                        }))}
                                         value={signForm.approved_by_id}
                                         onChange={(val) => setSignForm({ ...signForm, approved_by_id: val })}
                                         required

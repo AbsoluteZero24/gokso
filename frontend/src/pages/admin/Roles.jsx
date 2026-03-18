@@ -17,16 +17,27 @@ import {
 } from 'lucide-react';
 import ConfirmModal from '../../components/shared/ConfirmModal';
 
+/**
+ * Komponen Roles: Mengelola hak akses (permission) dan tingkatan pengguna (role)
+ * Halaman ini memungkinkan Super Admin untuk menambah, mengedit, dan menghapus role sistem.
+ */
 const Roles = () => {
+    // State untuk menyimpan daftar role dari database
     const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    
+    // State untuk kontrol Modal
     const [showModal, setShowModal] = useState(false);
     const [modalLoading, setModalLoading] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
     const [editId, setEditId] = useState(null);
     const [successMessage, setSuccessMessage] = useState('');
+    
+    // State untuk menyimpan ID modul mana saja yang sedang dibuka (expanded) di daftar checkbox
+    const [expandedGroups, setExpandedGroups] = useState([]);
 
+    // State data role baru/yang sedang diedit
     const [newRole, setNewRole] = useState({
         name: '',
         description: '',
@@ -35,13 +46,17 @@ const Roles = () => {
         allowed_sections: ''
     });
 
+    // State untuk modal konfirmasi penghapusan
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
         id: null,
         isLoading: false
     });
 
-    // Hierarchical permissions structure
+    /**
+     * Struktur hierarki perizinan modul.
+     * Digunakan untuk merender daftar switch/checkbox di dalam modal.
+     */
     const permissionGroups = [
         { id: 'view_dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
         {
@@ -67,6 +82,7 @@ const Roles = () => {
             label: 'GoDMS (Main Menu)',
             children: [
                 { id: 'view_edoc', label: 'eDoc' },
+                { id: 'view_edid', label: 'eDID' },
                 { id: 'view_trash', label: 'Trash' }
             ]
         },
@@ -96,6 +112,10 @@ const Roles = () => {
         }
     ];
 
+    /**
+     * Fungsi rekursif untuk mendapatkan semua ID anak dari suatu modul.
+     * Digunakan saat mematikan modul utama, sehingga anak-anaknya juga ikut mati.
+     */
     const getAllChildIds = (item) => {
         let ids = [];
         if (item.children) {
@@ -107,19 +127,23 @@ const Roles = () => {
         return ids;
     };
 
+    /**
+     * Mengambil data roles dari API backend.
+     */
+    // Mengambil daftar tingkatan hak akses (role) dari server
     const fetchData = async () => {
         setLoading(true);
         try {
             const response = await axios.get('/api/roles');
+            // Menstandarisasi format data dari backend (menggunakan kunci huruf kecil sesuai model Go)
             const formattedRoles = (response.data.roles || []).map(r => ({
-                ...r,
-                id: r.ID,
-                name: r.Name,
-                description: r.Description,
-                permissions: r.Permissions ? r.Permissions.split(',') : [],
-                dms_filter_scope: r.DMSFilterScope || 'All',
-                allowed_sections: r.AllowedSections || '',
-                userCount: r.user_count || 0
+                id: r.id || r.ID,
+                name: r.name || r.Name,
+                description: r.description || r.Description,
+                permissions: (r.permissions || r.Permissions) ? (r.permissions || r.Permissions).split(',') : [],
+                dms_filter_scope: r.dms_filter_scope || r.DMSFilterScope || 'All',
+                allowed_sections: r.allowed_sections || r.AllowedSections || '',
+                userCount: r.user_count || r.UserCount || 0
             }));
             setRoles(formattedRoles);
             setLoading(false);
@@ -133,6 +157,9 @@ const Roles = () => {
         fetchData();
     }, []);
 
+    /**
+     * Menyimpan data role (Tambah atau Update).
+     */
     const handleStore = async (e) => {
         e.preventDefault();
         setModalLoading(true);
@@ -151,8 +178,8 @@ const Roles = () => {
             }
 
             setShowModal(false);
-            setNewRole({ name: '', description: '', permissions: [] });
-            setSuccessMessage(isEdit ? 'Role updated successfully!' : 'Role created successfully!');
+            setNewRole({ name: '', description: '', permissions: [], dms_filter_scope: 'All', allowed_sections: '' });
+            setSuccessMessage(isEdit ? 'Role berhasil diperbarui!' : 'Role berhasil dibuat!');
             fetchData();
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
@@ -163,6 +190,9 @@ const Roles = () => {
         }
     };
 
+    /**
+     * Menyiapkan modal untuk proses edit role.
+     */
     const handleEdit = (role) => {
         setNewRole({
             name: role.name,
@@ -176,6 +206,9 @@ const Roles = () => {
         setShowModal(true);
     };
 
+    /**
+     * Membuka modal konfirmasi hapus.
+     */
     const handleDelete = (id) => {
         setConfirmModal({
             isOpen: true,
@@ -184,6 +217,9 @@ const Roles = () => {
         });
     };
 
+    /**
+     * Mengeksekusi penghapusan role melalui API.
+     */
     const handleConfirmDelete = async () => {
         setConfirmModal(prev => ({ ...prev, isLoading: true }));
         try {
@@ -197,6 +233,21 @@ const Roles = () => {
         }
     };
 
+    /**
+     * Membuka atau menutup grup perizinan (collapse/expand).
+     */
+    const toggleExpansion = (id, e) => {
+        e.stopPropagation();
+        setExpandedGroups(prev => 
+            prev.includes(id) 
+                ? prev.filter(g => g !== id) 
+                : [...prev, id]
+        );
+    };
+
+    /**
+     * Mengaktifkan atau menonaktifkan izin untuk suatu modul.
+     */
     const togglePermission = (item) => {
         const isCurrentlyActive = newRole.permissions.includes(item.id);
         const childIds = getAllChildIds(item);
@@ -205,17 +256,23 @@ const Roles = () => {
             let nextPermissions = [...prev.permissions];
             
             if (isCurrentlyActive) {
-                // Remove self and all children
+                // Matikan modul ini dan semua modul di bawahnya (anak)
                 nextPermissions = nextPermissions.filter(p => p !== item.id && !childIds.includes(p));
             } else {
-                // Add self
+                // Aktifkan modul ini
                 nextPermissions.push(item.id);
             }
             
             return { ...prev, permissions: nextPermissions };
         });
+
+        // Otomatis buka daftar anak saat modul utama diaktifkan
+        if (!isCurrentlyActive && item.children) {
+            setExpandedGroups(prev => prev.includes(item.id) ? prev : [...prev, item.id]);
+        }
     };
 
+    // Filter role berdasarkan pencarian di UI
     const filteredRoles = roles.filter(role =>
         role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         role.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -223,6 +280,7 @@ const Roles = () => {
 
     return (
         <div className="page-content">
+            {/* Header Halaman */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <div>
                     <h1 style={{ fontSize: '1.875rem', fontWeight: 800 }}>Role Management</h1>
@@ -258,6 +316,7 @@ const Roles = () => {
                 </div>
             </div>
 
+            {/* Tabel Daftar Role */}
             <div className="chart-container" style={{ padding: '0', overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
@@ -281,46 +340,62 @@ const Roles = () => {
                                     Tidak ada role ditemukan.
                                 </td>
                             </tr>
-                        ) : filteredRoles.map((role) => (
-                            <tr key={role.id} style={{ borderBottom: '1px solid #f1f5f9' }} className="table-row-hover">
-                                <td style={{ padding: '1.25rem 1.5rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                        <div style={{ width: '40px', height: '40px', background: 'rgba(30, 89, 197, 0.08)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
-                                            <ShieldCheck size={20} />
+                        ) : filteredRoles.map((role, idx) => {
+                            const roleId = role.id || role.ID;
+                            const roleName = role.name || role.Name || '-';
+                            const roleDesc = role.description || role.Description || '-';
+                            const roleUserCount = role.userCount || 0;
+
+                            return (
+                                <tr key={roleId} style={{ borderBottom: '1px solid #f1f5f9' }} className="table-row-hover">
+                                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            <div style={{ width: '40px', height: '40px', background: 'rgba(30, 89, 197, 0.08)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+                                                <ShieldCheck size={20} />
+                                            </div>
+                                            <div style={{ fontWeight: 700, color: '#1e293b' }}>{roleName}</div>
                                         </div>
-                                        <div style={{ fontWeight: 700, color: '#1e293b' }}>{role.name}</div>
-                                    </div>
-                                </td>
-                                <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.875rem' }}>
-                                    {role.description}
-                                </td>
-                                <td style={{ padding: '1.25rem 1.5rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#475569' }}>
-                                        <Users size={16} color="#94a3b8" /> {role.userCount} Users
-                                    </div>
-                                </td>
-                                <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                                        <button onClick={() => handleEdit(role)} style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'white', color: 'var(--primary)', cursor: 'pointer' }}><Edit size={16} /></button>
-                                        <button onClick={() => handleDelete(role.id)} disabled={role.name === 'Super Admin'} style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'white', color: '#ef4444', cursor: role.name === 'Super Admin' ? 'not-allowed' : 'pointer', opacity: role.name === 'Super Admin' ? 0.5 : 1 }}><Trash2 size={16} /></button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                                    </td>
+                                    <td style={{ padding: '1.25rem 1.5rem', color: '#64748b', fontSize: '0.875rem' }}>
+                                        {roleDesc}
+                                    </td>
+                                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#475569' }}>
+                                            <Users size={16} color="#94a3b8" /> {roleUserCount} Users
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                            <button onClick={() => handleEdit(role)} style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'white', color: 'var(--primary)', cursor: 'pointer' }} title="Edit Hak Akses"><Edit size={16} /></button>
+                                            <button 
+                                                onClick={() => handleDelete(roleId)} 
+                                                disabled={roleName === 'Super Admin'} 
+                                                style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'white', color: '#ef4444', cursor: roleName === 'Super Admin' ? 'not-allowed' : 'pointer', opacity: roleName === 'Super Admin' ? 0.5 : 1 }}
+                                                title="Hapus Role"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
 
-            {/* Modal */}
+            {/* Modal Tambah/Edit Role */}
             {showModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)', padding: '2rem' }}>
                     <div style={{ background: 'white', borderRadius: '20px', width: '100%', maxWidth: '800px', maxHeight: '95vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+                        {/* Judul Modal */}
                         <div style={{ padding: '1.5rem 2.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
                             <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1.25rem' }}>{isEdit ? 'Edit Hak Akses Role' : 'Tambah Role Baru'}</h3>
                             <button onClick={() => setShowModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
                         </div>
 
                         <form onSubmit={handleStore} style={{ padding: '2.5rem', overflowY: 'auto' }}>
+                            {/* Input Nama & Deskripsi */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '1.5rem' }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-light)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Role Name</label>
@@ -346,6 +421,7 @@ const Roles = () => {
                                 </div>
                             </div>
 
+                            {/* Daftar Perizinan Modul */}
                             <div style={{ marginBottom: '2.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-light)', marginBottom: '1.25rem', textTransform: 'uppercase' }}>Module Permissions</label>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -370,10 +446,10 @@ const Roles = () => {
                                                             gap: '1rem',
                                                             marginLeft: `${depth * 2.5}rem`,
                                                             transition: 'all 0.2s',
-                                                            boxShadow: isActive ? '0 4px 6px -1px rgba(30, 89, 197, 0.1)' : 'none',
-                                                            opacity: depth > 0 && !newRole.permissions.includes(item.parentId) && false ? 0.5 : 1 // Logic handled by visibility
+                                                            boxShadow: isActive ? '0 4px 6px -1px rgba(30, 89, 197, 0.1)' : 'none'
                                                         }}
                                                     >
+                                                        {/* Switch Toggle */}
                                                         <div 
                                                             style={{ 
                                                                 width: '40px', 
@@ -401,11 +477,34 @@ const Roles = () => {
                                                             <div style={{ fontSize: '0.938rem', fontWeight: 700, color: isActive ? 'var(--primary)' : '#1e293b' }}>{item.label}</div>
                                                             {depth === 0 && <div style={{ fontSize: '0.625rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.025em' }}>MAIN MODULE</div>}
                                                         </div>
-                                                        {hasChildren && <ChevronRight size={16} style={{ transform: isActive ? 'rotate(90deg)' : 'none', transition: 'transform 0.3s', color: '#94a3b8' }} />}
+                                                        {/* Tombol Expand/Collapse untuk modul yang punya sub-menu */}
+                                                        {hasChildren && (
+                                                            <button 
+                                                                type="button"
+                                                                onClick={(e) => toggleExpansion(item.id, e)}
+                                                                style={{ 
+                                                                    border: 'none', 
+                                                                    background: 'none', 
+                                                                    padding: '0.5rem', 
+                                                                    cursor: 'pointer',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    borderRadius: '8px',
+                                                                    transition: 'all 0.2s'
+                                                                }}
+                                                            >
+                                                                <ChevronRight size={18} style={{ 
+                                                                    transform: expandedGroups.includes(item.id) ? 'rotate(90deg)' : 'none', 
+                                                                    transition: 'transform 0.3s', 
+                                                                    color: '#94a3b8' 
+                                                                }} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                     
-                                                    {/* Render children only if parent is active */}
-                                                    {isActive && hasChildren && (
+                                                    {/* Merender anak (sub-menu) jika statusnya terbuka (expanded) */}
+                                                    {hasChildren && expandedGroups.includes(item.id) && (
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.25rem' }}>
                                                             {item.children.map(child => renderPermissionItem(child, depth + 1))}
                                                         </div>
@@ -419,6 +518,7 @@ const Roles = () => {
                                 </div>
                             </div>
 
+                            {/* Konfigurasi Tingkat Lanjut (DMS Scope & Section) */}
                             <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
                                     <div style={{ width: '32px', height: '32px', background: 'var(--primary)', color: 'white', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -428,6 +528,7 @@ const Roles = () => {
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                                    {/* Cakupan Visibilitas Dokumen (GoDMS) */}
                                     <div>
                                         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-light)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>DMS Visibility Scope</label>
                                         <div style={{ display: 'flex', gap: '1rem' }}>
@@ -461,6 +562,7 @@ const Roles = () => {
                                         </p>
                                     </div>
 
+                                    {/* Pembatasan Bagian Tertentu (Opsional) */}
                                     <div>
                                         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-light)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>Specific Allowed Sections (Optional)</label>
                                         <input
@@ -471,12 +573,13 @@ const Roles = () => {
                                             style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', outline: 'none', fontSize: '0.875rem' }}
                                         />
                                         <p style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.5rem', fontWeight: 500 }}>
-                                            Separated by comma. Leave empty to use primary department.
+                                            Pisahkan dengan koma. Kosongkan jika ingin menggunakan departemen utama user.
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
+                            {/* Tombol Aksi Modal */}
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem' }}>
                                 <button type="button" onClick={() => setShowModal(false)} style={{ padding: '0.75rem 1.75rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'white', fontWeight: 700, cursor: 'pointer', color: '#64748b' }}>Batal</button>
                                 <button
@@ -493,6 +596,7 @@ const Roles = () => {
                 </div>
             )}
 
+            {/* Modal Konfirmasi Hapus */}
             <ConfirmModal
                 isOpen={confirmModal.isOpen}
                 onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}

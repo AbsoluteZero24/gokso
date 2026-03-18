@@ -23,17 +23,18 @@ import AssetModal from './AssetModal';
 import BulkAssetModal from './BulkAssetModal';
 
 const InventoryBase = ({ title, description, status }) => {
-    // --- STATE ---
-    const [loading, setLoading] = useState(true);
-    const [assets, setAssets] = useState([]);
-    const [stats, setStats] = useState({ total: 0, laptop: 0, computer: 0, others: 0 });
-    const [searchTerm, setSearchTerm] = useState('');
-    const [importLoading, setImportLoading] = useState(false);
+    // --- STATE MANAGEMENT ---
+    const [loading, setLoading] = useState(true); // Status loading saat fetch data
+    const [assets, setAssets] = useState([]); // Daftar aset dari backend
+    const [stats, setStats] = useState({ total: 0, laptop: 0, computer: 0, others: 0 }); // Statistik ringkasan aset
+    const [searchTerm, setSearchTerm] = useState(''); // Kata kunci pencarian cepat
+    const [importLoading, setImportLoading] = useState(false); // Status loading saat import excel
     const [searchParams] = useSearchParams();
-    const urlCategory = searchParams.get('category');
+    const urlCategory = searchParams.get('category'); // Kategori dari URL jika ada
     
-    const [filterYear, setFilterYear] = useState('2026');
-    const [filterCategory, setFilterCategory] = useState(urlCategory || 'Semua Kategori');
+    // Filter State
+    const [filterYear, setFilterYear] = useState('2026'); // Tahun filter data
+    const [filterCategory, setFilterCategory] = useState(urlCategory || 'Semua Kategori'); // Kategori filter data
     const [showYearDropdown, setShowYearDropdown] = useState(false);
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     
@@ -101,7 +102,10 @@ const InventoryBase = ({ title, description, status }) => {
         storageType: ''
     });
 
-    // --- DATA FETCHING ---
+    /**
+     * Mengambil daftar aset dari backend dengan filter tahun, kategori, dan status.
+     * Menggunakan lowercase keys sesuai standar data terbaru.
+     */
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -111,9 +115,10 @@ const InventoryBase = ({ title, description, status }) => {
             const fetchedAssets = response.data.assets || [];
             setAssets(fetchedAssets);
 
+            // Menghitung statistik berdasarkan kategori
             const total = fetchedAssets.length;
-            const laptop = fetchedAssets.filter(a => a.Category?.toLowerCase() === 'laptop').length;
-            const computer = fetchedAssets.filter(a => a.Category?.toLowerCase() === 'komputer').length;
+            const laptop = fetchedAssets.filter(a => (a.category || a.Category || '').toLowerCase() === 'laptop').length;
+            const computer = fetchedAssets.filter(a => (a.category || a.Category || '').toLowerCase() === 'komputer').length;
             setStats({ total, laptop, computer, others: total - laptop - computer });
         } catch (error) {
             console.error('Error fetching assets:', error);
@@ -122,6 +127,9 @@ const InventoryBase = ({ title, description, status }) => {
         }
     };
 
+    /**
+     * Mengambil data master kategori aset untuk dropdown filter.
+     */
     const fetchCategories = async () => {
         try {
             const response = await axios.get('/api/master-data/asset-category');
@@ -131,6 +139,9 @@ const InventoryBase = ({ title, description, status }) => {
         }
     };
 
+    /**
+     * Mengambil data master spesifikasi RAM dan Storage.
+     */
     const fetchSpecs = async () => {
         try {
             const response = await axios.get('/api/master-data/asset-specs');
@@ -177,27 +188,29 @@ const InventoryBase = ({ title, description, status }) => {
         }
     };
 
+    // Mempersiapkan data untuk mode EDIT aset
     const handleEdit = (asset) => {
         setIsEdit(true);
-        setEditId(asset.ID);
+        setEditId(asset.id || asset.ID);
         setNewAsset({
-            inventory_number: asset.InventoryNumber || '',
-            asset_name: asset.AssetName || '',
-            category: asset.Category || '',
-            brand: asset.Brand || '',
-            type_model: asset.TypeModel || '',
-            serial_number: asset.SerialNumber || '',
-            device_name: asset.DeviceName || '',
-            specification: asset.Specification || '',
-            color: asset.Color || '',
-            location: asset.Location || '',
-            purchase_date: asset.PurchaseDate ? asset.PurchaseDate.split('T')[0] : '',
-            status: asset.Status || 'Ready'
+            inventory_number: asset.inventory_number || asset.InventoryNumber || '',
+            asset_name: asset.asset_name || asset.AssetName || '',
+            category: asset.category || asset.Category || '',
+            brand: asset.brand || asset.Brand || '',
+            type_model: asset.type_model || asset.TypeModel || '',
+            serial_number: asset.serial_number || asset.SerialNumber || '',
+            device_name: asset.device_name || asset.DeviceName || '',
+            specification: asset.specification || asset.Specification || '',
+            color: asset.color || asset.Color || '',
+            location: asset.location || asset.Location || '',
+            purchase_date: (asset.purchase_date || asset.PurchaseDate || '').split('T')[0],
+            status: asset.status || asset.Status || 'Ready'
         });
 
-        // Parse Specs if Laptop/Computer
-        if (asset.Category === 'Laptop' || asset.Category === 'Komputer') {
-            const spec = asset.Specification || '';
+        // Melakukan parsing string spesifikasi jika kategori Laptop atau Komputer
+        const cat = (asset.category || asset.Category || '');
+        if (cat === 'Laptop' || cat === 'Komputer') {
+            const spec = asset.specification || asset.Specification || '';
             const parts = spec.split(',').map(s => s.trim());
             const newCompSpecs = { os: '', processor: '', ramSize: '', ramUnit: 'GB', ramType: '', storageSize: '', storageUnit: 'GB', storageType: '' };
 
@@ -344,16 +357,23 @@ const InventoryBase = ({ title, description, status }) => {
         }
     };
 
-    // Filter Logic
+    // Logika pencarian aset di sisi client (berdasarkan tampilan saat ini)
     const filteredAssets = assets.filter(asset => {
         const query = searchTerm.toLowerCase();
+        const assetName = (asset.asset_name || asset.AssetName || '').toLowerCase();
+        const invNum = (asset.inventory_number || asset.InventoryNumber || '').toLowerCase();
+        const brand = (asset.brand || asset.Brand || '').toLowerCase();
+        const model = (asset.type_model || asset.TypeModel || '').toLowerCase();
+        const loc = (asset.location || asset.Location || '').toLowerCase();
+        const sn = (asset.serial_number || asset.SerialNumber || '').toLowerCase();
+
         return (
-            (asset.AssetName?.toLowerCase().includes(query)) ||
-            (asset.InventoryNumber?.toLowerCase().includes(query)) ||
-            (asset.Brand?.toLowerCase().includes(query)) ||
-            (asset.TypeModel?.toLowerCase().includes(query)) ||
-            (asset.Location?.toLowerCase().includes(query)) ||
-            (asset.SerialNumber?.toLowerCase().includes(query))
+            assetName.includes(query) ||
+            invNum.includes(query) ||
+            brand.includes(query) ||
+            model.includes(query) ||
+            loc.includes(query) ||
+            sn.includes(query)
         );
     });
 
@@ -404,9 +424,13 @@ const InventoryBase = ({ title, description, status }) => {
                         {showCategoryDropdown && (
                             <div className="custom-select-dropdown">
                                 <button onClick={() => { setFilterCategory('Semua Kategori'); setShowCategoryDropdown(false); }} className={`custom-select-item ${filterCategory === 'Semua Kategori' ? 'active' : ''}`}>Semua Kategori</button>
-                                {categories.map((cat) => (
-                                    <button key={cat.ID} onClick={() => { setFilterCategory(cat.Name); setShowCategoryDropdown(false); }} className={`custom-select-item ${filterCategory === cat.Name ? 'active' : ''}`}>{cat.Name}</button>
-                                ))}
+                                {categories.map((cat) => {
+                                    const catName = cat.name || cat.Name;
+                                    const catId = cat.id || cat.ID;
+                                    return (
+                                        <button key={catId} onClick={() => { setFilterCategory(catName); setShowCategoryDropdown(false); }} className={`custom-select-item ${filterCategory === catName ? 'active' : ''}`}>{catName}</button>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

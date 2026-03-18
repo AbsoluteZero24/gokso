@@ -36,11 +36,14 @@ const GoSign = () => {
     const [confirmDelete, setConfirmDelete] = useState({ show: false, id: null, loading: false });
     const [confirmReject, setConfirmReject] = useState({ show: false, id: null, loading: false, reason: '' });
 
+    // Mengambil daftar tugas persetujuan (GoSign) dari server
     const fetchTasks = async () => {
         setLoading(true);
         try {
             const response = await axios.get('/api/gosign/tasks');
-            setTasks(response.data.tasks || []);
+            // Menstandarisasi status untuk kemudahan pembacaan di frontend
+            const rawTasks = response.data.tasks || [];
+            setTasks(rawTasks);
         } catch (error) {
             console.error('Error fetching GoSign tasks:', error);
             showNotification('Gagal memuat data persetujuan', 'error');
@@ -227,11 +230,11 @@ const GoSign = () => {
                             const signedCount = item.signers?.filter(s => s.signed).length || 0;
 
                             let statusLabel = item.status;
-                            let statusVariant = item.status === 'Completed' ? 'Approved' : item.status;
+                            let statusVariant = (item.status === 'Completed' || item.status === 'Signed') ? 'Approved' : item.status;
 
                             if (item.status === 'Pending') {
                                 if (hasSigned) {
-                                    statusLabel = "Menunggu TTD";
+                                    statusLabel = "Menunggu Lainnya";
                                     statusVariant = "Waiting";
                                 } else {
                                     statusLabel = "Perlu TTD Anda";
