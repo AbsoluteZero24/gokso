@@ -16,60 +16,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func (server *Server) getPhysicalFolderPath(folderID *string, section string, isTrash bool) string {
-	nasFolder := section
-	if nasFolder == "" {
-		nasFolder = "General"
-	}
-
-	typeDir := "edoc"
-	if isTrash {
-		typeDir = "trash"
-	}
-
-	baseDir := filepath.Join("public", "godms", typeDir, nasFolder)
-
-	if folderID == nil || *folderID == "" {
-		return baseDir
-	}
-
-	var pathParts []string
-	currentID := *folderID
-	visited := make(map[string]bool)
-
-	for currentID != "" && !visited[currentID] {
-		visited[currentID] = true
-		var folder models.DMSFolder
-		// Use Unscoped to find trashed folders too
-		if err := server.DB.Unscoped().Where("id = ?", currentID).First(&folder).Error; err != nil {
-			break
-		}
-		pathParts = append([]string{server.sanitizeFileName(folder.Name)}, pathParts...)
-
-		if folder.Section != "" {
-			nasFolder = folder.Section
-			baseDir = filepath.Join("public", "godms", typeDir, nasFolder)
-		}
-
-		if folder.ParentID != nil {
-			currentID = *folder.ParentID
-		} else {
-			currentID = ""
-		}
-	}
-	return filepath.Join(baseDir, filepath.Join(pathParts...))
-}
-
-// Helper untuk membersihkan nama file dari karakter terlarang
-func (server *Server) sanitizeFileName(name string) string {
-	badChars := []string{"<", ">", ":", "\"", "/", "\\", "|", "?", "*"}
-	sanitized := name
-	for _, char := range badChars {
-		sanitized = strings.ReplaceAll(sanitized, char, "_")
-	}
-	return strings.TrimSpace(sanitized)
-}
-
 // Helper untuk memindahkan file secara fisik dan update DB
 // Helper untuk memindahkan file secara fisik dan update DB
 func (server *Server) moveFilePhysically(file *models.DMSFile, newFolderID *string, newName string) error {

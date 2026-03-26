@@ -159,6 +159,7 @@ func (server *Server) initializeRoutes() {
 	api.HandleFunc("/gosign/sign", server.ApiSignTask).Methods("POST")
 	api.HandleFunc("/gosign/preview/{id}", server.ApiPreviewGoSignTask).Methods("GET")
 	api.HandleFunc("/gosign/reject", server.ApiRejectTask).Methods("POST")
+	api.HandleFunc("/gosign/submit-upload", server.ApiSubmitGoSignUpload).Methods("POST")
 	api.HandleFunc("/gosign/delete/{id}", server.ApiDeleteGoSignTask).Methods("DELETE")
 
 	// Notifications

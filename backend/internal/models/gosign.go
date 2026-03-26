@@ -20,6 +20,7 @@ type GoSignTask struct {
 	RejectionReason string         `gorm:"type:text" json:"rejection_reason"`       // Alasan jika tanda tangan ditolak
 	RejectorID      string         `gorm:"size:36" json:"rejector_id"`              // ID user yang menolak
 	RejectorName    string         `gorm:"size:255" json:"rejector_name"`           // Nama user yang menolak
+	TaskType        string         `gorm:"size:20;default:'Form'" json:"task_type"` // Tipe tugas (Form, Upload)
 	CreatedAt       time.Time      `json:"created_at"`                              // Waktu tugas diajukan
 	UpdatedAt       time.Time      `json:"updated_at"`                              // Waktu terakhir status diperbarui
 	Signers         []GoSignSigner `gorm:"foreignKey:TaskID" json:"signers"`        // Daftar penanda tangan terkait
@@ -36,4 +37,9 @@ type GoSignSigner struct {
 	SignedAt   *time.Time `json:"signed_at"`                               // Waktu saat tanda tangan dilakukan
 	Rejected   bool       `gorm:"default:false" json:"rejected"`           // Status apakah menolak tanda tangan
 	RejectedAt *time.Time `json:"rejected_at"`                             // Waktu saat penolakan dilakukan
+	X          float64    `gorm:"default:0" json:"x"`                      // Posisi X tanda tangan (untuk tipe Upload)
+	Y          float64    `gorm:"default:0" json:"y"`                      // Posisi Y tanda tangan (untuk tipe Upload)
+	Page       int        `gorm:"default:1" json:"page"`                   // Halaman tanda tangan (untuk tipe Upload)
+	Width      float64    `gorm:"default:40" json:"width"`                 // Lebar tanda tangan (mm)
+	HideRole   bool       `gorm:"default:false" json:"hide_role"`          // Sembunyikan jabatan/peran di bawah nama
 }

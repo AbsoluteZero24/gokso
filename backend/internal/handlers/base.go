@@ -6,11 +6,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/AbsoluteZero24/gokso/internal/config"
 	"github.com/AbsoluteZero24/gokso/internal/database"
 	"github.com/AbsoluteZero24/gokso/internal/database/seeders"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/unrolled/render"
 	"github.com/urfave/cli"
@@ -164,6 +166,31 @@ func (server *Server) InitCommands(appConfig config.AppConfig, dbConfig config.D
 func (server *Server) parseUint(s string) uint {
 	u, _ := strconv.ParseUint(s, 10, 32)
 	return uint(u)
+}
+
+// generateUUID menghasilkan string UUID v4 baru
+func (server *Server) generateUUID() string {
+	return uuid.New().String()
+}
+
+// sanitizeFileName membersihkan nama file dari karakter berbahaya
+func (server *Server) sanitizeFileName(name string) string {
+	return filepath.Base(name)
+}
+
+// getPhysicalFolderPath mendapatkan path fisik untuk penyimpanan file berdasarkan folder_id
+func (server *Server) getPhysicalFolderPath(folderID *string, section string, isTrash bool) string {
+	baseDir := "public/godms"
+	if isTrash {
+		return filepath.Join(baseDir, "trash")
+	}
+	
+	dir := filepath.Join(baseDir, "edoc", section)
+	if folderID != nil && *folderID != "" && *folderID != "root" {
+		// Dapatkan path folder rekursif jika dibutuhkan, untuk saat ini simple flat per section
+		dir = filepath.Join(dir, *folderID)
+	}
+	return dir
 }
 
 // RenderHTML wraps renderer.HTML to include global data like Admin info

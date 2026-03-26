@@ -10,11 +10,14 @@ import (
 	"image/jpeg"
 	_ "image/png"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
+	"io"
 
 	"github.com/AbsoluteZero24/gokso/internal/models"
 	"github.com/jung-kurt/gofpdf"
+	"github.com/jung-kurt/gofpdf/contrib/gofpdi"
 )
 
 type BASTData struct {
@@ -224,4 +227,135 @@ func registerLogo(pdf *gofpdf.Fpdf, path, name string) error {
 	// Register the JPEG image
 	pdf.RegisterImageReader(name, "JPEG", &buf)
 	return nil
+}
+
+func (server *Server) OverlaySignaturesOnPDF(inputPath, outputPath string, signers []models.GoSignSigner) error {
+	fmt.Println("-----------------------------------------------")
+	fmt.Println("DEBUG: CALLING OVERLAY ON PDF")
+	fmt.Println("INPUT:", inputPath)
+	fmt.Println("-----------------------------------------------")
+
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	
+	// Check if file exists and is readable
+	if info, err := os.Stat(inputPath); os.IsNotExist(err) {
+		fmt.Printf("[GoSign] CRITICAL: File does not exist during overlay: %s\n", inputPath)
+		return fmt.Errorf("input file does not exist: %s", inputPath)
+	} else {
+		fmt.Printf("[GoSign] File Info: Name=%s, Size=%d\n", info.Name(), info.Size())
+	}
+
+	// Signatures mapping by page
+	sigsByPage := make(map[int][]models.GoSignSigner)
+	for _, s := range signers {
+		if s.Signed {
+			sigsByPage[s.Page] = append(sigsByPage[s.Page], s)
+		}
+	}
+
+	// Create isolated importer to prevent global cache corruption across multiple uploads
+	// This is CRITICAL. Without this, gofpdi thinks a file with the same name was already processed 
+	// and tries to use closed file descriptors from previous tasks.
+	imp := gofpdi.NewImporter()
+
+	// Open input file once as a ReadSeeker for better Windows compatibility
+	rs, err := os.Open(inputPath)
+	if err != nil {
+		fmt.Printf("[GoSign] CRITICAL: Failed to open input file stream: %v\n", err)
+		return fmt.Errorf("failed to open input file stream: %v", err)
+	}
+	defer rs.Close()
+
+	// Import pages and copy them to the new PDF
+	for i := 1; i <= 500; i++ { // Increased limit for larger documents
+		var tpl int
+		// Try multiple box types for better compatibility (/CropBox first matches react-pdf)
+		boxes := []string{"/CropBox", "/MediaBox", "/BleedBox", "/TrimBox", "/ArtBox", ""}
+		for _, box := range boxes {
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						fmt.Printf("[GoSign] CRITICAL: ImportPageFromStream page %d box [%s] panicked: %v\n", i, box, r)
+					}
+				}()
+				// Seek back to start for each box attempt if needed
+				rs.Seek(0, io.SeekStart)
+				fmt.Printf("[GoSign] Attempting ImportPageFromStream: Page: %d, Box: [%s]\n", i, box)
+				var seeker io.ReadSeeker = rs
+				tpl = imp.ImportPageFromStream(pdf, &seeker, i, box)
+				fmt.Printf("[GoSign] ImportPageFromStream Result: %d\n", tpl)
+			}()
+			if tpl != 0 {
+				break
+			}
+		}
+
+		if tpl == 0 {
+			if i == 1 {
+				fmt.Printf("[GoSign] ERROR: All box import attempts failed for stream %s page 1\n", inputPath)
+				return fmt.Errorf("failed to import first page of PDF using any standard box: %s", inputPath)
+			}
+			break 
+		}
+		
+		pdf.AddPage() // Default A4
+		// Draw proportional (w:210, h:0) so Y coords match the frontend calculation 650/210 exactly.
+		imp.UseImportedTemplate(pdf, tpl, 0, 0, 210, 0)
+
+		// Overlay signatures for this page
+		if sigs, ok := sigsByPage[i]; ok {
+			fmt.Printf("[GoSign] Overlaying %d signatures on page %d\n", len(sigs), i)
+			for _, s := range sigs {
+				// Get User Signature
+				var u models.User
+				if err := server.DB.Where("id = ?", s.UserID).First(&u).Error; err == nil && u.Signature != "" {
+					sigPath := filepath.Join("public/uploads/signatures", u.Signature)
+					if _, err := os.Stat(sigPath); err == nil {
+						// Render image proportionally inside the box, allowing up to Width x Width*0.4
+						drawW := s.Width * 0.8
+						drawH := s.Width * 0.4 * 0.8
+						drawX := s.X + (s.Width - drawW) / 2
+						drawY := s.Y + (s.Width*0.4 - drawH) / 2
+
+						// Detect image dimensions to preserve aspect ratio
+						file, err := os.Open(sigPath)
+						if err == nil {
+							config, _, err := image.DecodeConfig(file)
+							file.Close()
+							if err == nil && config.Width > 0 && config.Height > 0 {
+								imgRatio := float64(config.Height) / float64(config.Width)
+								if drawW * imgRatio > drawH {
+									// constrained by height
+									drawW = drawH / imgRatio
+								} else {
+									// constrained by width
+									drawH = drawW * imgRatio
+								}
+								drawX = s.X + (s.Width - drawW) / 2
+								drawY = s.Y + (s.Width*0.4 - drawH) / 2
+							}
+						}
+
+						// Image Options explicitly sets H so it squeezes correctly
+						pdf.ImageOptions(sigPath, drawX, drawY, drawW, drawH, false, gofpdf.ImageOptions{ReadDpi: true}, 0, "")
+
+						if !s.HideRole {
+							// Add name explicitly BELOW the box to match where Name normally is if text is requested
+							pdf.SetFont("Arial", "B", 8)
+							textY := s.Y + (s.Width * 0.4) + 1.0 // 1mm below the signature box
+							pdf.SetXY(s.X, textY)
+							pdf.CellFormat(s.Width, 4, u.Name, "", 0, "C", false, 0, "")
+							
+							// Add role/position
+							pdf.SetFont("Arial", "", 7)
+							pdf.SetXY(s.X, textY+3.5)
+							pdf.CellFormat(s.Width, 3, s.Role, "", 0, "C", false, 0, "")
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return pdf.OutputFileAndClose(outputPath)
 }

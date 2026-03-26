@@ -537,16 +537,19 @@ const GoDMS = () => {
      * Memformat ukuran file dari bytes ke format yang mudah dibaca (KB, MB, GB).
      */
     const formatSize = (bytes) => {
-        if (bytes === 0) return '0 Bytes';
+        if (bytes === 0 || bytes === '0') return '0 Bytes';
+        const num = Number(bytes);
+        if (isNaN(num)) return '0 Bytes';
         const k = 1024;
         const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        const i = Math.floor(Math.log(num) / Math.log(k));
+        return parseFloat((num / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
     const formatDateWithTime = (dateString) => {
-        if (!dateString) return '-';
+        if (!dateString || dateString === '-' || dateString === '0001-01-01T00:00:00Z') return '-';
         const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '-';
         return date.toLocaleDateString('en-GB') + ' ' + date.toLocaleTimeString('en-GB', { hour12: false });
     };
 
@@ -1251,12 +1254,12 @@ const GoDMS = () => {
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', zIndex: 1100 }}>
                     <div style={{ padding: '1.25rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' }}>
                         <div>
-                            <h2 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>{previewFile.Name}</h2>
-                            <p style={{ fontSize: '0.8125rem', opacity: 0.7, margin: 0 }}>{formatSize(previewFile.Size)} • Modified {formatDateWithTime(previewFile.UpdatedAt)}</p>
+                            <h2 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>{previewFile.name || previewFile.Name}</h2>
+                            <p style={{ fontSize: '0.8125rem', opacity: 0.7, margin: 0 }}>{formatSize(previewFile.size || previewFile.Size)} • Modified {formatDateWithTime(previewFile.updated_at || previewFile.UpdatedAt)}</p>
                         </div>
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
                             <button
-                                onClick={() => handleDownload(previewFile.ID)}
+                                onClick={() => handleDownload(previewFile.id || previewFile.ID)}
                                 style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0.5rem 1.25rem', borderRadius: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
                             >
                                 <Download size={18} /> Download
@@ -1273,11 +1276,11 @@ const GoDMS = () => {
                                 <Loader2 className="animate-spin" size={48} style={{ marginBottom: '1rem' }} />
                                 <p>Loading preview...</p>
                             </div>
-                        ) : ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(previewFile.Extension?.toLowerCase()) ? (
-                            <img src={previewFile.FilePath} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }} />
-                        ) : previewFile.Extension?.toLowerCase() === 'pdf' ? (
-                            <iframe src={previewFile.FilePath} style={{ width: '100%', height: '100%', border: 'none', borderRadius: '12px', background: 'white' }}></iframe>
-                        ) : ['xlsx', 'xls', 'csv'].includes(previewFile.Extension?.toLowerCase()) ? (
+                        ) : ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes((previewFile.extension || previewFile.Extension || '').toLowerCase()) ? (
+                            <img src={previewFile.file_path || previewFile.FilePath} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }} />
+                        ) : (previewFile.extension || previewFile.Extension || '').toLowerCase() === 'pdf' ? (
+                            <iframe src={previewFile.file_path || previewFile.FilePath} style={{ width: '100%', height: '100%', border: 'none', borderRadius: '12px', background: 'white' }}></iframe>
+                        ) : ['xlsx', 'xls', 'csv'].includes((previewFile.extension || previewFile.Extension || '').toLowerCase()) ? (
                             <div style={{ width: '100%', height: '100%', background: 'white', borderRadius: '12px', overflow: 'auto', padding: '1rem' }}>
                                 {spreadsheetData && spreadsheetData.length > 0 ? (
                                     <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8125rem', color: '#313131' }}>
@@ -1300,16 +1303,16 @@ const GoDMS = () => {
                                     </div>
                                 )}
                             </div>
-                        ) : ['docx', 'doc'].includes(previewFile.Extension?.toLowerCase()) ? (
+                        ) : ['docx', 'doc'].includes((previewFile.extension || previewFile.Extension || '').toLowerCase()) ? (
                             <div 
                                 style={{ width: '100%', height: '100%', background: 'white', borderRadius: '12px', overflow: 'auto', padding: '3rem', color: '#334155', fontSize: '1rem', lineHeight: '1.6' }}
                                 dangerouslySetInnerHTML={{ __html: docxContent }}
                                 className="docx-preview-container"
                             />
-                        ) : previewFile.Extension?.toLowerCase() === 'pptx' ? (
+                        ) : (previewFile.extension || previewFile.Extension || '').toLowerCase() === 'pptx' ? (
                             <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
                                 <iframe 
-                                    src={`https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(window.location.protocol + '//' + window.location.host + previewFile.FilePath)}`} 
+                                    src={`https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(window.location.protocol + '//' + window.location.host + (previewFile.file_path || previewFile.FilePath))}`} 
                                     style={{ width: '100%', height: '100%', border: 'none', borderRadius: '12px', background: 'white' }}
                                     title="Office Preview"
                                 ></iframe>
@@ -1319,8 +1322,8 @@ const GoDMS = () => {
                             </div>
                         ) : (
                             <div style={{ textAlign: 'center', color: 'white' }}>
-                                <div style={{ background: getFileStyle(previewFile.Extension).bgColor, padding: '3rem', borderRadius: '32px', marginBottom: '1.5rem', display: 'inline-block' }}>
-                                    {React.cloneElement(getFileStyle(previewFile.Extension).icon, { size: 80, color: getFileStyle(previewFile.Extension).color })}
+                                <div style={{ background: getFileStyle(previewFile.extension || previewFile.Extension).bgColor, padding: '3rem', borderRadius: '32px', marginBottom: '1.5rem', display: 'inline-block' }}>
+                                    {React.cloneElement(getFileStyle(previewFile.extension || previewFile.Extension).icon, { size: 80, color: getFileStyle(previewFile.extension || previewFile.Extension).color })}
                                 </div>
                                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Preview not available</h2>
                                 <p style={{ opacity: 0.7, maxWidth: '300px', margin: '1rem auto' }}>This file type cannot be previewed in the browser. Please download the file to view its content.</p>
