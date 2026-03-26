@@ -981,7 +981,7 @@ const UploadGoSignModal = ({ isOpen, onClose, users, folders, onSuccess }) => {
     if (!isOpen) return null;
 
     const handleAddSigner = () => {
-        setSigners([...signers, { user_id: '', user_name: '', role: '', x: 50, y: 50, page: 1, width: 40, hide_role: false }]);
+        setSigners([...signers, { user_id: '', user_name: '', role: '', x: 50, y: 50, page: 1, width: 40, hide_role: false, sign_type: 'signature' }]);
     };
 
     const handleRemoveSigner = (index) => {
@@ -1146,15 +1146,42 @@ const UploadGoSignModal = ({ isOpen, onClose, users, folders, onSuccess }) => {
                                         <SearchableSelect 
                                             options={users.filter(u => u.name.toLowerCase() !== 'administrator').map(u => ({ value: u.id, label: u.name }))}
                                             value={s.user_id}
-                                            onChange={(val) => {
+                                             onChange={(val) => {
                                                 const u = users.find(user => user.id === val);
                                                  updateSigner(idx, 'user_id', val);
                                                  updateSigner(idx, 'user_name', u?.name || '');
                                                  updateSigner(idx, 'role', u?.position || ''); // Automatis isi jabatan
                                                  updateSigner(idx, 'signature_img', u?.signature || ''); // Simpan info tanda tangan untuk preview visual
+                                                 updateSigner(idx, 'paraf_img', u?.paraf || ''); // Simpan info paraf
                                              }}
                                             placeholder="Pilih Karyawan..."
                                         />
+                                        <div style={{ marginTop: '0.5rem', display: 'flex', background: '#f1f5f9', borderRadius: '8px', padding: '0.25rem', alignSelf: 'flex-start' }}>
+                                            <button
+                                                onClick={() => updateSigner(idx, 'sign_type', 'signature')}
+                                                style={{
+                                                    padding: '0.375rem 0.75rem', fontSize: '0.65rem', fontWeight: 700, border: 'none', borderRadius: '6px',
+                                                    cursor: 'pointer', transition: 'all 0.2s', textTransform: 'uppercase', letterSpacing: '0.5px',
+                                                    background: (!s.sign_type || s.sign_type === 'signature') ? 'white' : 'transparent',
+                                                    color: (!s.sign_type || s.sign_type === 'signature') ? 'var(--primary)' : '#64748b',
+                                                    boxShadow: (!s.sign_type || s.sign_type === 'signature') ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                                                }}
+                                            >
+                                                Tanda Tangan
+                                            </button>
+                                            <button
+                                                onClick={() => updateSigner(idx, 'sign_type', 'paraf')}
+                                                style={{
+                                                    padding: '0.375rem 0.75rem', fontSize: '0.65rem', fontWeight: 700, border: 'none', borderRadius: '6px',
+                                                    cursor: 'pointer', transition: 'all 0.2s', textTransform: 'uppercase', letterSpacing: '0.5px',
+                                                    background: s.sign_type === 'paraf' ? 'white' : 'transparent',
+                                                    color: s.sign_type === 'paraf' ? 'var(--primary)' : '#64748b',
+                                                    boxShadow: s.sign_type === 'paraf' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                                                }}
+                                            >
+                                                Paraf
+                                            </button>
+                                        </div>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         <label style={{ fontSize: '0.813rem', fontWeight: 700, color: '#1e293b' }}>Jabatan / Peran</label>
@@ -1316,9 +1343,9 @@ const VisualSignerOverlay = ({ file, signers, onUpdateSigners, onClose }) => {
                                         <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>{s.user_name || `Orang #${idx + 1}`}</div>
                                         <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Halaman {s.page} • ({s.x.toFixed(0)}, {s.y.toFixed(0)}) mm</div>
                                     </div>
-                                    {s.signature_img && (
+                                    {(s.sign_type === 'paraf' ? s.paraf_img : s.signature_img) && (
                                         <div style={{ width: '40px', height: '40px', background: 'white', border: '1px solid #334155', borderRadius: '4px', overflow: 'hidden' }}>
-                                            <img src={`/public/uploads/signatures/${s.signature_img}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                            <img src={`/public/uploads/${s.sign_type === 'paraf' ? 'parafs' : 'signatures'}/${s.sign_type === 'paraf' ? s.paraf_img : s.signature_img}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                         </div>
                                     )}
                                 </div>
@@ -1398,15 +1425,15 @@ const VisualSignerOverlay = ({ file, signers, onUpdateSigners, onClose }) => {
                                         }}
                                         onTap={() => setSelectedIdx(idx)}
                                     >
-                                        {s.signature_img ? (
+                                        {(s.sign_type === 'paraf' ? s.paraf_img : s.signature_img) ? (
                                             <img 
-                                                src={`/public/uploads/signatures/${s.signature_img}`} 
+                                                src={`/public/uploads/${s.sign_type === 'paraf' ? 'parafs' : 'signatures'}/${s.sign_type === 'paraf' ? s.paraf_img : s.signature_img}`} 
                                                 alt="" 
                                                 style={{ width: '80%', height: '80%', objectFit: 'contain', pointerEvents: 'none', filter: selectedIdx === idx ? 'none' : 'grayscale(100%) opacity(0.5)' }} 
                                             />
                                         ) : (
                                             <div style={{ fontSize: '10px', fontWeight: 800, color: 'white', opacity: 0.5, textAlign: 'center', lineHeight: 1.1 }}>
-                                                [TTD Kosong]
+                                                [{s.sign_type === 'paraf' ? 'Paraf Kosong' : 'TTD Kosong'}]
                                             </div>
                                         )}
 

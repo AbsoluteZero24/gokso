@@ -42,4 +42,5 @@ type GoSignSigner struct {
 	Page       int        `gorm:"default:1" json:"page"`                   // Halaman tanda tangan (untuk tipe Upload)
 	Width      float64    `gorm:"default:40" json:"width"`                 // Lebar tanda tangan (mm)
 	HideRole   bool       `gorm:"default:false" json:"hide_role"`          // Sembunyikan jabatan/peran di bawah nama
+	SignType   string     `gorm:"size:20;default:'signature'" json:"sign_type"` // Tipe tanda tangan (signature/paraf)
 }

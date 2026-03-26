@@ -9,11 +9,11 @@ import (
 	"image/draw"
 	"image/jpeg"
 	_ "image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-	"io"
 
 	"github.com/AbsoluteZero24/gokso/internal/models"
 	"github.com/jung-kurt/gofpdf"
@@ -236,7 +236,7 @@ func (server *Server) OverlaySignaturesOnPDF(inputPath, outputPath string, signe
 	fmt.Println("-----------------------------------------------")
 
 	pdf := gofpdf.New("P", "mm", "A4", "")
-	
+
 	// Check if file exists and is readable
 	if info, err := os.Stat(inputPath); os.IsNotExist(err) {
 		fmt.Printf("[GoSign] CRITICAL: File does not exist during overlay: %s\n", inputPath)
@@ -254,7 +254,7 @@ func (server *Server) OverlaySignaturesOnPDF(inputPath, outputPath string, signe
 	}
 
 	// Create isolated importer to prevent global cache corruption across multiple uploads
-	// This is CRITICAL. Without this, gofpdi thinks a file with the same name was already processed 
+	// This is CRITICAL. Without this, gofpdi thinks a file with the same name was already processed
 	// and tries to use closed file descriptors from previous tasks.
 	imp := gofpdi.NewImporter()
 
@@ -295,9 +295,9 @@ func (server *Server) OverlaySignaturesOnPDF(inputPath, outputPath string, signe
 				fmt.Printf("[GoSign] ERROR: All box import attempts failed for stream %s page 1\n", inputPath)
 				return fmt.Errorf("failed to import first page of PDF using any standard box: %s", inputPath)
 			}
-			break 
+			break
 		}
-		
+
 		pdf.AddPage() // Default A4
 		// Draw proportional (w:210, h:0) so Y coords match the frontend calculation 650/210 exactly.
 		imp.UseImportedTemplate(pdf, tpl, 0, 0, 210, 0)
@@ -306,50 +306,64 @@ func (server *Server) OverlaySignaturesOnPDF(inputPath, outputPath string, signe
 		if sigs, ok := sigsByPage[i]; ok {
 			fmt.Printf("[GoSign] Overlaying %d signatures on page %d\n", len(sigs), i)
 			for _, s := range sigs {
-				// Get User Signature
+				// Get User Signature or Paraf
 				var u models.User
-				if err := server.DB.Where("id = ?", s.UserID).First(&u).Error; err == nil && u.Signature != "" {
-					sigPath := filepath.Join("public/uploads/signatures", u.Signature)
-					if _, err := os.Stat(sigPath); err == nil {
-						// Render image proportionally inside the box, allowing up to Width x Width*0.4
-						drawW := s.Width * 0.8
-						drawH := s.Width * 0.4 * 0.8
-						drawX := s.X + (s.Width - drawW) / 2
-						drawY := s.Y + (s.Width*0.4 - drawH) / 2
+				if err := server.DB.Where("id = ?", s.UserID).First(&u).Error; err == nil {
+					sigFile := u.Signature
+					if s.SignType == "paraf" && u.Paraf != "" {
+						sigFile = u.Paraf
+					} else if s.SignType == "paraf" && u.Paraf == "" {
+						// fallback to signature if paraf is missing
+						sigFile = u.Signature
+					}
 
-						// Detect image dimensions to preserve aspect ratio
-						file, err := os.Open(sigPath)
-						if err == nil {
-							config, _, err := image.DecodeConfig(file)
-							file.Close()
-							if err == nil && config.Width > 0 && config.Height > 0 {
-								imgRatio := float64(config.Height) / float64(config.Width)
-								if drawW * imgRatio > drawH {
-									// constrained by height
-									drawW = drawH / imgRatio
-								} else {
-									// constrained by width
-									drawH = drawW * imgRatio
-								}
-								drawX = s.X + (s.Width - drawW) / 2
-								drawY = s.Y + (s.Width*0.4 - drawH) / 2
-							}
+					if sigFile != "" {
+						folder := "signatures"
+						if s.SignType == "paraf" {
+							folder = "parafs"
 						}
+						sigPath := filepath.Join("public/uploads", folder, sigFile)
+						if _, err := os.Stat(sigPath); err == nil {
+							// Render image proportionally inside the box, allowing up to Width x Width*0.4
+							drawW := s.Width * 0.8
+							drawH := s.Width * 0.4 * 0.8
+							drawX := s.X + (s.Width-drawW)/2
+							drawY := s.Y + (s.Width*0.4-drawH)/2
 
-						// Image Options explicitly sets H so it squeezes correctly
-						pdf.ImageOptions(sigPath, drawX, drawY, drawW, drawH, false, gofpdf.ImageOptions{ReadDpi: true}, 0, "")
+							// Detect image dimensions to preserve aspect ratio
+							file, err := os.Open(sigPath)
+							if err == nil {
+								config, _, err := image.DecodeConfig(file)
+								file.Close()
+								if err == nil && config.Width > 0 && config.Height > 0 {
+									imgRatio := float64(config.Height) / float64(config.Width)
+									if drawW*imgRatio > drawH {
+										// constrained by height
+										drawW = drawH / imgRatio
+									} else {
+										// constrained by width
+										drawH = drawW * imgRatio
+									}
+									drawX = s.X + (s.Width-drawW)/2
+									drawY = s.Y + (s.Width*0.4-drawH)/2
+								}
+							}
 
-						if !s.HideRole {
-							// Add name explicitly BELOW the box to match where Name normally is if text is requested
-							pdf.SetFont("Arial", "B", 8)
-							textY := s.Y + (s.Width * 0.4) + 1.0 // 1mm below the signature box
-							pdf.SetXY(s.X, textY)
-							pdf.CellFormat(s.Width, 4, u.Name, "", 0, "C", false, 0, "")
-							
-							// Add role/position
-							pdf.SetFont("Arial", "", 7)
-							pdf.SetXY(s.X, textY+3.5)
-							pdf.CellFormat(s.Width, 3, s.Role, "", 0, "C", false, 0, "")
+							// Image Options explicitly sets H so it squeezes correctly
+							pdf.ImageOptions(sigPath, drawX, drawY, drawW, drawH, false, gofpdf.ImageOptions{ReadDpi: true}, 0, "")
+
+							if !s.HideRole {
+								// Add name explicitly BELOW the box to match where Name normally is if text is requested
+								pdf.SetFont("Arial", "B", 8)
+								textY := s.Y + (s.Width * 0.4) + 1.0 // 1mm below the signature box
+								pdf.SetXY(s.X, textY)
+								pdf.CellFormat(s.Width, 4, u.Name, "", 0, "C", false, 0, "")
+
+								// Add role/position
+								pdf.SetFont("Arial", "", 7)
+								pdf.SetXY(s.X, textY+3.5)
+								pdf.CellFormat(s.Width, 3, s.Role, "", 0, "C", false, 0, "")
+							}
 						}
 					}
 				}

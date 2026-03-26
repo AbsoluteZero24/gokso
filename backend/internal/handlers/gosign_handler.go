@@ -749,6 +749,7 @@ func (server *Server) ApiSubmitGoSignUpload(w http.ResponseWriter, r *http.Reque
 		Page     int     `json:"page"`
 		Width    float64 `json:"width"`
 		HideRole bool    `json:"hide_role"`
+		SignType string  `json:"sign_type"`
 	}
 	if err := json.Unmarshal([]byte(signersJSON), &inputSigners); err != nil {
 		server.Renderer.JSON(w, http.StatusBadRequest, map[string]string{"error": "Format data signer tidak valid"})
@@ -767,6 +768,7 @@ func (server *Server) ApiSubmitGoSignUpload(w http.ResponseWriter, r *http.Reque
 			Page:     s.Page,
 			Width:    s.Width,
 			HideRole: s.HideRole,
+			SignType: s.SignType,
 		}
 		task.Signers = append(task.Signers, signer)
 	}
