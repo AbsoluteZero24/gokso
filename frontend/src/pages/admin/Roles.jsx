@@ -69,7 +69,8 @@ const Roles = () => {
                     children: [
                         { id: 'view_asset_list', label: 'Aset' },
                         { id: 'view_asset_service', label: 'Service' },
-                        { id: 'view_asset_warehouse', label: 'Gudang' }
+                        { id: 'view_asset_warehouse', label: 'Gudang' },
+                        { id: 'view_asset_inactive', label: 'Inactive' }
                     ]
                 },
                 { id: 'view_asset_management', label: 'Asset Management' }
@@ -140,7 +141,7 @@ const Roles = () => {
                 id: r.id || r.ID,
                 name: r.name || r.Name,
                 description: r.description || r.Description,
-                permissions: (r.permissions || r.Permissions) ? (r.permissions || r.Permissions).split(',') : [],
+                permissions: (r.permissions || r.Permissions) ? (r.permissions || r.Permissions).split(',').map(p => p.trim()) : [],
                 dms_filter_scope: r.dms_filter_scope || r.DMSFilterScope || 'All',
                 allowed_sections: r.allowed_sections || r.AllowedSections || '',
                 userCount: r.user_count || r.UserCount || 0

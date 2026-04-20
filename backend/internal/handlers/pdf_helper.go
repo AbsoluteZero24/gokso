@@ -310,18 +310,17 @@ func (server *Server) OverlaySignaturesOnPDF(inputPath, outputPath string, signe
 				var u models.User
 				if err := server.DB.Where("id = ?", s.UserID).First(&u).Error; err == nil {
 					sigFile := u.Signature
+					folder := "signatures"
 					if s.SignType == "paraf" && u.Paraf != "" {
 						sigFile = u.Paraf
+						folder = "parafs"
 					} else if s.SignType == "paraf" && u.Paraf == "" {
-						// fallback to signature if paraf is missing
+						// Fallback to signature if paraf is missing
 						sigFile = u.Signature
+						folder = "signatures"
 					}
 
 					if sigFile != "" {
-						folder := "signatures"
-						if s.SignType == "paraf" {
-							folder = "parafs"
-						}
 						sigPath := filepath.Join("public/uploads", folder, sigFile)
 						if _, err := os.Stat(sigPath); err == nil {
 							// Render image proportionally inside the box, allowing up to Width x Width*0.4

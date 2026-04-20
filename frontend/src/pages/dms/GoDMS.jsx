@@ -10,6 +10,7 @@ import {
     MoreVertical,
     Download,
     Trash2,
+    Edit2,
     ChevronRight,
     Home,
     Search,
@@ -92,6 +93,7 @@ const GoDMS = () => {
     const [allFolders, setAllFolders] = useState([]); // Daftar semua folder untuk target pindah
     const [selectedTargetFolder, setSelectedTargetFolder] = useState(null); // Folder tujuan pemindahan
     const [moveLoading, setMoveLoading] = useState(false); // Loading saat memindahkan item
+    const [expandedMoveFolders, setExpandedMoveFolders] = useState({}); // Folder tree status ekspansi
     const [alertConfig, setAlertConfig] = useState({
         isOpen: false,
         title: '',
@@ -107,6 +109,17 @@ const GoDMS = () => {
         isLoading: false,
         type: 'danger'
     }); // Konfigurasi modal konfirmasi hapus/pindah
+    
+    // Konfigurasi modal rename
+    const [renameModal, setRenameModal] = useState({
+        isOpen: false,
+        id: '',
+        type: '', // 'folder' atau 'file'
+        currentName: '',
+        newName: '',
+        extension: ''
+    });
+    const [renameLoading, setRenameLoading] = useState(false);
 
     const sectionRef = useRef(null);
     const newMenuRef = useRef(null);
@@ -287,6 +300,55 @@ const GoDMS = () => {
         }
     };
 
+    const handleRenameSubmit = async (e) => {
+        e.preventDefault();
+        if (!renameModal.newName.trim() || renameModal.newName === renameModal.currentName) return;
+        setRenameLoading(true);
+
+        try {
+            const params = new URLSearchParams();
+            params.append('id', renameModal.id);
+            
+            let finalName = renameModal.newName;
+            if (renameModal.type === 'file' && renameModal.extension) {
+                // Check if user manually typed extension, if not, append it
+                const extStr = '.' + renameModal.extension;
+                if (!finalName.toLowerCase().endsWith(extStr.toLowerCase())) {
+                    finalName += extStr;
+                }
+            }
+            params.append('name', finalName);
+
+            const url = renameModal.type === 'folder' 
+                ? '/api/godms/folder/rename' 
+                : '/api/godms/file/rename';
+                
+            await axios.post(url, params);
+            
+            setRenameModal({ isOpen: false, id: '', type: '', currentName: '', newName: '', extension: '' });
+            fetchData();
+            
+            setAlertConfig({
+                isOpen: true,
+                title: 'Berhasil',
+                message: `Nama ${renameModal.type} berhasil diubah.`,
+                type: 'success',
+                onConfirm: () => setAlertConfig(prev => ({ ...prev, isOpen: false }))
+            });
+        } catch (error) {
+            console.error('Error renaming item:', error);
+            setAlertConfig({
+                isOpen: true,
+                title: 'Gagal',
+                message: 'Gagal mengubah nama item. Silakan coba lagi.',
+                type: 'danger',
+                onConfirm: () => setAlertConfig(prev => ({ ...prev, isOpen: false }))
+            });
+        } finally {
+            setRenameLoading(false);
+        }
+    };
+
     const handleFileUpload = async (event) => {
         const file = event.target.files[0];
         if (!file) return;
@@ -393,7 +455,7 @@ const GoDMS = () => {
         setShowMoveModal(true);
         try {
             const response = await axios.get(`/api/godms/folders/list-all?section=${section}`);
-            setAllFolders(response.data || []);
+            setAllFolders(response.data?.folders || []);
         } catch (error) {
             console.error('Error fetching all folders:', error);
         } finally {
@@ -819,17 +881,32 @@ const GoDMS = () => {
                                                 <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#1e293b' }}>{folderName}</div>
                                                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Folder</div>
                                             </div>
-                                            <button 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteFolder(folderId, folderName);
-                                                }}
-                                                style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: 'none', cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s' }}
-                                                onMouseOver={(e) => e.currentTarget.style.opacity = 1}
-                                                className="folder-delete-btn"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '0.25rem', opacity: 0, transition: 'opacity 0.2s' }} className="folder-delete-btn" onMouseOver={(e) => e.currentTarget.style.opacity = 1}>
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setRenameModal({
+                                                            isOpen: true,
+                                                            id: folderId,
+                                                            type: 'folder',
+                                                            currentName: folderName,
+                                                            newName: folderName
+                                                        });
+                                                    }}
+                                                    style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.05)', color: '#3b82f6', border: 'none', cursor: 'pointer' }}
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteFolder(folderId, folderName);
+                                                    }}
+                                                    style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: 'none', cursor: 'pointer' }}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -848,7 +925,7 @@ const GoDMS = () => {
                                     const fileExt = file.extension || file.Extension || '';
                                     const filePath = file.file_path || file.FilePath;
                                     const fileSize = file.size || file.Size || 0;
-                                    const fileUpdated = file.updated_at || file.UpdatedAt;
+                                    const fileUpdated = file.updated_at || file.UpdatedAt || file.created_at || file.CreatedAt;
                                     const isSelected = selectedItems.fileIds.includes(fileId);
                                     
                                     return (
@@ -919,17 +996,41 @@ const GoDMS = () => {
                                             <div style={{ flexGrow: 1 }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                                     <div style={{ fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0.25rem', flex: 1 }} title={fileName}>{fileName}</div>
-                                                    <button 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDeleteFile(fileId, fileName);
-                                                        }}
-                                                        style={{ padding: '0.25rem', borderRadius: '6px', background: 'transparent', color: '#94a3b8', border: 'none', cursor: 'pointer' }}
-                                                        onMouseOver={(e) => e.currentTarget.style.color = '#ef4444'}
-                                                        onMouseOut={(e) => e.currentTarget.style.color = '#94a3b8'}
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
+                                                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                let nameWithoutExt = fileName;
+                                                                if (fileExt && fileName.toLowerCase().endsWith(`.${fileExt.toLowerCase()}`)) {
+                                                                    nameWithoutExt = fileName.slice(0, -(fileExt.length + 1));
+                                                                }
+                                                                setRenameModal({
+                                                                    isOpen: true,
+                                                                    id: fileId,
+                                                                    type: 'file',
+                                                                    currentName: nameWithoutExt,
+                                                                    newName: nameWithoutExt,
+                                                                    extension: fileExt
+                                                                });
+                                                            }}
+                                                            style={{ padding: '0.25rem', borderRadius: '6px', background: 'transparent', color: '#94a3b8', border: 'none', cursor: 'pointer' }}
+                                                            onMouseOver={(e) => e.currentTarget.style.color = '#3b82f6'}
+                                                            onMouseOut={(e) => e.currentTarget.style.color = '#94a3b8'}
+                                                        >
+                                                            <Edit2 size={14} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteFile(fileId, fileName);
+                                                            }}
+                                                            style={{ padding: '0.25rem', borderRadius: '6px', background: 'transparent', color: '#94a3b8', border: 'none', cursor: 'pointer' }}
+                                                            onMouseOver={(e) => e.currentTarget.style.color = '#ef4444'}
+                                                            onMouseOut={(e) => e.currentTarget.style.color = '#94a3b8'}
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
                                                     <span>{formatSize(fileSize)}</span>
@@ -980,6 +1081,7 @@ const GoDMS = () => {
                                         {filteredFolders.map(folder => {
                                             const folderId = folder.id || folder.ID;
                                             const folderName = folder.name || folder.Name || 'Unnamed Folder';
+                                            const folderUpdated = folder.updated_at || folder.UpdatedAt || folder.created_at || folder.CreatedAt;
                                             return (
                                                 <tr key={folderId} style={{ borderBottom: '1px solid var(--border)' }}>
                                                     <td style={{ padding: '1rem 1.5rem' }}>
@@ -1008,9 +1110,12 @@ const GoDMS = () => {
                                                         </div>
                                                     </td>
                                                     <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>-</td>
-                                                    <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>-</td>
+                                                    <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>{formatDateWithTime(folderUpdated)}</td>
                                                     <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                                                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                                            <button onClick={() => setRenameModal({isOpen: true, id: folderId, type: 'folder', currentName: folderName, newName: folderName})} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.05)', color: '#3b82f6', border: 'none', cursor: 'pointer' }}>
+                                                                <Edit2 size={18} />
+                                                            </button>
                                                             <button onClick={() => navigate(`/godms/edoc/${folderId}?section=${section}`)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', border: 'none', cursor: 'pointer' }}>
                                                                 <ChevronRight size={18} />
                                                             </button>
@@ -1027,7 +1132,7 @@ const GoDMS = () => {
                                             const fileName = file.name || file.Name || 'Unnamed File';
                                             const fileExt = file.extension || file.Extension || '';
                                             const fileSize = file.size || file.Size || 0;
-                                            const fileUpdated = file.updated_at || file.UpdatedAt;
+                                            const fileUpdated = file.updated_at || file.UpdatedAt || file.created_at || file.CreatedAt;
                                             
                                             return (
                                                 <tr key={fileId} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -1060,6 +1165,18 @@ const GoDMS = () => {
                                                     <td style={{ padding: '1rem 1.5rem', color: 'var(--text-light)' }}>{formatDateWithTime(fileUpdated)}</td>
                                                     <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                                                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    let nameWithoutExt = fileName;
+                                                                    if (fileExt && fileName.toLowerCase().endsWith(`.${fileExt.toLowerCase()}`)) {
+                                                                        nameWithoutExt = fileName.slice(0, -(fileExt.length + 1));
+                                                                    }
+                                                                    setRenameModal({isOpen: true, id: fileId, type: 'file', currentName: nameWithoutExt, newName: nameWithoutExt, extension: fileExt});
+                                                                }} 
+                                                                style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.05)', color: '#3b82f6', border: 'none', cursor: 'pointer' }}
+                                                            >
+                                                                <Edit2 size={18} />
+                                                            </button>
                                                             <button onClick={() => setPreviewFile(file)} style={{ padding: '0.5rem', borderRadius: '8px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', border: 'none', cursor: 'pointer' }}>
                                                                 <Eye size={18} />
                                                             </button>
@@ -1174,6 +1291,50 @@ const GoDMS = () => {
                 </div>
             )}
 
+            {/* Rename Modal */}
+            {renameModal.isOpen && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1.5rem' }}>
+                    <div style={{ background: 'white', borderRadius: '24px', width: '100%', maxWidth: '400px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', animation: 'slideUp 0.3s ease-out' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Rename {renameModal.type === 'folder' ? 'Folder' : 'File'}</h2>
+                            <button onClick={() => setRenameModal(prev => ({ ...prev, isOpen: false }))} style={{ color: '#94a3b8', border: 'none', background: 'transparent', cursor: 'pointer' }}><X size={24} /></button>
+                        </div>
+
+                        <form onSubmit={handleRenameSubmit}>
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label className="form-label">New Name</label>
+                                <input
+                                    type="text"
+                                    className="search-input"
+                                    style={{ border: '1px solid var(--border)', padding: '0.75rem 1rem', borderRadius: '12px', width: '100%', boxSizing: 'border-box' }}
+                                    placeholder="Enter new name..."
+                                    autoFocus
+                                    value={renameModal.newName}
+                                    onChange={(e) => setRenameModal(prev => ({ ...prev, newName: e.target.value }))}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setRenameModal(prev => ({ ...prev, isOpen: false }))}
+                                    style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--border)', fontWeight: 700, color: '#64748b', background: 'white', cursor: 'pointer' }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={renameLoading || !renameModal.newName.trim() || renameModal.newName === renameModal.currentName}
+                                    style={{ flex: 1, padding: '0.75rem', borderRadius: '12px', background: 'var(--primary)', color: 'white', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', border: 'none', cursor: 'pointer' }}
+                                >
+                                    {renameLoading ? <Loader2 className="animate-spin" size={18} /> : <><Check size={18} /> Rename</>}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* Move Modal */}
             {showMoveModal && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1.5rem' }}>
@@ -1207,26 +1368,72 @@ const GoDMS = () => {
                                     <Loader2 className="animate-spin" size={24} color="var(--primary)" />
                                 </div>
                             ) : (
-                                allFolders.filter(f => !selectedItems.folderIds.includes(f.ID)).map(f => (
-                                    <div
-                                        key={f.ID}
-                                        onClick={() => setSelectedTargetFolder(f.ID)}
-                                        style={{
-                                            padding: '0.875rem 1rem',
-                                            borderRadius: '12px',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.75rem',
-                                            background: selectedTargetFolder === f.ID ? 'rgba(30, 89, 197, 0.05)' : 'transparent',
-                                            border: selectedTargetFolder === f.ID ? '1px solid var(--primary)' : '1px solid transparent',
-                                            marginBottom: '0.25rem'
-                                        }}
-                                    >
-                                        <Folder size={20} color={selectedTargetFolder === f.ID ? '#f59e0b' : '#94a3b8'} fill={selectedTargetFolder === f.ID ? '#f59e0b' : 'transparent'} fillOpacity={0.2} />
-                                        <span style={{ fontWeight: selectedTargetFolder === f.ID ? 700 : 500 }}>{f.Name}</span>
-                                    </div>
-                                ))
+                                (() => {
+                                    const toggleMoveFolder = (id) => setExpandedMoveFolders(p => ({...p, [id]: !p[id]}));
+                                    const renderFolderTree = (parentId, depth = 0) => {
+                                        const children = allFolders.filter(f => {
+                                            if (selectedItems.folderIds.includes(f.ID || f.id)) return false;
+                                            const fParentId = f.parent_id || f.ParentID;
+                                            if (!parentId) return !fParentId;
+                                            return fParentId === parentId;
+                                        });
+
+                                        if (children.length === 0) return null;
+
+                                        return children.map(f => {
+                                            const fId = f.id || f.ID;
+                                            const fName = f.name || f.Name;
+                                            const isExpanded = expandedMoveFolders[fId];
+                                            
+                                            const hasChildren = allFolders.some(child => {
+                                                if (selectedItems.folderIds.includes(child.ID || child.id)) return false;
+                                                return (child.parent_id || child.ParentID) === fId;
+                                            });
+
+                                            return (
+                                                <div key={fId} style={{ marginTop: '0.25rem' }}>
+                                                    <div
+                                                        onClick={() => setSelectedTargetFolder(fId)}
+                                                        style={{
+                                                            padding: '0.625rem 0.75rem',
+                                                            paddingLeft: `${1 + depth * 1.5}rem`,
+                                                            borderRadius: '12px',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.75rem',
+                                                            background: selectedTargetFolder === fId ? 'rgba(30, 89, 197, 0.05)' : 'transparent',
+                                                            border: selectedTargetFolder === fId ? '1px solid var(--primary)' : '1px solid transparent',
+                                                        }}
+                                                    >
+                                                        <div 
+                                                            style={{ display: 'flex', alignItems: 'center', width: '20px', height: '20px', cursor: 'pointer', justifyContent: 'center' }}
+                                                            onClick={(e) => {
+                                                                if (hasChildren) {
+                                                                    e.stopPropagation();
+                                                                    toggleMoveFolder(fId);
+                                                                }
+                                                            }}
+                                                        >
+                                                            {hasChildren ? (
+                                                                <ChevronDown size={16} color="#64748b" style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }} />
+                                                            ) : <div style={{width: '16px'}}></div>}
+                                                        </div>
+                                                        <Folder size={20} color={selectedTargetFolder === fId ? '#f59e0b' : '#94a3b8'} fill={selectedTargetFolder === fId ? '#f59e0b' : 'transparent'} fillOpacity={0.2} />
+                                                        <span style={{ fontWeight: selectedTargetFolder === fId ? 700 : 500 }}>{fName}</span>
+                                                    </div>
+                                                    {isExpanded && hasChildren && (
+                                                        <div>
+                                                            {renderFolderTree(fId, depth + 1)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        });
+                                    };
+                                    
+                                    return renderFolderTree(null, 0);
+                                })()
                             )}
                         </div>
 

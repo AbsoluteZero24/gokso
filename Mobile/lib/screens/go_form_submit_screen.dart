@@ -31,6 +31,8 @@ class _GoFormSubmitScreenState extends ConsumerState<GoFormSubmitScreen> {
   String? _p2UserId;
   final List<String> _selectedAssetIds = [];
   String _notes = '';
+  String _p1SignType = 'signature';
+  String _p2SignType = 'signature';
 
   // Signature related
   String _signatureMethod = 'direct'; // 'direct' or 'request'
@@ -108,6 +110,8 @@ class _GoFormSubmitScreenState extends ConsumerState<GoFormSubmitScreen> {
         'p2_user_id': _p2UserId!,
         'notes': _notes,
         'submit_type': _signatureMethod == 'request' ? 'request' : '',
+        'p1_sign_type': _p1SignType,
+        'p2_sign_type': _p2SignType,
       };
 
       if (_category == 'Tukar') {
@@ -227,21 +231,25 @@ class _GoFormSubmitScreenState extends ConsumerState<GoFormSubmitScreen> {
                         label: 'Pihak Pertama (Pemberi)',
                         value: _p1UserId,
                         items: _employees.map((e) {
-                          return DropdownMenuItem(value: e['ID'].toString(), child: Text(e['Name']));
+                          return DropdownMenuItem(value: e['id']?.toString(), child: Text(e['name']?.toString() ?? 'Unknown'));
                         }).toList(),
                         onChanged: (val) => setState(() => _p1UserId = val),
                         validator: (val) => val == null ? 'Pilih pemberi' : null,
                       ),
+                      const SizedBox(height: 8),
+                      _buildSignTypeSwitch(_p1SignType, (val) => setState(() => _p1SignType = val)),
                       const SizedBox(height: 16),
                       _buildModernDropdown<String>(
                         label: 'Pihak Kedua (Penerima)',
                         value: _p2UserId,
                         items: _employees.map((e) {
-                          return DropdownMenuItem(value: e['ID'].toString(), child: Text(e['Name']));
+                          return DropdownMenuItem(value: e['id']?.toString(), child: Text(e['name']?.toString() ?? 'Unknown'));
                         }).toList(),
                         onChanged: (val) => setState(() => _p2UserId = val),
                         validator: (val) => val == null ? 'Pilih penerima' : null,
                       ),
+                      const SizedBox(height: 8),
+                      _buildSignTypeSwitch(_p2SignType, (val) => setState(() => _p2SignType = val)),
                     ],
                   ),
                 ),
@@ -301,7 +309,7 @@ class _GoFormSubmitScreenState extends ConsumerState<GoFormSubmitScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Tanda Tangan PIHAK PERTAMA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                          Text('TTD ${_p1SignType.toUpperCase()} PIHAK I', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
                           const SizedBox(height: 8),
                           Container(
                             decoration: BoxDecoration(
@@ -326,7 +334,7 @@ class _GoFormSubmitScreenState extends ConsumerState<GoFormSubmitScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Tanda Tangan PIHAK KEDUA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                          Text('TTD ${_p2SignType.toUpperCase()} PIHAK II', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
                           const SizedBox(height: 8),
                           Container(
                             decoration: BoxDecoration(
@@ -418,11 +426,11 @@ class _GoFormSubmitScreenState extends ConsumerState<GoFormSubmitScreen> {
   }
 
   Widget _buildExchangeFields() {
-    final oldAssetItems = _assets.where((a) => a['UserID'] != null && a['UserID'] != "").map((a) {
+    final oldAssetItems = _assets.where((a) => a['user_id'] != null && a['user_id'] != "").map((a) {
       return DropdownMenuItem(
-        value: a['ID'].toString(), 
+        value: a['id']?.toString(), 
         child: Text(
-          '${a['InventoryNumber']} - ${a['AssetName']}',
+          '${a['inventory_number'] ?? 'Unknown'} - ${a['asset_name'] ?? 'Unknown'}',
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 13),
         ),
@@ -430,14 +438,14 @@ class _GoFormSubmitScreenState extends ConsumerState<GoFormSubmitScreen> {
     }).toList();
 
     final newAssetItems = _assets.where((a) {
-      final String status = (a['Status'] ?? '').toString().toLowerCase();
-      final bool isUnassigned = a['UserID'] == null || a['UserID'] == "";
+      final String status = (a['status'] ?? '').toString().toLowerCase();
+      final bool isUnassigned = a['user_id'] == null || a['user_id'] == "";
       return status == 'ready' && isUnassigned;
     }).map((a) {
       return DropdownMenuItem(
-        value: a['ID'].toString(), 
+        value: a['id']?.toString(), 
         child: Text(
-          '${a['InventoryNumber']} - ${a['AssetName']}',
+          '${a['inventory_number'] ?? 'Unknown'} - ${a['asset_name'] ?? 'Unknown'}',
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 13),
         ),
@@ -490,8 +498,8 @@ class _GoFormSubmitScreenState extends ConsumerState<GoFormSubmitScreen> {
 
   Widget _buildAssetSelection() {
     List<dynamic> filteredAssets = _assets.where((a) {
-      final String status = (a['Status'] ?? '').toString().toLowerCase();
-      final bool isUnassigned = a['UserID'] == null || a['UserID'] == "";
+      final String status = (a['status'] ?? '').toString().toLowerCase();
+      final bool isUnassigned = a['user_id'] == null || a['user_id'] == "";
       final bool isAssigned = !isUnassigned;
 
       if (_category == 'Pengembalian') {
@@ -533,25 +541,64 @@ class _GoFormSubmitScreenState extends ConsumerState<GoFormSubmitScreen> {
         separatorBuilder: (context, index) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final asset = filteredAssets[index];
-          final bool isSelected = _selectedAssetIds.contains(asset['ID']);
+          final bool isSelected = _selectedAssetIds.contains(asset['id']);
           
           return CheckboxListTile(
-            title: Text(asset['InventoryNumber'] ?? 'Unknown'),
-            subtitle: Text('${asset['AssetName']} ${asset['DeviceName'] != null ? '(${asset['DeviceName']})' : ''}'),
+            title: Text(asset['inventory_number'] ?? 'Unknown'),
+            subtitle: Text('${asset['asset_name'] ?? 'Asset'} ${asset['device_name'] != null ? '(${asset['device_name']})' : ''}'),
             value: isSelected,
             activeColor: AppTheme.primary,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             onChanged: (bool? value) {
               setState(() {
                 if (value == true) {
-                  _selectedAssetIds.add(asset['ID']);
+                  _selectedAssetIds.add(asset['id']?.toString() ?? '');
                 } else {
-                  _selectedAssetIds.remove(asset['ID']);
+                  _selectedAssetIds.remove(asset['id']?.toString() ?? '');
                 }
               });
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildSignTypeSwitch(String current, Function(String) onChanged) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildSignTypeOption('Signature', 'signature', current == 'signature', onChanged),
+          _buildSignTypeOption('Paraf', 'paraf', current == 'paraf', onChanged),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSignTypeOption(String label, String value, bool isActive, Function(String) onChanged) {
+    return GestureDetector(
+      onTap: () => onChanged(value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isActive ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))] : [],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            color: isActive ? AppTheme.primary : Colors.grey,
+          ),
+        ),
       ),
     );
   }

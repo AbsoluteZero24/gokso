@@ -17,18 +17,17 @@ const SearchableSelect = ({
     const dropdownRef = useRef(null);
     const triggerRef = useRef(null);
 
-    const filteredOptions = options.filter(option =>
-        (typeof option === 'string' ? option : option.label)
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())
-    );
+    const filteredOptions = options.filter(option => {
+        const lbl = (typeof option === 'string' ? option : (option.label || '')).toString();
+        return lbl.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     const selectedOption = options.find(opt =>
-        (typeof opt === 'string' ? opt : opt.value) === value
+        (typeof opt === 'string' ? opt : (opt.value || '')) === value
     );
 
     const displayValue = selectedOption
-        ? (typeof selectedOption === 'string' ? selectedOption : selectedOption.label)
+        ? (typeof selectedOption === 'string' ? selectedOption : (selectedOption.label || ''))
         : '';
 
     // Update position when opening or scrolling/resizing

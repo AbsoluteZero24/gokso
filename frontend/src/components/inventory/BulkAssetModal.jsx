@@ -64,7 +64,7 @@ const BulkAssetModal = ({
                                 required
                                 value={bulkAsset.category}
                                 onChange={(val) => setBulkAsset({ ...bulkAsset, category: val })}
-                                options={categories.map(c => ({ value: c.Name, label: c.Name }))}
+                                options={categories.map(c => ({ value: c.name || c.Name, label: c.name || c.Name }))}
                                 placeholder="Pilih Kategori"
                             />
                         </div>
@@ -111,7 +111,7 @@ const BulkAssetModal = ({
                                         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>RAM Type</label>
                                         <select value={compSpecs.ramType} onChange={(e) => setCompSpecs({ ...compSpecs, ramType: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem', background: 'white' }}>
                                             <option value="">Pilih Type</option>
-                                            {ramTypes.map(t => <option key={t.ID || t.Name} value={t.Name}>{t.Name}</option>)}
+                                            {ramTypes.map(t => <option key={t.id || t.ID || t.name || t.Name} value={t.name || t.Name}>{t.name || t.Name}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -131,7 +131,7 @@ const BulkAssetModal = ({
                                         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>Storage Type</label>
                                         <select value={compSpecs.storageType} onChange={(e) => setCompSpecs({ ...compSpecs, storageType: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem', background: 'white' }}>
                                             <option value="">Pilih Type</option>
-                                            {storageTypes.map(t => <option key={t.ID || t.Name} value={t.Name}>{t.Name}</option>)}
+                                            {storageTypes.map(t => <option key={t.id || t.ID || t.name || t.Name} value={t.name || t.Name}>{t.name || t.Name}</option>)}
                                         </select>
                                     </div>
                                 </div>

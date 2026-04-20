@@ -53,7 +53,7 @@ const AssetManagement = () => {
     }, [selectedCategory]);
 
     const getCategoryIcon = (catName) => {
-        const lower = catName.toLowerCase();
+        const lower = (catName || '').toString().toLowerCase();
         if (lower.includes('laptop')) return <Laptop size={16} />;
         if (lower.includes('komputer') || lower.includes('pc')) return <Monitor size={16} />;
         if (lower.includes('printer')) return <Printer size={16} />;
@@ -63,13 +63,13 @@ const AssetManagement = () => {
 
     const openAssignModal = (asset) => {
         setCurrentAsset(asset);
-        setSelectedUserId(asset.UserID || '');
+        setSelectedUserId(asset.user_id || asset.UserID || '');
         setShowAssignModal(true);
     };
 
     const openLabelModal = (asset) => {
         setCurrentAsset(asset);
-        setNewLabel(asset.DeviceName || '');
+        setNewLabel(asset.device_name || asset.DeviceName || '');
         setShowLabelModal(true);
     };
 
@@ -77,7 +77,7 @@ const AssetManagement = () => {
         setSubmitting(true);
         try {
             const params = new URLSearchParams();
-            params.append('asset_id', currentAsset.ID);
+            params.append('asset_id', currentAsset.id || currentAsset.ID);
             params.append('user_id', selectedUserId);
 
             await axios.post('/api/assets-kso/laptop/assign', params);
@@ -94,7 +94,7 @@ const AssetManagement = () => {
         setSubmitting(true);
         try {
             const params = new URLSearchParams();
-            params.append('asset_id', currentAsset.ID);
+            params.append('asset_id', currentAsset.id || currentAsset.ID);
             params.append('device_name', newLabel);
 
             await axios.post('/api/assets-kso/update-label', params);
@@ -107,13 +107,17 @@ const AssetManagement = () => {
         }
     };
 
-    const filteredAssets = data.assets.filter(asset =>
-        asset.InventoryNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        asset.SerialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        asset.AssetName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        asset.User?.Name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        asset.DeviceName?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredAssets = data.assets.filter(asset => {
+        if (!asset) return false;
+        const search = (searchTerm || '').toString().toLowerCase();
+        return (
+            (asset.inventory_number || asset.InventoryNumber || '').toString().toLowerCase().includes(search) ||
+            (asset.serial_number || asset.SerialNumber || '').toString().toLowerCase().includes(search) ||
+            (asset.asset_name || asset.AssetName || '').toString().toLowerCase().includes(search) ||
+            (asset.user?.name || asset.User?.Name || '').toString().toLowerCase().includes(search) ||
+            (asset.device_name || asset.DeviceName || '').toString().toLowerCase().includes(search)
+        );
+    });
 
     return (
         <div className="page-content">
@@ -129,8 +133,8 @@ const AssetManagement = () => {
                             value={selectedCategory}
                             onChange={(val) => setSelectedCategory(val)}
                             options={data.categories.map(cat => ({
-                                value: cat.Name,
-                                label: cat.Name
+                                value: cat.name || cat.Name,
+                                label: cat.name || cat.Name
                             }))}
                             placeholder="Pilih Kategori"
                         />
@@ -172,30 +176,30 @@ const AssetManagement = () => {
                             ) : filteredAssets.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" style={{ padding: '5rem', textAlign: 'center', color: 'var(--text-light)' }}>
-                                        Tidak ada data {selectedCategory.toLowerCase()} ditemukan.
+                                        Tidak ada data {(selectedCategory || 'aset').toString().toLowerCase()} ditemukan.
                                     </td>
                                 </tr>
                             ) : filteredAssets.map((asset) => (
-                                <tr key={asset.ID} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }} className="table-row-hover">
+                                <tr key={asset.id || asset.ID} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }} className="table-row-hover">
                                     <td style={{ padding: '1.25rem 1.5rem' }}>
-                                        <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.938rem', marginBottom: '0.25rem' }}>{asset.InventoryNumber}</div>
+                                        <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.938rem', marginBottom: '0.25rem' }}>{asset.inventory_number || asset.InventoryNumber}</div>
                                         <div style={{ fontSize: '0.688rem', color: '#64748b', background: '#f8fafc', padding: '0.125rem 0.4rem', borderRadius: '4px', border: '1px solid #e2e8f0', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}>
-                                            <Barcode size={10} /> {asset.SerialNumber}
+                                            <Barcode size={10} /> {asset.serial_number || asset.SerialNumber}
                                         </div>
                                     </td>
                                     <td style={{ padding: '1.25rem 1rem' }}>
-                                        <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#334155', marginBottom: '0.125rem' }}>{asset.AssetName}</div>
-                                        <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>{asset.Brand} {asset.TypeModel}</div>
+                                        <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#334155', marginBottom: '0.125rem' }}>{asset.asset_name || asset.AssetName}</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>{asset.brand || asset.Brand} {asset.type_model || asset.TypeModel}</div>
                                     </td>
                                     <td style={{ padding: '1.25rem 1rem' }}>
-                                        {asset.User ? (
+                                        {(asset.user?.id || asset.User?.ID) ? (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                                 <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(30, 89, 197, 0.05)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 700, border: '1px solid rgba(30, 89, 197, 0.1)' }}>
-                                                    {asset.User.Name?.[0]}
+                                                    {(asset.user?.name || asset.User?.Name)?.[0]}
                                                 </div>
                                                 <div>
-                                                    <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1e293b' }}>{asset.User.Name}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>{asset.User.NIK}</div>
+                                                    <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1e293b' }}>{asset.user?.name || asset.User?.Name}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>{asset.user?.nik || asset.User?.NIK}</div>
                                                 </div>
                                             </div>
                                         ) : (
@@ -203,20 +207,20 @@ const AssetManagement = () => {
                                         )}
                                     </td>
                                     <td style={{ padding: '1.25rem 1rem' }}>
-                                        {asset.User ? (
+                                        {(asset.user?.id || asset.User?.ID) ? (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                                 <div style={{ fontSize: '0.813rem', display: 'flex', alignItems: 'center', gap: '0.375rem', fontWeight: 500, color: '#475569' }}>
-                                                    <Building2 size={12} color="#94a3b8" /> {asset.User.Branch}
+                                                    <Building2 size={12} color="#94a3b8" /> {asset.user?.branch || asset.User?.Branch}
                                                 </div>
                                                 <div style={{ fontSize: '0.813rem', display: 'flex', alignItems: 'center', gap: '0.375rem', fontWeight: 600, color: 'var(--primary)' }}>
-                                                    <Briefcase size={12} color="var(--primary)" /> {asset.User.Position}
+                                                    <Briefcase size={12} color="var(--primary)" /> {asset.user?.position || asset.User?.Position}
                                                 </div>
                                             </div>
                                         ) : <span style={{ color: '#cbd5e1' }}>-</span>}
                                     </td>
                                     <td style={{ padding: '1.25rem 1rem' }}>
-                                        {asset.DeviceName ? (
-                                            <span style={{ background: 'rgba(99, 102, 241, 0.05)', color: '#6366f1', padding: '0.25rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid rgba(99, 102, 241, 0.1)' }}>{asset.DeviceName}</span>
+                                        {(asset.device_name || asset.DeviceName) ? (
+                                            <span style={{ background: 'rgba(99, 102, 241, 0.05)', color: '#6366f1', padding: '0.25rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid rgba(99, 102, 241, 0.1)' }}>{asset.device_name || asset.DeviceName}</span>
                                         ) : (
                                             <span style={{ color: '#cbd5e1', fontSize: '0.75rem', fontWeight: 500 }}>No Label</span>
                                         )}
@@ -256,7 +260,7 @@ const AssetManagement = () => {
                         <div style={{ marginBottom: '1.5rem' }}>
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Aset</label>
                             <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', fontWeight: 500 }}>
-                                {currentAsset.InventoryNumber} - {currentAsset.AssetName}
+                                {currentAsset.inventory_number || currentAsset.InventoryNumber} - {currentAsset.asset_name || currentAsset.AssetName}
                             </div>
                         </div>
 
@@ -268,8 +272,8 @@ const AssetManagement = () => {
                                 options={[
                                     { value: '', label: '-- Unassign / Kosongkan --' },
                                     ...data.users.map(user => ({
-                                        value: user.ID,
-                                        label: `${user.Name} - ${user.NIK} (${user.Branch})`
+                                        value: user.id || user.ID,
+                                        label: `${user.name || user.Name} - ${user.nik || user.NIK} (${user.branch || user.Branch})`
                                     }))
                                 ]}
                                 placeholder="Pilih Karyawan"

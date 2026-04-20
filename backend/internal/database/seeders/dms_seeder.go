@@ -25,9 +25,10 @@ func SeedDMS(db *gorm.DB) error {
 
 	if count == 0 {
 		legalFolder := models.DMSFolder{
-			ID:    uuid.New().String(),
-			Name:  "Dokumen Legal",
-			Color: "#fbbf24",
+			ID:      uuid.New().String(),
+			Name:    "Dokumen Legal",
+			Section: "Sistem Informasi",
+			Color:   "#fbbf24",
 		}
 		if err := db.Create(&legalFolder).Error; err != nil {
 			return err

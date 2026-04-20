@@ -24,3 +24,4 @@ plugins {
 }
 
 include(":app")
+rootProject.name = "gokso_mobile_android"

@@ -28,7 +28,7 @@ class _AssetListScreenState extends ConsumerState<AssetListScreen> with SingleTi
 
   // Filter States
   final TextEditingController _searchController = TextEditingController();
-  String? _selectedYear = DateTime.now().year.toString();
+  String? _selectedYear = 'Semua Tahun';
   String? _selectedCategory;
   List<dynamic> _categories = [];
   bool _isFiltersVisible = false;
@@ -77,8 +77,8 @@ class _AssetListScreenState extends ConsumerState<AssetListScreen> with SingleTi
 
   List<dynamic> _applyFilters(List<dynamic> assets) {
     return assets.where((asset) {
-      final name = (asset['AssetName'] ?? '').toString().toLowerCase();
-      final invNum = (asset['InventoryNumber'] ?? '').toString().toLowerCase();
+      final name = (asset['asset_name'] ?? '').toString().toLowerCase();
+      final invNum = (asset['inventory_number'] ?? '').toString().toLowerCase();
       final query = _searchController.text.toLowerCase();
       
       final matchesSearch = name.contains(query) || invNum.contains(query);
@@ -87,13 +87,13 @@ class _AssetListScreenState extends ConsumerState<AssetListScreen> with SingleTi
       if (_selectedYear != null && _selectedYear != 'Semua Tahun') {
         // Tentatively check if invNum or something contains the year if there is no PurchaseDate
         // Or check PurchaseDate if exists
-        final dateStr = asset['PurchaseDate'] ?? '';
+        final dateStr = asset['purchase_date'] ?? asset['created_at'] ?? '';
         matchesYear = dateStr.toString().contains(_selectedYear!);
       }
 
       bool matchesCategory = true;
       if (_selectedCategory != null && _selectedCategory != 'Semua Kategori') {
-        matchesCategory = asset['Category'] == _selectedCategory;
+        matchesCategory = asset['category'] == _selectedCategory;
       }
 
       return matchesSearch && matchesYear && matchesCategory;
@@ -128,7 +128,10 @@ class _AssetListScreenState extends ConsumerState<AssetListScreen> with SingleTi
                   data: (assets) {
                     final filteredAssets = _applyFilters(assets);
                     return RefreshIndicator(
-                      onRefresh: () => ref.refresh(assetsProvider(widget.status).future),
+                      onRefresh: () async {
+                        ref.refresh(assetsProvider(widget.status));
+                        await _loadCategories();
+                      },
                       child: filteredAssets.isEmpty
                           ? Center(
                               child: Column(
@@ -164,33 +167,74 @@ class _AssetListScreenState extends ConsumerState<AssetListScreen> with SingleTi
                                         child: const Icon(Icons.inventory_2_outlined, color: AppTheme.primary),
                                       ),
                                       title: Text(
-                                        asset['AssetName'] ?? asset['InventoryNumber'] ?? 'Unnamed Asset',
+                                        asset['asset_name'] ?? asset['inventory_number'] ?? 'Unnamed Asset',
                                         style: const TextStyle(fontWeight: FontWeight.bold),
                                       ),
                                       subtitle: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           const SizedBox(height: 4),
-                                          Text('Label: ${asset['InventoryNumber'] ?? '-'}'),
-                                          Text('Location: ${asset['Location'] ?? '-'}'),
+                                          Text('Label: ${asset['inventory_number'] ?? '-'}'),
+                                          Text('Location: ${asset['location'] ?? '-'}'),
                                         ],
                                       ),
-                                      trailing: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: (asset['Status'] == 'Ready')
-                                              ? Colors.green.withOpacity(0.1)
-                                              : (asset['Status'] == 'Rusak' ? Colors.red.withOpacity(0.1) : Colors.orange.withOpacity(0.1)),
-                                          borderRadius: BorderRadius.circular(20),
-                                        ),
-                                        child: Text(
-                                          asset['Status'] ?? 'Unknown',
-                                          style: TextStyle(
-                                            color: (asset['Status'] == 'Ready') 
-                                                ? Colors.green 
-                                                : (asset['Status'] == 'Rusak' ? Colors.red : Colors.orange),
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w800,
+                                      trailing: PopupMenuButton<String>(
+                                        onSelected: (val) async {
+                                          if (val == 'edit') {
+                                            final refresh = await Navigator.push(context, MaterialPageRoute(builder: (context) => AssetCreateScreen(asset: asset)));
+                                            if (refresh == true) ref.refresh(assetsProvider(widget.status));
+                                          } else if (val == 'delete') {
+                                            final confirm = await showDialog<bool>(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                title: const Text('Hapus Aset'),
+                                                content: const Text('Apakah Anda yakin ingin menghapus aset ini?'),
+                                                actions: [
+                                                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('BATAL')),
+                                                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('HAPUS', style: TextStyle(color: Colors.red))),
+                                                ],
+                                              ),
+                                            );
+                                            if (confirm == true) {
+                                              try {
+                                                final id = (asset['id'] ?? asset['ID']).toString();
+                                                await ApiService.deleteAsset(id);
+                                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Aset berhasil dihapus')));
+                                                ref.refresh(assetsProvider(widget.status));
+                                              } catch (e) {
+                                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menghapus aset: $e')));
+                                              }
+                                            }
+                                          }
+                                        },
+                                        itemBuilder: (context) => [
+                                          const PopupMenuItem(value: 'edit', child: ListTile(leading: Icon(Icons.edit_outlined, size: 20), title: Text('Edit', style: TextStyle(fontSize: 14)), contentPadding: EdgeInsets.zero, dense: true)),
+                                          const PopupMenuItem(value: 'delete', child: ListTile(leading: Icon(Icons.delete_outline, size: 20, color: Colors.red), title: Text('Hapus', style: TextStyle(fontSize: 14, color: Colors.red)), contentPadding: EdgeInsets.zero, dense: true)),
+                                        ],
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: (asset['status'] == 'Ready')
+                                                ? Colors.green.withOpacity(0.1)
+                                                : (asset['status'] == 'Rusak' ? Colors.red.withOpacity(0.1) : Colors.orange.withOpacity(0.1)),
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                asset['status'] ?? 'Unknown',
+                                                style: TextStyle(
+                                                  color: (asset['status'] == 'Ready') 
+                                                      ? Colors.green 
+                                                      : (asset['status'] == 'Rusak' ? Colors.red : Colors.orange),
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Icon(Icons.more_vert, size: 14, color: (asset['status'] == 'Ready') ? Colors.green : (asset['status'] == 'Rusak' ? Colors.red : Colors.orange)),
+                                            ],
                                           ),
                                         ),
                                       ),
@@ -330,7 +374,10 @@ class _AssetListScreenState extends ConsumerState<AssetListScreen> with SingleTi
                       hint: const Text('Semua Kategori', style: TextStyle(fontSize: 13)),
                       items: [
                         const DropdownMenuItem(value: 'Semua Kategori', child: Text('Semua Kategori', style: TextStyle(fontSize: 13))),
-                        ..._categories.map((c) => DropdownMenuItem(value: c['Name'], child: Text(c['Name'], style: const TextStyle(fontSize: 13)))),
+                        ..._categories.map((c) {
+                          final name = (c['name'] ?? c['Name'] ?? 'Category').toString();
+                          return DropdownMenuItem(value: name, child: Text(name, style: const TextStyle(fontSize: 13)));
+                        }),
                       ],
                       onChanged: (val) => setState(() => _selectedCategory = val),
                     ),

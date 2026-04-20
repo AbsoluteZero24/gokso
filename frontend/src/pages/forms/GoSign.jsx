@@ -19,8 +19,11 @@ import {
     AlertTriangle,
     Plus,
     Upload as UploadIcon,
-    Settings
+    Settings,
+    Folder,
+    ExternalLink
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import Toast from '../../components/shared/Toast';
@@ -35,6 +38,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 
 const GoSign = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [tasks, setTasks] = useState([]);
@@ -48,7 +52,6 @@ const GoSign = () => {
     
     // Manual Upload State
     const [showUploadModal, setShowUploadModal] = useState(false);
-    const [showVisualSigner, setShowVisualSigner] = useState(false); // Modal penempatan visual
     const [allUsers, setAllUsers] = useState([]);
     const [folders, setFolders] = useState([]);
 
@@ -723,11 +726,80 @@ const GoSign = () => {
                                     </div>
 
                                 {selectedTask.details.Notes && (
-                                    <div style={{ padding: '1.25rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+                                    <div style={{ padding: '1.25rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9', marginBottom: '1.5rem' }}>
                                         <p style={{ fontSize: '0.625rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Catatan Tambahan</p>
                                         <p style={{ fontSize: '0.875rem', margin: 0, lineScale: 1.5 }}>{selectedTask.details.Notes}</p>
                                     </div>
                                 )}
+
+                                <div style={{ padding: '1.25rem', background: '#f0fdf4', borderRadius: '16px', border: '1px solid #dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <div style={{ padding: '0.5rem', borderRadius: '10px', background: 'white', border: '1px solid #bbf7d0', color: '#16a34a', boxShadow: '0 2px 4px rgba(22,163,74,0.05)' }}>
+                                            <Folder size={20} />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '0.625rem', fontWeight: 800, color: '#166534', textTransform: 'uppercase', marginBottom: '0.25rem', letterSpacing: '0.025em' }}>Lokasi Penyimpanan File (eDoc)</div>
+                                            <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#14532d' }}>
+                                                {(() => {
+                                                    let pathNames = [];
+                                                    let currentId = selectedTask.target_folder_id || selectedTask.TargetFolderID;
+                                                    const section = selectedTask.section || selectedTask.Section || 'Sistem Informasi';
+                                                    
+                                                    if (currentId === 'auto') {
+                                                        pathNames = ["GoSign"];
+                                                    } else if (currentId && currentId !== 'root') {
+                                                        while (currentId) {
+                                                            const folder = folders.find(f => (f.ID || f.id) === currentId);
+                                                            if (folder) {
+                                                                pathNames.unshift(folder.Name || folder.name);
+                                                                currentId = folder.parent_id || folder.ParentID;
+                                                            } else {
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                    
+                                                    return pathNames.length > 0 
+                                                        ? `eDoc / ${section} / ${pathNames.join(" / ")}` 
+                                                        : `eDoc / ${section}`;
+                                                })()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const sec = selectedTask.section || selectedTask.Section || 'Sistem Informasi';
+                                            const rawId = selectedTask.target_folder_id || selectedTask.TargetFolderID;
+                                            
+                                            // Handle redirection
+                                            if (!rawId || rawId === 'root' || rawId === 'auto') {
+                                                navigate(`/godms/edoc?section=${encodeURIComponent(sec)}`);
+                                            } else {
+                                                navigate(`/godms/edoc/${rawId}?section=${encodeURIComponent(sec)}`);
+                                            }
+                                        }}
+                                        style={{ 
+                                            padding: '0.625rem 1rem', 
+                                            borderRadius: '10px', 
+                                            background: '#166534', 
+                                            color: 'white', 
+                                            border: 'none', 
+                                            fontSize: '0.75rem', 
+                                            fontWeight: 700, 
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            whiteSpace: 'nowrap',
+                                            boxShadow: '0 4px 6px -1px rgba(22,163,74,0.2)'
+                                        }}
+                                    >
+                                        Buka Folder <ExternalLink size={14} />
+                                    </button>
+                                </div>
+
                             </div>
 
                              {/* Modal Footer */}
@@ -953,7 +1025,7 @@ const GoSign = () => {
 };
 
 
-const UploadGoSignModal = ({ isOpen, onClose, users, folders, onSuccess }) => {
+const UploadGoSignModal = ({ isOpen, onClose, users, onSuccess }) => {
     const [docName, setDocName] = useState('');
     const [section, setSection] = useState('');
     const [selectedFile, setSelectedFile] = useState(null);
@@ -1134,9 +1206,7 @@ const UploadGoSignModal = ({ isOpen, onClose, users, folders, onSuccess }) => {
                                 <p style={{ fontWeight: 600 }}>Belum ada penanda tangan ditambahkan</p>
                             </div>
                         ) : signers.map((s, idx) => (
-                            <motion.div 
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
+                            <div 
                                 key={idx} 
                                 style={{ padding: '1.5rem', border: '1px solid #f1f5f9', borderRadius: '20px', background: '#f8fafc', position: 'relative' }}
                             >
@@ -1233,7 +1303,7 @@ const UploadGoSignModal = ({ isOpen, onClose, users, folders, onSuccess }) => {
                                 <p style={{ fontSize: '0.625rem', color: '#94a3b8', marginTop: '0.75rem' }}>
                                     * Tips: Posisi dihitung dari pojok kiri atas halaman. Standar A4 adalah 210 x 297 mm.
                                 </p>
-                            </motion.div>
+                            </div>
                         ))}
                     </div>
                 </div>
@@ -1273,27 +1343,11 @@ const UploadGoSignModal = ({ isOpen, onClose, users, folders, onSuccess }) => {
 const VisualSignerOverlay = ({ file, signers, onUpdateSigners, onClose }) => {
     const [numPages, setNumPages] = useState(null);
     const [selectedIdx, setSelectedIdx] = useState(signers.length > 0 ? 0 : -1);
-    const containerRef = React.useRef(null);
-
     // Standard A4 Ratio: 210 / 297 = 0.707
     // Using 0.707 logic or calculating actual scale from rendered PDF
 
     const onDocumentLoadSuccess = ({ numPages }) => {
         setNumPages(numPages);
-    };
-
-    const handleBoxDrag = (idx, e, data) => {
-        // Find the page being hovered or just use the current page property
-        // For simplicity, we assume they drag within the visible viewport context.
-        // Usually, users want to drag between pages but that's complex.
-        // Let's implement placement per page.
-        
-        const newSigners = [...signers];
-        // data.x and data.y are in pixels relative to the parent?
-        // Actually react-draggable or framer-motion drag provides delta.
-        // We'll calculate percent or mm relative to original 210x297.
-        
-        // We need the rendered page width/height.
     };
 
     const updateSignerPos = (idx, x_mm, y_mm, page) => {
@@ -1411,10 +1465,6 @@ const VisualSignerOverlay = ({ file, signers, onUpdateSigners, onClose }) => {
                                             top: 0, left: 0,
                                             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
                                             backdropFilter: 'blur(4px)'
-                                        }}
-                                        onDrag={(e, info) => {
-                                            // info.point is global, but latest from motion is relative to initial
-                                            // The latest x/y from the motion logic is what we need
                                         }}
                                         onUpdate={(latest) => {
                                             const x_mm = latest.x / (650 / 210);

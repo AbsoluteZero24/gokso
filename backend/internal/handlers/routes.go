@@ -76,6 +76,7 @@ func (server *Server) initializeRoutes() {
 	api.HandleFunc("/godms/folders/list-all", server.ApiListAllFolders).Methods("GET")
 	api.HandleFunc("/godms/folder/store", server.ApiStoreFolder).Methods("POST")
 	api.HandleFunc("/godms/folder/rename", server.RenameFolder).Methods("POST")
+	api.HandleFunc("/godms/file/rename", server.RenameFile).Methods("POST")
 	api.HandleFunc("/godms/folder/trash", server.MoveFolderToTrash).Methods("POST")
 	api.HandleFunc("/godms/folder/restore", server.RestoreFolder).Methods("POST")
 	api.HandleFunc("/godms/file/upload", server.UploadFile).Methods("POST")

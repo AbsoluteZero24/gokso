@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gokso-mobile
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gokso-mobile
+  template:
+    metadata:
+      labels:
+        app: gokso-mobile
+    spec:
+      containers:
+      - name: mobile
+        image: absolutezero24/gokso-mobile:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gokso-mobile-service
+spec:
+  selector:
+    app: gokso-mobile
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

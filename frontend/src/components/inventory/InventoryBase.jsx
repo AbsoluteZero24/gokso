@@ -33,7 +33,7 @@ const InventoryBase = ({ title, description, status }) => {
     const urlCategory = searchParams.get('category'); // Kategori dari URL jika ada
     
     // Filter State
-    const [filterYear, setFilterYear] = useState('2026'); // Tahun filter data
+    const [filterYear, setFilterYear] = useState('Semua Tahun'); // Tahun filter data
     const [filterCategory, setFilterCategory] = useState(urlCategory || 'Semua Kategori'); // Kategori filter data
     const [showYearDropdown, setShowYearDropdown] = useState(false);
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
@@ -111,14 +111,17 @@ const InventoryBase = ({ title, description, status }) => {
         try {
             const catParam = filterCategory === 'Semua Kategori' ? '' : `&category=${filterCategory}`;
             const statusParam = status ? `&status=${status}` : '';
-            const response = await axios.get(`/api/assets-kso?year=${filterYear}${catParam}${statusParam}`);
+            const yearParam = filterYear === 'Semua Tahun' ? '' : `year=${filterYear}`;
+            const queryParams = [yearParam, catParam, statusParam].filter(p => p).join('&');
+            
+            const response = await axios.get(`/api/assets-kso?${queryParams}`);
             const fetchedAssets = response.data.assets || [];
             setAssets(fetchedAssets);
 
             // Menghitung statistik berdasarkan kategori
             const total = fetchedAssets.length;
-            const laptop = fetchedAssets.filter(a => (a.category || a.Category || '').toLowerCase() === 'laptop').length;
-            const computer = fetchedAssets.filter(a => (a.category || a.Category || '').toLowerCase() === 'komputer').length;
+            const laptop = fetchedAssets.filter(a => a && (a.category || a.Category || '').toString().toLowerCase() === 'laptop').length;
+            const computer = fetchedAssets.filter(a => a && (a.category || a.Category || '').toString().toLowerCase() === 'komputer').length;
             setStats({ total, laptop, computer, others: total - laptop - computer });
         } catch (error) {
             console.error('Error fetching assets:', error);
@@ -359,13 +362,14 @@ const InventoryBase = ({ title, description, status }) => {
 
     // Logika pencarian aset di sisi client (berdasarkan tampilan saat ini)
     const filteredAssets = assets.filter(asset => {
-        const query = searchTerm.toLowerCase();
-        const assetName = (asset.asset_name || asset.AssetName || '').toLowerCase();
-        const invNum = (asset.inventory_number || asset.InventoryNumber || '').toLowerCase();
-        const brand = (asset.brand || asset.Brand || '').toLowerCase();
-        const model = (asset.type_model || asset.TypeModel || '').toLowerCase();
-        const loc = (asset.location || asset.Location || '').toLowerCase();
-        const sn = (asset.serial_number || asset.SerialNumber || '').toLowerCase();
+        if (!asset) return false;
+        const query = (searchTerm || '').toString().toLowerCase();
+        const assetName = (asset.asset_name || asset.AssetName || '').toString().toLowerCase();
+        const invNum = (asset.inventory_number || asset.InventoryNumber || '').toString().toLowerCase();
+        const brand = (asset.brand || asset.Brand || '').toString().toLowerCase();
+        const model = (asset.type_model || asset.TypeModel || '').toString().toLowerCase();
+        const loc = (asset.location || asset.Location || '').toString().toLowerCase();
+        const sn = (asset.serial_number || asset.SerialNumber || '').toString().toLowerCase();
 
         return (
             assetName.includes(query) ||
@@ -407,7 +411,7 @@ const InventoryBase = ({ title, description, status }) => {
                         </button>
                         {showYearDropdown && (
                             <div className="custom-select-dropdown">
-                                {['2026', '2025', '2024'].map((year) => (
+                                {['Semua Tahun', '2026', '2025', '2024', '2023'].map((year) => (
                                     <button key={year} onClick={() => { setFilterYear(year); setShowYearDropdown(false); }} className={`custom-select-item ${filterYear === year ? 'active' : ''}`}>{year}</button>
                                 ))}
                             </div>

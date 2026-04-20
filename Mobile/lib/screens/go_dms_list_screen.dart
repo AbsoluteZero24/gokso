@@ -51,10 +51,10 @@ class _GoDMSListScreenState extends ConsumerState<GoDMSListScreen> {
                             child: const Icon(Icons.folder_shared_outlined, color: Colors.purple),
                           ),
                           title: Text(
-                            doc['Name'] ?? 'Untitled Folder',
+                            doc['name'] ?? 'Untitled Folder',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          subtitle: Text('Section: ${doc['Section'] ?? '-'}'),
+                          subtitle: Text('Section: ${doc['section'] ?? '-'}'),
                           trailing: const Icon(Icons.chevron_right, color: AppTheme.textLight),
                           onTap: () {},
                         ),

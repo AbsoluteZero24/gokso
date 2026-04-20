@@ -285,11 +285,12 @@ const UserManagement = () => {
 
     // Memfilter data berdasarkan input pencarian user
     const filteredUsers = displayedUsers.filter(user => {
-        const query = searchTerm.toLowerCase();
-        const name = (user.name || user.Name || '').toLowerCase();
-        const nik = (user.nik || user.NIK || '').toLowerCase();
-        const dept = (user.department || user.Department || '').toLowerCase();
-        const email = (user.email || user.Email || '').toLowerCase();
+        if (!user) return false;
+        const query = (searchTerm || '').toString().toLowerCase();
+        const name = (user.name || user.Name || '').toString().toLowerCase();
+        const nik = (user.nik || user.NIK || '').toString().toLowerCase();
+        const dept = (user.department || user.Department || '').toString().toLowerCase();
+        const email = (user.email || user.Email || '').toString().toLowerCase();
         
         return (
             name.includes(query) ||

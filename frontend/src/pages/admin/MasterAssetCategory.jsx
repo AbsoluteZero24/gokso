@@ -7,7 +7,9 @@ import {
     Plus,
     Trash2,
     Edit,
-    Archive
+    Archive,
+    Check,
+    X
 } from 'lucide-react';
 import ConfirmModal from '../../components/shared/ConfirmModal';
 

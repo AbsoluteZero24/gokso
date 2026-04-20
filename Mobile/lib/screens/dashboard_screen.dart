@@ -22,9 +22,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   List<dynamic> _notifications = [];
 
   // Helper to get fallback/saved info
-  String get _userName => _userData?['Name'] ?? _userData?['name'] ?? 'User';
-  String get _userRole => _userData?['Role'] ?? 'STAFF';
-  String? get _userAvatar => _userData?['Avatar'];
+  String get _userName => _userData?['name'] ?? _userData?['username'] ?? 'User';
+  String get _userRole => _userData?['role'] ?? 'STAFF';
+  String? get _userAvatar => _userData?['avatar'];
 
   @override
   void initState() {

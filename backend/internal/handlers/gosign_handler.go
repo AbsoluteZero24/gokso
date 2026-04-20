@@ -48,7 +48,8 @@ func (server *Server) ApiListGoSignTasks(w http.ResponseWriter, r *http.Request)
 	}
 
 	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
-		"tasks": tasks,
+		"tasks":           tasks,
+		"current_user_id": adminID,
 	})
 }
 

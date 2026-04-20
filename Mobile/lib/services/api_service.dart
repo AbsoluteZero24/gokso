@@ -4,11 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 
 class ApiService {
-  // Use 127.0.0.1 for Web to avoid some browser weirdness with localhost
   static String get baseUrl {
-    if (kIsWeb) return 'http://127.0.0.1:9001/api';
+    if (kIsWeb) return 'http://localhost:9001/api';
     return 'http://10.0.2.2:9001/api';
   }
+
+  // A single client instance that we'll configure
+  static final http.Client _httpClient = http.Client();
 
   static Future<Map<String, String>> get _headers async {
     final prefs = await SharedPreferences.getInstance();
@@ -18,12 +20,64 @@ class ApiService {
       'Accept': 'application/json',
     };
 
-    // On Web, browsers manage cookies. On Mobile, we do it manually.
+    // On Mobile, we must manually manage the Cookie header. 
+    // On Web, the browser does it automatically IF withCredentials is true.
     if (!kIsWeb && cookie.isNotEmpty) {
       headers['Cookie'] = cookie;
     }
     
     return headers;
+  }
+
+  // INTERNAL HELPER for withCredentials on Web
+  static Future<http.Response> _get(String path) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final headers = await _headers;
+    
+    if (kIsWeb) {
+      // Dynamic access to withCredentials to avoid compilation errors on mobile
+      try {
+        (const Object() as dynamic).toString(); // NOP
+        final request = http.Request('GET', uri);
+        request.headers.addAll(headers);
+        request.followRedirects = true;
+        // This is where withCredentials is set on web
+        (request as dynamic).withCredentials = true;
+        
+        final streamedResponse = await _httpClient.send(request);
+        return http.Response.fromStream(streamedResponse);
+      } catch (e) {
+        // Fallback
+        return http.get(uri, headers: headers);
+      }
+    }
+    
+    return http.get(uri, headers: headers);
+  }
+
+  static Future<http.Response> _post(String path, {Object? body}) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final headers = await _headers;
+    
+    if (kIsWeb) {
+      try {
+        final request = http.Request('POST', uri);
+        request.headers.addAll(headers);
+        if (body is Map<String, String>) {
+          request.bodyFields = body;
+        } else if (body is String) {
+          request.body = body;
+        }
+        (request as dynamic).withCredentials = true;
+        
+        final streamedResponse = await _httpClient.send(request);
+        return http.Response.fromStream(streamedResponse);
+      } catch (e) {
+        return http.post(uri, headers: headers, body: body);
+      }
+    }
+    
+    return http.post(uri, headers: headers, body: body);
   }
 
   static Future<void> _saveCookie(http.Response response) async {
@@ -36,9 +90,8 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> login(String username, String password) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/login'),
-      headers: await _headers..addAll({'Content-Type': 'application/x-www-form-urlencoded'}),
+    final response = await _post(
+      '/login',
       body: {
         'username': username,
         'password': password,
@@ -48,11 +101,8 @@ class ApiService {
     if (response.statusCode == 200) {
       await _saveCookie(response);
       final data = json.decode(response.body);
-      
-      // Save user data for persistent profile even if session check fails
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_data', json.encode(data));
-      
       return data;
     } else {
       Map<String, dynamic> error = {};
@@ -65,16 +115,9 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getDashboard() async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/dashboard'),
-        headers: await _headers,
-      );
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception('Server returned ${response.statusCode}');
-      }
+      final response = await _get('/dashboard');
+      if (response.statusCode == 200) return json.decode(response.body);
+      throw Exception('Server returned ${response.statusCode}');
     } catch (e) {
       debugPrint('Dashboard API Error: $e');
       rethrow;
@@ -83,34 +126,19 @@ class ApiService {
 
   static Future<List<dynamic>> getNotifications() async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/notifications'),
-        headers: await _headers,
-      );
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        return [];
-      }
+      final response = await _get('/notifications');
+      if (response.statusCode == 200) return json.decode(response.body);
     } catch (e) {
       debugPrint('Notifications API Error: $e');
-      return [];
     }
+    return [];
   }
 
   static Future<Map<String, dynamic>> checkAuth() async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/check-auth'),
-        headers: await _headers,
-      );
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        return {'isLoggedIn': false};
-      }
+      final response = await _get('/check-auth');
+      if (response.statusCode == 200) return json.decode(response.body);
+      return {'isLoggedIn': false};
     } catch (e) {
       debugPrint('Auth Check Error: $e');
       return {'isLoggedIn': false};
@@ -119,11 +147,9 @@ class ApiService {
 
   static Future<List<dynamic>> getAssets({String? status}) async {
     try {
-      String url = '$baseUrl/assets-kso';
-      if (status != null) {
-        url += '?status=$status';
-      }
-      final response = await http.get(Uri.parse(url), headers: await _headers);
+      String path = '/assets-kso';
+      if (status != null) path += '?status=$status';
+      final response = await _get(path);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['assets'] ?? [];
@@ -136,7 +162,7 @@ class ApiService {
 
   static Future<List<dynamic>> getForms() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/goform/list'), headers: await _headers);
+      final response = await _get('/goform/list');
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is Map && data.containsKey('forms') && data['forms'] != null) {
@@ -152,10 +178,8 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getFormInitData(String formId) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/goform/init/$formId'), headers: await _headers);
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      }
+      final response = await _get('/goform/init/$formId');
+      if (response.statusCode == 200) return json.decode(response.body);
     } catch (e) {
       debugPrint('Error getting form init data: $e');
     }
@@ -165,11 +189,9 @@ class ApiService {
   static Future<Map<String, dynamic>> submitForm(String formId, Map<String, String> body, {List<String>? assetIds}) async {
     try {
       final uri = Uri.parse('$baseUrl/goform/submit/$formId');
-      
-      // For multipart or complex form data, we might need a different approach, 
-      // but let's stick to standard post for now as the backend uses ParseForm()
       final request = http.MultipartRequest('POST', uri);
       request.headers.addAll(await _headers);
+      if (kIsWeb) (request as dynamic).withCredentials = true;
       
       body.forEach((key, value) {
         request.fields[key] = value;
@@ -181,14 +203,11 @@ class ApiService {
         }
       }
 
-      final streamedResponse = await request.send();
+      final streamedResponse = await _httpClient.send(request);
       final response = await http.Response.fromStream(streamedResponse);
 
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception('Failed to submit form: ${response.body}');
-      }
+      if (response.statusCode == 200) return json.decode(response.body);
+      throw Exception('Failed to submit form: ${response.body}');
     } catch (e) {
       debugPrint('Error submitting form: $e');
       rethrow;
@@ -197,7 +216,7 @@ class ApiService {
 
   static Future<dynamic> getSignTasks() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/gosign/tasks'), headers: await _headers,);
+      final response = await _get('/gosign/tasks');
       if (response.statusCode == 200) return json.decode(response.body);
     } catch (e) {
       debugPrint('Error getting sign tasks: $e');
@@ -205,9 +224,27 @@ class ApiService {
     return [];
   }
 
+  static Future<Map<String, dynamic>> signTask(String taskId) async {
+    final response = await _post(
+      '/gosign/sign',
+      body: {'task_id': taskId},
+    );
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception(json.decode(response.body)['error'] ?? 'Gagal menandatangani');
+  }
+
+  static Future<Map<String, dynamic>> rejectTask(String taskId, String reason) async {
+    final response = await _post(
+      '/gosign/reject',
+      body: {'task_id': taskId, 'reason': reason},
+    );
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception(json.decode(response.body)['error'] ?? 'Gagal menolak');
+  }
+
   static Future<List<dynamic>> getDocuments() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/godms/edoc'), headers: await _headers);
+      final response = await _get('/godms/edoc');
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['folders'] ?? [];
@@ -220,7 +257,7 @@ class ApiService {
 
   static Future<List<dynamic>> getUsers() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/users'), headers: await _headers);
+      final response = await _get('/users');
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is Map && data.containsKey('users') && data['users'] != null) {
@@ -236,7 +273,7 @@ class ApiService {
 
   static Future<List<dynamic>> getLaptops() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/assets-kso/laptop'), headers: await _headers);
+      final response = await _get('/assets-kso/laptop');
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['assets'] ?? [];
@@ -249,7 +286,7 @@ class ApiService {
   
   static Future<void> logout() async {
     try {
-      await http.get(Uri.parse('$baseUrl/logout'), headers: await _headers);
+      await _get('/logout');
     } catch (_) {}
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('cookie');
@@ -259,14 +296,13 @@ class ApiService {
   static Future<Map<String, dynamic>?> getSavedUser() async {
     final prefs = await SharedPreferences.getInstance();
     final userStr = prefs.getString('user_data');
-    if (userStr != null) {
-      return json.decode(userStr);
-    }
+    if (userStr != null) return json.decode(userStr);
     return null;
   }
+
   static Future<List<dynamic>> getMasterAssetCategories() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/master-data/asset-category'), headers: await _headers);
+      final response = await _get('/master-data/asset-category');
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['categories'] ?? [];
@@ -279,10 +315,8 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getAssetSpecs() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/master-data/asset-specs'), headers: await _headers);
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      }
+      final response = await _get('/master-data/asset-specs');
+      if (response.statusCode == 200) return json.decode(response.body);
     } catch (e) {
       debugPrint('Error getting asset specs: $e');
     }
@@ -291,16 +325,7 @@ class ApiService {
 
   static Future<Map<String, dynamic>> storeAsset(Map<String, String> body) async {
     try {
-      final headers = await _headers;
-      headers['Content-Type'] = 'application/json'; // Web usually uses json, but backend handles form too. Wait, routes.go doesn't specify.
-      // Usually mobile sends application/x-www-form-urlencoded for standard POST forms in Go if using r.ParseForm()
-      headers['Content-Type'] = 'application/x-www-form-urlencoded';
-      
-      final response = await http.post(
-        Uri.parse('$baseUrl/assets-kso/store'),
-        headers: headers,
-        body: body,
-      );
+      final response = await _post('/assets-kso/store', body: body);
       return json.decode(response.body);
     } catch (e) {
       debugPrint('Error storing asset: $e');
@@ -308,19 +333,57 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> updateAsset(String id, Map<String, String> body) async {
+    try {
+      final response = await _post('/assets-kso/update/$id', body: body);
+      return json.decode(response.body);
+    } catch (e) {
+      debugPrint('Error updating asset: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> deleteAsset(String id) async {
+    try {
+      final uri = Uri.parse('$baseUrl/assets-kso/delete/$id');
+      final request = http.Request('DELETE', uri);
+      request.headers.addAll(await _headers);
+      if (kIsWeb) (request as dynamic).withCredentials = true;
+      final streamedResponse = await _httpClient.send(request);
+      final response = await http.Response.fromStream(streamedResponse);
+      return json.decode(response.body);
+    } catch (e) {
+      debugPrint('Error deleting asset: $e');
+      rethrow;
+    }
+  }
+
   static Future<Map<String, dynamic>> storeAssetBulk(Map<String, String> body) async {
     try {
-      final headers = await _headers;
-      headers['Content-Type'] = 'application/x-www-form-urlencoded';
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/assets-kso/bulk-store'),
-        headers: headers,
-        body: body,
-      );
+      final response = await _post('/assets-kso/bulk-store', body: body);
       return json.decode(response.body);
     } catch (e) {
       debugPrint('Error storing bulk assets: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> assignAssetLaptop(String assetId, String userId) async {
+    try {
+      final response = await _post('/assets-kso/laptop/assign', body: {'asset_id': assetId, 'user_id': userId});
+      return json.decode(response.body);
+    } catch (e) {
+      debugPrint('Error assigning asset: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateAssetLabel(String assetId, String deviceName) async {
+    try {
+      final response = await _post('/assets-kso/update-label', body: {'asset_id': assetId, 'device_name': deviceName});
+      return json.decode(response.body);
+    } catch (e) {
+      debugPrint('Error updating label: $e');
       rethrow;
     }
   }

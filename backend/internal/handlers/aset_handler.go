@@ -22,7 +22,7 @@ func (server *Server) ApiListAssetKSO(w http.ResponseWriter, r *http.Request) {
 	var assets []models.AssetKSO
 	db := server.DB.Model(&models.AssetKSO{}).Preload("User")
 
-	if year != "" {
+	if year != "" && year != "Semua Tahun" && year != "All" {
 		startOfYear := fmt.Sprintf("%s-01-01 00:00:00", year)
 		endOfYear := fmt.Sprintf("%s-12-31 23:59:59", year)
 		db = db.Where("purchase_date BETWEEN ? AND ?", startOfYear, endOfYear)
@@ -482,6 +482,10 @@ func (server *Server) ApiStoreAssetKSO(w http.ResponseWriter, r *http.Request) {
 		Status:          r.FormValue("status"),
 	}
 
+	if asset.Specification == "" && (asset.Category == "Laptop" || asset.Category == "Komputer") {
+		asset.Specification = server.getAssetSpecFromForm(r, asset.Category)
+	}
+
 	if asset.Status == "" {
 		asset.Status = "Ready"
 	}
@@ -521,6 +525,9 @@ func (server *Server) ApiUpdateAssetKSO(w http.ResponseWriter, r *http.Request) 
 	asset.SerialNumber = r.FormValue("serial_number")
 	asset.DeviceName = r.FormValue("device_name")
 	asset.Specification = r.FormValue("specification")
+	if asset.Specification == "" && (asset.Category == "Laptop" || asset.Category == "Komputer") {
+		asset.Specification = server.getAssetSpecFromForm(r, asset.Category)
+	}
 	asset.Color = r.FormValue("color")
 	asset.Location = r.FormValue("location")
 	asset.Status = r.FormValue("status")

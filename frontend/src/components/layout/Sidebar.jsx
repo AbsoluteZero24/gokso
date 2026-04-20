@@ -31,10 +31,12 @@ const Sidebar = ({ collapsed, onExpand }) => {
   const { user } = useAuth();
   const [openMenus, setOpenMenus] = useState({});
 
-  const userPermissions = user?.permissions ? user.permissions.split(',') : [];
+  const userPermissions = user?.permissions ? user.permissions.split(',').map(p => p.trim()) : [];
+  const role = (user?.role || '').toLowerCase();
+  const isAdmin = role === 'super admin' || role === 'super_admin';
 
   const hasPermission = (item) => {
-    if (user?.role === 'Super Admin') return true;
+    if (isAdmin) return true;
     if (!item.permission) return true;
     return userPermissions.includes(item.permission);
   };

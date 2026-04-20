@@ -174,7 +174,10 @@ class _AssetBulkCreateScreenState extends State<AssetBulkCreateScreen> {
                 _buildDropdown<String>(
                   label: 'Kategori',
                   value: _selectedCategory,
-                  items: _categories.map((c) => DropdownMenuItem(value: c['Name'].toString(), child: Text(c['Name']))).toList(),
+                  items: _categories.map((c) {
+                    final name = (c['name'] ?? c['Name'] ?? '').toString();
+                    return DropdownMenuItem(value: name, child: Text(name));
+                  }).toList(),
                   onChanged: (val) => setState(() => _selectedCategory = val),
                   required: true,
                 ),
@@ -212,7 +215,10 @@ class _AssetBulkCreateScreenState extends State<AssetBulkCreateScreen> {
                         const SizedBox(width: 8),
                         SizedBox(width: 80, child: _buildDropdown<String>(label: 'Unit', value: _ramUnit, items: ['GB', 'TB'].map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(), onChanged: (val) => setState(() => _ramUnit = val!))),
                         const SizedBox(width: 8),
-                        Expanded(child: _buildDropdown<String>(label: 'RAM Type', value: _selectedRamType, items: _ramTypes.map((t) => DropdownMenuItem(value: t['Name'].toString(), child: Text(t['Name']))).toList(), onChanged: (val) => setState(() => _selectedRamType = val))),
+                        Expanded(child: _buildDropdown<String>(label: 'RAM Type', value: _selectedRamType, items: _ramTypes.map((t) {
+                          final name = (t['name'] ?? t['Name'] ?? '').toString();
+                          return DropdownMenuItem(value: name, child: Text(name));
+                        }).toList(), onChanged: (val) => setState(() => _selectedRamType = val))),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -222,7 +228,10 @@ class _AssetBulkCreateScreenState extends State<AssetBulkCreateScreen> {
                         const SizedBox(width: 8),
                         SizedBox(width: 80, child: _buildDropdown<String>(label: 'Unit', value: _storageUnit, items: ['GB', 'TB'].map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(), onChanged: (val) => setState(() => _storageUnit = val!))),
                         const SizedBox(width: 8),
-                        Expanded(child: _buildDropdown<String>(label: 'Storage Type', value: _selectedStorageType, items: _storageTypes.map((t) => DropdownMenuItem(value: t['Name'].toString(), child: Text(t['Name']))).toList(), onChanged: (val) => setState(() => _selectedStorageType = val))),
+                        Expanded(child: _buildDropdown<String>(label: 'Storage Type', value: _selectedStorageType, items: _storageTypes.map((t) {
+                          final name = (t['name'] ?? t['Name'] ?? '').toString();
+                          return DropdownMenuItem(value: name, child: Text(name));
+                        }).toList(), onChanged: (val) => setState(() => _selectedStorageType = val))),
                       ],
                     ),
                   ] else ...[

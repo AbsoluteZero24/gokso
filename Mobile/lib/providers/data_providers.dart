@@ -20,7 +20,15 @@ final formsProvider = FutureProvider<List<dynamic>>((ref) async {
 final signTasksProvider = FutureProvider<List<dynamic>>((ref) async {
   final result = await ApiService.getSignTasks();
   if (result is Map && result.containsKey('tasks')) {
-    return result['tasks'] as List<dynamic>;
+    final List<dynamic> tasks = result['tasks'];
+    final String? currentUserId = result['current_user_id']?.toString();
+    
+    return tasks.map((t) {
+      if (t is Map) {
+        return {...t, 'current_user_id': currentUserId};
+      }
+      return t;
+    }).toList();
   } else if (result is List) {
     return result;
   }

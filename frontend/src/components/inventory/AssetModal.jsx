@@ -44,12 +44,23 @@ const AssetModal = ({
                                 required
                                 value={newAsset.category}
                                 onChange={(val) => setNewAsset({ ...newAsset, category: val })}
-                                options={categories.map(c => ({ value: c.Name, label: c.Name }))}
+                                options={categories.map(c => ({ value: c.name || c.Name, label: c.name || c.Name }))}
                                 placeholder="Pilih Kategori"
                             />
                             <div>
                                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>Merk / Brand</label>
                                 <input type="text" placeholder="Asus, Dell, HP..." value={newAsset.brand} onChange={(e) => setNewAsset({ ...newAsset, brand: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem' }} />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '1.25rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>Type / Model</label>
+                                <input type="text" placeholder="Latitude, Vivobook, etc..." value={newAsset.type_model} onChange={(e) => setNewAsset({ ...newAsset, type_model: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>Serial Number</label>
+                                <input type="text" placeholder="Nomor seri perangkat..." value={newAsset.serial_number} onChange={(e) => setNewAsset({ ...newAsset, serial_number: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem' }} />
                             </div>
                         </div>
                         
@@ -84,7 +95,7 @@ const AssetModal = ({
                                         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>RAM Type</label>
                                         <select value={compSpecs.ramType} onChange={(e) => setCompSpecs({ ...compSpecs, ramType: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem', background: 'white' }}>
                                             <option value="">Pilih Type</option>
-                                            {ramTypes.map(t => <option key={t.ID || t.Name} value={t.Name}>{t.Name}</option>)}
+                                            {ramTypes.map(t => <option key={t.id || t.ID || t.name || t.Name} value={t.name || t.Name}>{t.name || t.Name}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -104,7 +115,7 @@ const AssetModal = ({
                                         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>Storage Type</label>
                                         <select value={compSpecs.storageType} onChange={(e) => setCompSpecs({ ...compSpecs, storageType: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem', background: 'white' }}>
                                             <option value="">Pilih Type</option>
-                                            {storageTypes.map(t => <option key={t.ID || t.Name} value={t.Name}>{t.Name}</option>)}
+                                            {storageTypes.map(t => <option key={t.id || t.ID || t.name || t.Name} value={t.name || t.Name}>{t.name || t.Name}</option>)}
                                         </select>
                                     </div>
                                 </div>

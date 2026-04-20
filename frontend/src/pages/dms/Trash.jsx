@@ -57,6 +57,7 @@ const Trash = () => {
     const [allFolders, setAllFolders] = useState([]);
     const [selectedTargetFolder, setSelectedTargetFolder] = useState(null);
     const [moveLoading, setMoveLoading] = useState(false);
+    const [expandedMoveFolders, setExpandedMoveFolders] = useState({});
 
     // Confirm Modal State
     const [confirmModal, setConfirmModal] = useState({
@@ -127,8 +128,8 @@ const Trash = () => {
     };
 
     const selectAll = () => {
-        const folderIds = filteredFolders.map(f => f.ID);
-        const fileIds = filteredFiles.map(f => f.ID);
+        const folderIds = filteredFolders.map(f => f.id || f.ID);
+        const fileIds = filteredFiles.map(f => f.id || f.ID);
         if (selectedItems.folderIds.length === folderIds.length && selectedItems.fileIds.length === fileIds.length) {
             setSelectedItems({ folderIds: [], fileIds: [] });
         } else {
@@ -184,7 +185,7 @@ const Trash = () => {
         setShowMoveModal(true);
         try {
             const response = await axios.get(`/api/godms/folders/list-all?section=${section}`);
-            setAllFolders(response.data || []);
+            setAllFolders(response.data?.folders || []);
         } catch (error) {
             console.error('Error fetching all folders:', error);
         } finally {
@@ -321,8 +322,8 @@ const Trash = () => {
         });
     };
 
-    const filteredFolders = data.folders.filter(f => f.Name.toLowerCase().includes(searchTerm.toLowerCase()));
-    const filteredFiles = data.files.filter(f => f.Name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredFolders = data.folders.filter(f => (f.name || f.Name || '').toLowerCase().includes((searchTerm || '').toLowerCase()));
+    const filteredFiles = data.files.filter(f => (f.name || f.Name || '').toLowerCase().includes((searchTerm || '').toLowerCase()));
 
     const formatSize = (bytes) => {
         if (bytes === 0) return '0 Bytes';
@@ -445,25 +446,29 @@ const Trash = () => {
                         <div style={{ marginBottom: '2.5rem' }}>
                             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#64748b', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Deleted Folders</h3>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                                {filteredFolders.map(folder => (
+                                {filteredFolders.map(folder => {
+                                    const fId = folder.id || folder.ID;
+                                    const fName = folder.name || folder.Name;
+                                    const fDate = folder.trashed_at || folder.TrashedAt;
+                                    return (
                                     <div
-                                        key={folder.ID}
-                                        className={`chart-container ${selectedItems.folderIds.includes(folder.ID) ? 'item-selected' : ''}`}
+                                        key={fId}
+                                        className={`chart-container ${selectedItems.folderIds.includes(fId) ? 'item-selected' : ''}`}
                                         style={{
                                             padding: '1.25rem',
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: '1rem',
-                                            border: selectedItems.folderIds.includes(folder.ID) ? '2px solid var(--primary)' : '1px solid var(--border)',
+                                            border: selectedItems.folderIds.includes(fId) ? '2px solid var(--primary)' : '1px solid var(--border)',
                                             position: 'relative',
                                             cursor: 'pointer'
                                         }}
-                                        onClick={() => toggleSelection(folder.ID, 'folder')}
+                                        onClick={() => toggleSelection(fId, 'folder')}
                                     >
                                         <div
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                toggleSelection(folder.ID, 'folder');
+                                                toggleSelection(fId, 'folder');
                                             }}
                                             style={{
                                                 position: 'absolute',
@@ -473,35 +478,35 @@ const Trash = () => {
                                                 height: '20px',
                                                 borderRadius: '6px',
                                                 border: '2px solid',
-                                                borderColor: selectedItems.folderIds.includes(folder.ID) ? 'var(--primary)' : '#cbd5e1',
-                                                background: selectedItems.folderIds.includes(folder.ID) ? 'var(--primary)' : 'white',
+                                                borderColor: selectedItems.folderIds.includes(fId) ? 'var(--primary)' : '#cbd5e1',
+                                                background: selectedItems.folderIds.includes(fId) ? 'var(--primary)' : 'white',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                                 zIndex: 10
                                             }}
                                         >
-                                            {selectedItems.folderIds.includes(folder.ID) && <Check size={14} color="white" strokeWidth={3} />}
+                                            {selectedItems.folderIds.includes(fId) && <Check size={14} color="white" strokeWidth={3} />}
                                         </div>
                                         <div style={{ background: '#f3f4f6', padding: '0.75rem', borderRadius: '14px' }}>
                                             <Folder size={28} color="#94a3b8" fill="#94a3b8" fillOpacity={0.4} />
                                         </div>
                                         <div style={{ flexGrow: 1, overflow: 'hidden' }}>
-                                            <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#1e293b' }}>{folder.Name}</div>
+                                            <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#1e293b' }}>{fName}</div>
                                             <div style={{ fontSize: '0.75rem', color: '#ef4444' }}>
-                                                Deleted {new Date(folder.TrashedAt).toLocaleDateString()}
+                                                Deleted {new Date(fDate).toLocaleDateString()}
                                             </div>
                                         </div>
                                         <div style={{ display: 'flex', gap: '0.25rem', opacity: (selectedItems.folderIds.length > 0 || selectedItems.fileIds.length > 0) ? 0.3 : 1 }}>
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); handleRestoreFolder(folder.ID); }}
+                                                onClick={(e) => { e.stopPropagation(); handleRestoreFolder(fId); }}
                                                 style={{ background: 'transparent', border: 'none', color: '#10b981', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}
                                                 title="Restore"
                                             >
                                                 <RotateCcw size={18} />
                                             </button>
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteFolderPermanent(folder.ID); }}
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteFolderPermanent(fId); }}
                                                 style={{ background: 'transparent', border: 'none', color: '#ef4444', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}
                                                 title="Delete Permanently"
                                             >
@@ -509,7 +514,7 @@ const Trash = () => {
                                             </button>
                                         </div>
                                     </div>
-                                ))}
+                                )})}
                             </div>
                         </div>
                     )}
@@ -524,25 +529,30 @@ const Trash = () => {
                         ) : (
                             viewMode === 'grid' ? (
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1.25rem' }}>
-                                    {filteredFiles.map(file => (
+                                    {filteredFiles.map(file => {
+                                        const fId = file.id || file.ID;
+                                        const fName = file.name || file.Name;
+                                        const fExt = file.extension || file.Extension;
+                                        const fDate = file.trashed_at || file.TrashedAt;
+                                        return (
                                         <div
-                                            key={file.ID}
-                                            className={`chart-container ${selectedItems.fileIds.includes(file.ID) ? 'item-selected' : ''}`}
+                                            key={fId}
+                                            className={`chart-container ${selectedItems.fileIds.includes(fId) ? 'item-selected' : ''}`}
                                             style={{
                                                 padding: '1rem',
                                                 display: 'flex',
                                                 flexDirection: 'column',
                                                 gap: '0.75rem',
                                                 position: 'relative',
-                                                border: selectedItems.fileIds.includes(file.ID) ? '2px solid var(--primary)' : '1px solid var(--border)',
+                                                border: selectedItems.fileIds.includes(fId) ? '2px solid var(--primary)' : '1px solid var(--border)',
                                                 cursor: 'pointer'
                                             }}
-                                            onClick={() => toggleSelection(file.ID, 'file')}
+                                            onClick={() => toggleSelection(fId, 'file')}
                                         >
                                             <div
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    toggleSelection(file.ID, 'file');
+                                                    toggleSelection(fId, 'file');
                                                 }}
                                                 style={{
                                                     position: 'absolute',
@@ -552,41 +562,41 @@ const Trash = () => {
                                                     height: '20px',
                                                     borderRadius: '6px',
                                                     border: '2px solid',
-                                                    borderColor: selectedItems.fileIds.includes(file.ID) ? 'var(--primary)' : '#cbd5e1',
-                                                    background: selectedItems.fileIds.includes(file.ID) ? 'var(--primary)' : 'white',
+                                                    borderColor: selectedItems.fileIds.includes(fId) ? 'var(--primary)' : '#cbd5e1',
+                                                    background: selectedItems.fileIds.includes(fId) ? 'var(--primary)' : 'white',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                     zIndex: 10
                                                 }}
                                             >
-                                                {selectedItems.fileIds.includes(file.ID) && <Check size={14} color="white" strokeWidth={3} />}
+                                                {selectedItems.fileIds.includes(fId) && <Check size={14} color="white" strokeWidth={3} />}
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '140px', background: getFileStyle(file.Extension).bgColor, borderRadius: '12px', opacity: 0.8 }}>
-                                                {React.cloneElement(getFileStyle(file.Extension).icon, { size: 48, color: getFileStyle(file.Extension).color })}
+                                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '140px', background: getFileStyle(fExt).bgColor, borderRadius: '12px', opacity: 0.8 }}>
+                                                {React.cloneElement(getFileStyle(fExt).icon, { size: 48, color: getFileStyle(fExt).color })}
                                             </div>
                                             <div style={{ flexGrow: 1 }}>
-                                                <div style={{ fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{file.Name}</div>
+                                                <div style={{ fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fName}</div>
                                                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                                    Deleted {new Date(file.TrashedAt).toLocaleDateString()}
+                                                    Deleted {new Date(fDate).toLocaleDateString()}
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', gap: '0.5rem', opacity: selectedItems.fileIds.length > 0 ? 0.3 : 1 }}>
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); handleRestoreFile(file.ID); }}
+                                                    onClick={(e) => { e.stopPropagation(); handleRestoreFile(fId); }}
                                                     style={{ flexGrow: 1, padding: '0.5rem', borderRadius: '10px', border: '1px solid #d1fae5', background: '#ecfdf5', color: '#10b981', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 600, fontSize: '0.75rem', gap: '0.4rem' }}
                                                 >
                                                     <RotateCcw size={14} />
                                                 </button>
                                                 <button
-                                                    onClick={(e) => { e.stopPropagation(); handleDeleteFilePermanent(file.ID); }}
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteFilePermanent(fId); }}
                                                     style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #fee2e2', background: '#fef2f2', color: '#ef4444', cursor: 'pointer' }}
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
                                         </div>
-                                    ))}
+                                    )})}
                                 </div>
                             ) : (
                                 <div className="table-responsive" style={{ background: 'white', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>
@@ -618,68 +628,78 @@ const Trash = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {filteredFolders.map(folder => (
-                                                <tr key={folder.ID} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                            {filteredFolders.map(folder => {
+                                                const fId = folder.id || folder.ID;
+                                                const fName = folder.name || folder.Name;
+                                                const fDate = folder.trashed_at || folder.TrashedAt;
+                                                return (
+                                                <tr key={fId} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                                     <td style={{ padding: '1rem' }}>
                                                         <div
-                                                            onClick={() => toggleSelection(folder.ID, 'folder')}
+                                                            onClick={() => toggleSelection(fId, 'folder')}
                                                             style={{
                                                                 width: '20px',
                                                                 height: '20px',
                                                                 borderRadius: '6px',
                                                                 border: '2px solid',
-                                                                borderColor: selectedItems.folderIds.includes(folder.ID) ? 'var(--primary)' : '#cbd5e1',
-                                                                background: selectedItems.folderIds.includes(folder.ID) ? 'var(--primary)' : 'white',
+                                                                borderColor: selectedItems.folderIds.includes(fId) ? 'var(--primary)' : '#cbd5e1',
+                                                                background: selectedItems.folderIds.includes(fId) ? 'var(--primary)' : 'white',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 justifyContent: 'center',
                                                                 cursor: 'pointer'
                                                             }}
                                                         >
-                                                            {selectedItems.folderIds.includes(folder.ID) && <Check size={14} color="white" strokeWidth={3} />}
+                                                            {selectedItems.folderIds.includes(fId) && <Check size={14} color="white" strokeWidth={3} />}
                                                         </div>
                                                     </td>
                                                     <td style={{ padding: '1rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                                             <Folder size={20} color="#94a3b8" />
-                                                            <span style={{ fontWeight: 600 }}>{folder.Name}</span>
+                                                            <span style={{ fontWeight: 600 }}>{fName}</span>
                                                         </div>
                                                     </td>
-                                                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#ef4444' }}>{new Date(folder.TrashedAt).toLocaleString()}</td>
+                                                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#ef4444' }}>{new Date(fDate).toLocaleString()}</td>
                                                     <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>-</td>
                                                 </tr>
-                                            ))}
-                                            {filteredFiles.map(file => (
-                                                <tr key={file.ID} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                            )})}
+                                            {filteredFiles.map(file => {
+                                                const fId = file.id || file.ID;
+                                                const fName = file.name || file.Name;
+                                                const fExt = file.extension || file.Extension;
+                                                const fDate = file.trashed_at || file.TrashedAt;
+                                                const fSize = file.size || file.Size;
+                                                return (
+                                                <tr key={fId} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                                     <td style={{ padding: '1rem' }}>
                                                         <div
-                                                            onClick={() => toggleSelection(file.ID, 'file')}
+                                                            onClick={() => toggleSelection(fId, 'file')}
                                                             style={{
                                                                 width: '20px',
                                                                 height: '20px',
                                                                 borderRadius: '6px',
                                                                 border: '2px solid',
-                                                                borderColor: selectedItems.fileIds.includes(file.ID) ? 'var(--primary)' : '#cbd5e1',
-                                                                background: selectedItems.fileIds.includes(file.ID) ? 'var(--primary)' : 'white',
+                                                                borderColor: selectedItems.fileIds.includes(fId) ? 'var(--primary)' : '#cbd5e1',
+                                                                background: selectedItems.fileIds.includes(fId) ? 'var(--primary)' : 'white',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 justifyContent: 'center',
                                                                 cursor: 'pointer'
                                                             }}
                                                         >
-                                                            {selectedItems.fileIds.includes(file.ID) && <Check size={14} color="white" strokeWidth={3} />}
+                                                            {selectedItems.fileIds.includes(fId) && <Check size={14} color="white" strokeWidth={3} />}
                                                         </div>
                                                     </td>
                                                     <td style={{ padding: '1rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                            {React.cloneElement(getFileStyle(file.Extension).icon, { size: 20, color: getFileStyle(file.Extension).color })}
-                                                            <span style={{ fontWeight: 600 }}>{file.Name}</span>
+                                                            {React.cloneElement(getFileStyle(fExt).icon, { size: 20, color: getFileStyle(fExt).color })}
+                                                            <span style={{ fontWeight: 600 }}>{fName}</span>
                                                         </div>
                                                     </td>
-                                                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#ef4444' }}>{new Date(file.TrashedAt).toLocaleString()}</td>
-                                                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{formatSize(file.Size)}</td>
+                                                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#ef4444' }}>{new Date(fDate).toLocaleString()}</td>
+                                                    <td style={{ padding: '1rem', fontSize: '0.875rem', color: '#64748b' }}>{formatSize(fSize)}</td>
                                                 </tr>
-                                            ))}
+                                            )})}
                                         </tbody>
                                     </table>
                                 </div>
@@ -770,26 +790,72 @@ const Trash = () => {
                                     <Loader2 className="animate-spin" size={24} color="var(--primary)" />
                                 </div>
                             ) : (
-                                allFolders.filter(f => !selectedItems.folderIds.includes(f.ID)).map(f => (
-                                    <div
-                                        key={f.ID}
-                                        onClick={() => setSelectedTargetFolder(f.ID)}
-                                        style={{
-                                            padding: '0.875rem 1rem',
-                                            borderRadius: '12px',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.75rem',
-                                            background: selectedTargetFolder === f.ID ? 'rgba(30, 89, 197, 0.05)' : 'transparent',
-                                            border: selectedTargetFolder === f.ID ? '1px solid var(--primary)' : '1px solid transparent',
-                                            marginBottom: '0.25rem'
-                                        }}
-                                    >
-                                        <Folder size={20} color={selectedTargetFolder === f.ID ? '#f59e0b' : '#94a3b8'} fill={selectedTargetFolder === f.ID ? '#f59e0b' : 'transparent'} fillOpacity={0.2} />
-                                        <span style={{ fontWeight: selectedTargetFolder === f.ID ? 700 : 500 }}>{f.Name}</span>
-                                    </div>
-                                ))
+                                (() => {
+                                    const toggleMoveFolder = (id) => setExpandedMoveFolders(p => ({...p, [id]: !p[id]}));
+                                    const renderFolderTree = (parentId, depth = 0) => {
+                                        const children = allFolders.filter(f => {
+                                            if (selectedItems.folderIds.includes(f.ID || f.id)) return false;
+                                            const fParentId = f.parent_id || f.ParentID;
+                                            if (!parentId) return !fParentId;
+                                            return fParentId === parentId;
+                                        });
+
+                                        if (children.length === 0) return null;
+
+                                        return children.map(f => {
+                                            const fId = f.id || f.ID;
+                                            const fName = f.name || f.Name;
+                                            const isExpanded = expandedMoveFolders[fId];
+                                            
+                                            const hasChildren = allFolders.some(child => {
+                                                if (selectedItems.folderIds.includes(child.ID || child.id)) return false;
+                                                return (child.parent_id || child.ParentID) === fId;
+                                            });
+
+                                            return (
+                                                <div key={fId} style={{ marginTop: '0.25rem' }}>
+                                                    <div
+                                                        onClick={() => setSelectedTargetFolder(fId)}
+                                                        style={{
+                                                            padding: '0.625rem 0.75rem',
+                                                            paddingLeft: `${1 + depth * 1.5}rem`,
+                                                            borderRadius: '12px',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.75rem',
+                                                            background: selectedTargetFolder === fId ? 'rgba(30, 89, 197, 0.05)' : 'transparent',
+                                                            border: selectedTargetFolder === fId ? '1px solid var(--primary)' : '1px solid transparent',
+                                                        }}
+                                                    >
+                                                        <div 
+                                                            style={{ display: 'flex', alignItems: 'center', width: '20px', height: '20px', cursor: 'pointer', justifyContent: 'center' }}
+                                                            onClick={(e) => {
+                                                                if (hasChildren) {
+                                                                    e.stopPropagation();
+                                                                    toggleMoveFolder(fId);
+                                                                }
+                                                            }}
+                                                        >
+                                                            {hasChildren ? (
+                                                                <ChevronDown size={16} color="#64748b" style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }} />
+                                                            ) : <div style={{width: '16px'}}></div>}
+                                                        </div>
+                                                        <Folder size={20} color={selectedTargetFolder === fId ? '#f59e0b' : '#94a3b8'} fill={selectedTargetFolder === fId ? '#f59e0b' : 'transparent'} fillOpacity={0.2} />
+                                                        <span style={{ fontWeight: selectedTargetFolder === fId ? 700 : 500 }}>{fName}</span>
+                                                    </div>
+                                                    {isExpanded && hasChildren && (
+                                                        <div>
+                                                            {renderFolderTree(fId, depth + 1)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        });
+                                    };
+                                    
+                                    return renderFolderTree(null, 0);
+                                })()
                             )}
                         </div>
 

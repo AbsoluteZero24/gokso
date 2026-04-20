@@ -27,6 +27,9 @@ func (server *Server) moveFilePhysically(file *models.DMSFile, newFolderID *stri
 	if newName == "" {
 		newName = file.Name
 	}
+	if filepath.Ext(newName) == "" && file.Extension != "" {
+		newName += "." + file.Extension
+	}
 	sanitizedName := server.sanitizeFileName(newName)
 	newPath := filepath.Join(newDir, sanitizedName)
 
@@ -88,8 +91,13 @@ func (server *Server) getDMSAccessSettings(r *http.Request) (bool, map[string]bo
 		return true, allowedSet
 	}
 
+	if roleName == "" {
+		return false, allowedSet
+	}
+
 	var role models.Role
 	if err := server.DB.Where("name = ?", roleName).First(&role).Error; err != nil {
+		fmt.Printf("[DMS] WARNING: Role '%s' not found in database: %v\n", roleName, err)
 		return false, allowedSet
 	}
 
@@ -174,16 +182,39 @@ func (server *Server) ApiListEDoc(w http.ResponseWriter, r *http.Request) {
 	var totalSize int64
 	server.DB.Model(&models.DMSFile{}).Where("section = ?", section).Select("COALESCE(sum(size), 0)").Scan(&totalSize)
 
-	if folders == nil {
-		folders = []models.DMSFolder{}
+	// Ensure consistent JSON mapping for mobile
+	foldersList := []map[string]interface{}{}
+	for _, f := range folders {
+		foldersList = append(foldersList, map[string]interface{}{
+			"id":         f.ID,
+			"name":       f.Name,
+			"section":    f.Section,
+			"color":      f.Color,
+			"parent_id":  f.ParentID,
+			"is_system":  f.IsSystem,
+			"created_at": f.CreatedAt,
+			"updated_at": f.UpdatedAt,
+		})
 	}
-	if files == nil {
-		files = []models.DMSFile{}
+
+	filesList := []map[string]interface{}{}
+	for _, f := range files {
+		filesList = append(filesList, map[string]interface{}{
+			"id":         f.ID,
+			"name":       f.Name,
+			"section":    f.Section,
+			"size":       f.Size,
+			"extension":  f.Extension,
+			"file_path":  f.FilePath,
+			"created_at": f.CreatedAt,
+			"updated_at": f.UpdatedAt,
+		})
 	}
+
 	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
 		"section":      section,
-		"folders":      folders,
-		"files":        files,
+		"folders":      foldersList,
+		"files":        filesList,
 		"totalStorage": server.formatSize(totalSize),
 		"isTrash":      false,
 	})
@@ -209,21 +240,41 @@ func (server *Server) ApiListFolderContent(w http.ResponseWriter, r *http.Reques
 	var totalSize int64
 	server.DB.Model(&models.DMSFile{}).Where("section = ?", currentFolder.Section).Select("COALESCE(sum(size), 0)").Scan(&totalSize)
 
-	if subfolders == nil {
-		subfolders = []models.DMSFolder{}
+	// Ensure consistent JSON mapping for mobile
+	subfoldersList := []map[string]interface{}{}
+	for _, f := range subfolders {
+		subfoldersList = append(subfoldersList, map[string]interface{}{
+			"id":         f.ID,
+			"name":       f.Name,
+			"section":    f.Section,
+			"color":      f.Color,
+			"parent_id":  f.ParentID,
+			"is_system":  f.IsSystem,
+			"created_at": f.CreatedAt,
+			"updated_at": f.UpdatedAt,
+		})
 	}
-	if files == nil {
-		files = []models.DMSFile{}
+
+	filesList := []map[string]interface{}{}
+	for _, f := range files {
+		filesList = append(filesList, map[string]interface{}{
+			"id":         f.ID,
+			"name":       f.Name,
+			"section":    f.Section,
+			"size":       f.Size,
+			"extension":  f.Extension,
+			"file_path":  f.FilePath,
+			"created_at": f.CreatedAt,
+			"updated_at": f.UpdatedAt,
+		})
 	}
+
 	breadcrumbs := server.getEDocBreadcrumb(folderID)
-	if breadcrumbs == nil {
-		breadcrumbs = []models.DMSFolder{}
-	}
 	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
 		"section":       currentFolder.Section,
 		"currentFolder": currentFolder,
-		"folders":       subfolders,
-		"files":         files,
+		"folders":       subfoldersList,
+		"files":         filesList,
 		"breadcrumbs":   breadcrumbs,
 		"totalStorage":  server.formatSize(totalSize),
 		"isTrash":       false,
@@ -241,8 +292,20 @@ func (server *Server) ApiListAllFolders(w http.ResponseWriter, r *http.Request) 
 	}
 	query.Order("name asc").Find(&folders)
 
+	// Ensure consistent JSON mapping for mobile
+	foldersList := []map[string]interface{}{}
+	for _, f := range folders {
+		foldersList = append(foldersList, map[string]interface{}{
+			"id":        f.ID,
+			"name":      f.Name,
+			"section":   f.Section,
+			"color":     f.Color,
+			"parent_id": f.ParentID,
+		})
+	}
+
 	server.Renderer.JSON(w, http.StatusOK, map[string]interface{}{
-		"folders": folders,
+		"folders": foldersList,
 	})
 }
 
@@ -366,6 +429,11 @@ func (server *Server) RenameFolder(w http.ResponseWriter, r *http.Request) {
 		server.syncFolderPhysically(id)
 	}
 
+	if strings.HasPrefix(r.URL.Path, "/api") {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+		return
+	}
 	http.Redirect(w, r, r.Header.Get("Referer"), http.StatusSeeOther)
 }
 
@@ -381,6 +449,11 @@ func (server *Server) RenameFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if strings.HasPrefix(r.URL.Path, "/api") {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+		return
+	}
 	http.Redirect(w, r, r.Header.Get("Referer"), http.StatusSeeOther)
 }
 
