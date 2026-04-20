@@ -39,6 +39,13 @@ spec:
       labels:
         app: gokso-db
     spec:
+      initContainers:
+      - name: fix-permissions
+        image: busybox
+        command: ["sh", "-c", "chown -R 999:999 /var/lib/postgresql/data"]
+        volumeMounts:
+        - name: db-storage
+          mountPath: /var/lib/postgresql/data
       containers:
       - name: postgres
         image: postgres:15-alpine
