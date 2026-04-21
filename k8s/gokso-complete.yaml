@@ -92,6 +92,10 @@ spec:
       labels:
         app: gokso-backend
     spec:
+      initContainers:
+      - name: wait-for-db
+        image: busybox
+        command: ['sh', '-c', 'until nc -z gokso-db-service 5432; do echo waiting for db; sleep 2; done;']
       containers:
       - name: backend
         image: absolutezero24/gokso-backend:latest
@@ -150,9 +154,9 @@ spec:
         - containerPort: 80
         env:
         - name: REACT_APP_API_URL
-          value: "http://192.168.100.121"
+          value: "http://gokso.scisi.com/api"
         - name: VITE_API_URL
-          value: "http://192.168.100.121"
+          value: "http://gokso.scisi.com/api"
 ---
 apiVersion: v1
 kind: Service
@@ -201,3 +205,42 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gokso-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: gokso.scisi.com
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: gokso-backend-service
+            port:
+              number: 80
+      - path: /public
+        pathType: Prefix
+        backend:
+          service:
+            name: gokso-backend-service
+            port:
+              number: 80
+      - path: /mobile
+        pathType: Prefix
+        backend:
+          service:
+            name: gokso-mobile-service
+            port:
+              number: 80
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gokso-frontend-service
+            port:
+              number: 80

@@ -92,6 +92,10 @@ spec:
       labels:
         app: gokso-backend
     spec:
+      initContainers:
+      - name: wait-for-db
+        image: busybox
+        command: ['sh', '-c', 'until nc -z gokso-db-service 5432; do echo waiting for db; sleep 2; done;']
       containers:
       - name: backend
         image: absolutezero24/gokso-backend:latest
