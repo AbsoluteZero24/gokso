@@ -10,7 +10,7 @@ spec:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
   nfs:
-    path: "/mnt/kubernetes-pool/kubernetes/gokso/db"
+    path: "/mnt/k8s-pool/gokso"
     server: 192.168.100.106
   mountOptions:
     - nfsvers=4.1
@@ -48,6 +48,8 @@ spec:
       - name: postgres
         image: postgres:15
         env:
+        - name: PGDATA
+          value: /var/lib/postgresql/nfs_data/pgdata
         - name: POSTGRES_DB
           value: "goksodb"
         - name: POSTGRES_USER
@@ -58,8 +60,8 @@ spec:
         - containerPort: 5432
         volumeMounts:
         - name: db-storage
-          mountPath: /var/lib/postgresql/data
-          subPath: data-v2
+          mountPath: /var/lib/postgresql/nfs_data
+          subPath: data-v7
       volumes:
       - name: db-storage
         persistentVolumeClaim:
