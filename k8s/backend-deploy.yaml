@@ -46,10 +46,7 @@ spec:
         fsGroup: 999
       containers:
       - name: postgres
-        image: postgres:15-alpine
-        securityContext:
-          runAsUser: 999
-          runAsGroup: 999
+        image: postgres:15
         env:
         - name: POSTGRES_DB
           value: "goksodb"
@@ -62,7 +59,7 @@ spec:
         volumeMounts:
         - name: db-storage
           mountPath: /var/lib/postgresql/data
-          subPath: postgres-db
+          subPath: data-v2
       volumes:
       - name: db-storage
         persistentVolumeClaim:
