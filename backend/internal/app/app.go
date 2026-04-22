@@ -64,6 +64,7 @@ func Run() {
 			seeders.SeedPermissions(server.DB)
 			seeders.SeedMasterDataUser(server.DB)
 			seeders.SeedMasterDataAsset(server.DB)
+			seeders.SeedDMS(server.DB)
 			log.Println("Database initialization complete.")
 		}
 
