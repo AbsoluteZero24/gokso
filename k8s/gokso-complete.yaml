@@ -61,7 +61,7 @@ spec:
         volumeMounts:
         - name: db-storage
           mountPath: /var/lib/postgresql/nfs_data
-          subPath: data-v7
+          subPath: data-db
       volumes:
       - name: db-storage
         persistentVolumeClaim:
