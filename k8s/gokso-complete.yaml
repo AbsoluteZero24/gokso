@@ -27,6 +27,35 @@ spec:
     requests:
       storage: 5Gi
 ---
+# 1.1 Penyimpanan Data untuk GoDMS & Uploads (Signatures, Drafts, PDF)
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gokso-dms-pv
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    path: "/mnt/k8s-pool/gokso"
+    server: 192.168.100.106
+  mountOptions:
+    - nfsvers=4.1
+    - noatime
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gokso-dms-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+---
 # 2. Database PostgreSQL
 apiVersion: apps/v1
 kind: Deployment
@@ -119,6 +148,17 @@ spec:
           value: "5432"
         ports:
         - containerPort: 9001
+        volumeMounts:
+        - name: dms-storage
+          mountPath: /root/public/godms
+          subPath: data-godms
+        - name: dms-storage
+          mountPath: /root/public/uploads
+          subPath: data-uploads
+      volumes:
+      - name: dms-storage
+        persistentVolumeClaim:
+          claimName: gokso-dms-pvc
 ---
 apiVersion: v1
 kind: Service
