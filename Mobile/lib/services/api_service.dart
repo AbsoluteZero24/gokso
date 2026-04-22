@@ -5,8 +5,7 @@ import 'package:flutter/foundation.dart';
 
 class ApiService {
   static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:9001/api';
-    return 'http://10.0.2.2:9001/api';
+    return 'http://gokso.scisi.com/api';
   }
 
   // A single client instance that we'll configure
