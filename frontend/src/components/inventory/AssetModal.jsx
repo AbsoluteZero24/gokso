@@ -3,19 +3,19 @@ import { X, Loader2, Monitor } from 'lucide-react';
 import SearchableSelect from '../shared/SearchableSelect';
 import CustomDatePicker from '../shared/CustomDatePicker';
 
-const AssetModal = ({ 
-    show, 
-    onClose, 
-    isEdit, 
-    newAsset, 
-    setNewAsset, 
-    compSpecs, 
-    setCompSpecs, 
-    categories, 
-    ramTypes, 
-    storageTypes, 
-    modalLoading, 
-    onSubmit 
+const AssetModal = ({
+    show,
+    onClose,
+    isEdit,
+    newAsset,
+    setNewAsset,
+    compSpecs,
+    setCompSpecs,
+    categories,
+    ramTypes,
+    storageTypes,
+    modalLoading,
+    onSubmit
 }) => {
     if (!show) return null;
 
@@ -63,8 +63,8 @@ const AssetModal = ({
                                 <input type="text" placeholder="Nomor seri perangkat..." value={newAsset.serial_number} onChange={(e) => setNewAsset({ ...newAsset, serial_number: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem' }} />
                             </div>
                         </div>
-                        
-                        { (newAsset.category === 'Laptop' || newAsset.category === 'Komputer') ? (
+
+                        {(newAsset.category === 'Laptop' || newAsset.category === 'Komputer') ? (
                             <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border)', marginBottom: '1.5rem' }}>
                                 <h4 style={{ fontSize: '0.75rem', fontWeight: 800, marginBottom: '1.25rem', color: 'var(--primary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <Monitor size={14} /> Spesifikasi Teknis {newAsset.category}
@@ -126,7 +126,7 @@ const AssetModal = ({
                                 <textarea rows="4" placeholder="Detail spesifikasi aset..." value={newAsset.specification} onChange={(e) => setNewAsset({ ...newAsset, specification: e.target.value })} style={{ width: '100%', padding: '1rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem', resize: 'vertical' }}></textarea>
                             </div>
                         )}
-                        
+
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2.5rem' }}>
                             <CustomDatePicker
                                 label="Tanggal Pembelian"
@@ -136,10 +136,10 @@ const AssetModal = ({
                             />
                             <div>
                                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.625rem', color: '#64748b', textTransform: 'uppercase' }}>Lokasi Penempatan</label>
-                                <input type="text" placeholder="Ruang IT, Gudang, etc..." value={newAsset.location} onChange={(e) => setNewAsset({ ...newAsset, location: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem' }} />
+                                <input type="text" placeholder="KSO Pusat, KSO Cabang, etc..." value={newAsset.location} onChange={(e) => setNewAsset({ ...newAsset, location: e.target.value })} style={{ width: '100%', padding: '0.875rem 1.125rem', borderRadius: '12px', border: '1px solid var(--border)', outline: 'none', fontSize: '1rem' }} />
                             </div>
                         </div>
-                        
+
                         <div style={{ marginBottom: '2.5rem' }}>
                             <SearchableSelect
                                 label="Status"
@@ -153,7 +153,7 @@ const AssetModal = ({
                                 ]}
                             />
                         </div>
-                        
+
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
                             <button type="button" onClick={onClose} style={{ padding: '0.75rem 1.75rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'white', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Batal</button>
                             <button type="submit" disabled={modalLoading} style={{ padding: '0.75rem 2.5rem', borderRadius: '12px', border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(30, 89, 197, 0.2)' }}>

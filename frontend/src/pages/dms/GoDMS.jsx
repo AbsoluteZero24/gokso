@@ -878,10 +878,24 @@ const GoDMS = () => {
                                                 <Folder size={28} color="#f59e0b" fill="#f59e0b" fillOpacity={0.4} />
                                             </div>
                                             <div style={{ flexGrow: 1, overflow: 'hidden' }}>
-                                                <div style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#1e293b' }}>{folderName}</div>
+                                                <div 
+                                                    style={{ 
+                                                        fontWeight: 700, 
+                                                        color: '#1e293b',
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 2,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden',
+                                                        lineHeight: '1.2',
+                                                        fontSize: '0.875rem'
+                                                    }} 
+                                                    title={folderName}
+                                                >
+                                                    {folderName}
+                                                </div>
                                                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Folder</div>
                                             </div>
-                                            <div style={{ display: 'flex', gap: '0.25rem', opacity: 0, transition: 'opacity 0.2s' }} className="folder-delete-btn" onMouseOver={(e) => e.currentTarget.style.opacity = 1}>
+                                            <div style={{ display: 'flex', gap: '0.25rem', opacity: 0, transition: 'opacity 0.2s' }} className="folder-delete-btn">
                                                 <button 
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -995,7 +1009,23 @@ const GoDMS = () => {
                                             </div>
                                             <div style={{ flexGrow: 1 }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                    <div style={{ fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0.25rem', flex: 1 }} title={fileName}>{fileName}</div>
+                                                    <div 
+                                                        style={{ 
+                                                            fontWeight: 700, 
+                                                            color: '#1e293b', 
+                                                            display: '-webkit-box',
+                                                            WebkitLineClamp: 2,
+                                                            WebkitBoxOrient: 'vertical',
+                                                            overflow: 'hidden',
+                                                            lineHeight: '1.2',
+                                                            fontSize: '0.875rem',
+                                                            marginBottom: '0.25rem', 
+                                                            flex: 1 
+                                                        }} 
+                                                        title={fileName}
+                                                    >
+                                                        {fileName}
+                                                    </div>
                                                     <div style={{ display: 'flex', gap: '0.25rem' }}>
                                                         <button 
                                                             onClick={(e) => {
